@@ -89,7 +89,7 @@ class PhotonsTracingWindow(QMainWindow):
 
         GUIStyles.customize_theme(self)
         GUIStyles.set_fonts()
-        self.setWindowTitle("Intensity tracing v1.3")
+        self.setWindowTitle("Spectroscopy v1.0")
 
         self.resize(1460, 800)
 
@@ -107,7 +107,7 @@ class PhotonsTracingWindow(QMainWindow):
         flim_header_icon = QLabel(self, pixmap=QPixmap(
             os.path.join(project_root, "assets", "flimlabs-logo.png")
         ).scaledToWidth(60))
-        header_title = QLabel("INTENSITY TRACING")
+        header_title = QLabel("SPECTROSCOPY")
         header_title.setStyleSheet(GUIStyles.set_main_title_style())
         save_icon = QIcon(os.path.join(project_root, "assets", "save-icon.png"))
         self.save_conf_button = QPushButton("SAVE CONFIGURATION")
