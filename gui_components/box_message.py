@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QMessageBox
+
 
 class BoxMessage:
     @staticmethod
@@ -8,4 +9,4 @@ class BoxMessage:
         message_box.setText(msg)
         message_box.setWindowTitle(title)
         message_box.setStyleSheet(style)
-        message_box.exec_()
+        message_box.exec()

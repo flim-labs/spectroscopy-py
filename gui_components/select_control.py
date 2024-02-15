@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QComboBox
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QComboBox
+
 
 class SelectControl:
     @staticmethod
@@ -8,7 +9,7 @@ class SelectControl:
         input = QComboBox()
         for value in options:
             input.addItem(value)
-        input.setCurrentText(selectedValue)        
+        input.setCurrentText(selectedValue)
         input.currentIndexChanged.connect(event_callback)
         control.addWidget(q_label)
         control.addWidget(input)
