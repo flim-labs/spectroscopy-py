@@ -129,6 +129,9 @@ class FancyButton(QPushButton):
 
         self.setStyleSheet(f"""
             QPushButton {{
+                font-family: "Montserrat";
+                font-size: 14px;
+                font-weight: thin;
                 border: 2px solid {color};
                 border-radius: 0px;
                 color: white;

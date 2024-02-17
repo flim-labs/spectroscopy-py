@@ -1,5 +1,5 @@
-from PyQt6.QtGui import QColor, QPalette, QFont
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QColor, QPalette, QFont, QFontDatabase
+from PyQt6.QtWidgets import QApplication, QWidget, QLabel
 from PyQt6.QtWidgets import QStyleFactory
 
 
@@ -15,11 +15,36 @@ class GUIStyles:
         palette.setColor(QPalette.ColorRole.Window, background_color)
         palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
         window.setPalette(palette)
+        window.setStyleSheet("""
+        QLabel {
+            color: #f8f8f8;
+            font-family: "Montserrat";
+        }
+        """)
 
     @staticmethod
-    def set_fonts():
-        general_font = QFont("Montserrat", 10)
-        QApplication.setFont(general_font)
+    def set_fonts(font_name="Montserrat", font_size=10):
+        font_id = QFontDatabase.addApplicationFont(":/fonts/Montserrat-Regular.ttf")  # Adjust the path as needed
+        font_family = QFontDatabase.applicationFontFamilies(font_id)[0] if font_id != -1 else font_name
+        font = QFont(font_family, font_size)
+        QApplication.setFont(font)
+
+
+    @staticmethod
+    def set_fonts_deep(root):
+        if root is None:
+            return
+        for child in root.findChildren(QWidget):
+            if child.objectName() == "font":
+                child.setFont(QFont("Montserrat", 14, QFont.Weight.Thin))
+                # check if it's a QPushbutton
+            if child.metaObject().className() == "QPushButton":
+                print("Button")
+                child.setFont(QFont("Montserrat", 14, QFont.Weight.Thin))
+            GUIStyles.set_fonts_deep(child)
+        for child in root.findChildren(QLabel):
+            child.setFont(QFont("Montserrat", 14, QFont.Weight.Thin))
+            GUIStyles.set_fonts_deep(child)
 
     @staticmethod
     def set_label_style(color="#f8f8f8"):
@@ -36,8 +61,9 @@ class GUIStyles:
             QLabel{
                 color: #23F3AB;
                 font-family: "Montserrat";
-                font-size: 28px;
-                font-weight: 500;
+                font-size: 45px;
+                font-weight: 100;
+                font-style: italic;
             }
         """
 
@@ -188,9 +214,9 @@ class GUIStyles:
                 border-radius: 5px;
                 background-color: transparent;
             }
-            QSpinBox:disabled {
-                color: #404040;  
-                border-color: #404040;
+            QComboBox:disabled {
+                color: darkgrey;  
+                border-color: darkgrey;
             } 
             QComboBox:on { 
                 border-bottom-left-radius: 0;

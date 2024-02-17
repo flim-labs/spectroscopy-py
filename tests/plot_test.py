@@ -12,61 +12,70 @@ def get_last_spectroscopy_file():
     return os.path.join(data_folder, files[0])
 
 
-file_path = get_last_spectroscopy_file()
+def plot_last_file():
+    file_path = get_last_spectroscopy_file()
 
-with open(file_path, 'rb') as f:
-    if f.read(4) != b'SP01':
-        print("Invalid data file")
-        exit(0)
+    with open(file_path, 'rb') as f:
+        if f.read(4) != b'SP01':
+            print("Invalid data file")
+            exit(0)
 
-    (json_length,) = struct.unpack('I', f.read(4))
-    null = None
-    metadata = eval(f.read(json_length).decode("utf-8"))
+        (json_length,) = struct.unpack('I', f.read(4))
+        null = None
+        metadata = eval(f.read(json_length).decode("utf-8"))
 
-    if "channels" in metadata and metadata["channels"]:
-        print("Enabled channels: " + (", ".join(["Channel " + str(ch + 1) for ch in metadata["channels"]])))
+        if "channels" in metadata and metadata["channels"]:
+            print("Enabled channels: " + (", ".join(["Channel " + str(ch + 1) for ch in metadata["channels"]])))
 
-    if "bin_width_micros" in metadata and metadata["bin_width_micros"] is not None:
-        print("Bin width: " + str(metadata["bin_width_micros"]) + "\u00B5s")
+        if "bin_width_micros" in metadata and metadata["bin_width_micros"] is not None:
+            print("Bin width: " + str(metadata["bin_width_micros"]) + "\u00B5s")
 
-    if "acquisition_time_millis" in metadata and metadata["acquisition_time_millis"] is not None:
-        print("Acquisition time: " + str(metadata["acquisition_time_millis"] / 1000) + "s")
+        if "acquisition_time_millis" in metadata and metadata["acquisition_time_millis"] is not None:
+            print("Acquisition time: " + str(metadata["acquisition_time_millis"] / 1000) + "s")
 
-    if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None:
-        print("Laser period: " + str(metadata["laser_period_ns"]) + "ns")
+        if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None:
+            print("Laser period: " + str(metadata["laser_period_ns"]) + "ns")
 
-    # create array of len(channel) arrays
-    curves = [[] for _ in range(len(metadata["channels"]))]
-    times = []
+        # create array of len(channel) arrays
+        curves = [[] for _ in range(len(metadata["channels"]))]
+        times = []
 
-    number_of_channels = len(metadata["channels"])
-    channel_values_unpack_string = 'I' * number_of_channels * 256
-    bin_width_seconds = metadata["bin_width_micros"] / 1000000
+        number_of_channels = len(metadata["channels"])
+        channel_values_unpack_string = 'I' * number_of_channels * 256
+        bin_width_seconds = metadata["bin_width_micros"] / 1000000
 
-    while True:
-        data = f.read(8)
-        if not data:
-            break
-        (time,) = struct.unpack('d', data)
+        while True:
+            data = f.read(8)
+            if not data:
+                break
+            (time,) = struct.unpack('d', data)
+            for i in range(len(curves)):
+                data = f.read(4 * 256)
+                curve = struct.unpack(channel_values_unpack_string, data)
+                curves[i].append(np.array(curve))
+            times.append(time / 1_000_000_000)
+
+        plt.xlabel("Bin")
+        plt.ylabel("Intensity")
+        plt.title("Spectroscopy (time: " + str(round(times[-1])) + "s, curves stored: " + str(len(times)) + ")")
+
+        # plot all channels summed up
+        total_max = 0
+        total_min = 9999999999999
         for i in range(len(curves)):
-            data = f.read(4 * 256)
-            curve = struct.unpack(channel_values_unpack_string, data)
-            curves[i].append(np.array(curve))
-        times.append(time / 1_000_000_000)
+            sum_curve = np.mean(curves[i], axis=0)
+            max = np.max(sum_curve)
+            min = np.min(sum_curve)
+            if max > total_max:
+                total_max = max
+            if min < total_min:
+                total_min = min
+            plt.plot(sum_curve, label=f"Channel {i + 1}")
 
-    plt.xlabel("Bin")
-    plt.ylabel("Intensity")
-    plt.title("Spectroscopy (time: " + str(round(times[-1])) + "s, curves stored: " + str(len(times)) + ")")
+        plt.ylim(min * 0.99, max * 1.01)
 
-    # plot all channels summed up
-    total_max = 0
-    for i in range(len(curves)):
-        sum_curve = np.sum(curves[i], axis=0)
-        max = np.max(sum_curve)
-        if max > total_max:
-            total_max = max
-        plt.plot(sum_curve, label=f"Channel {i + 1}")
+        plt.show()
 
-    plt.ylim(0, max * 1.2)
 
-    plt.show()
+if __name__ == "__main__":
+    plot_last_file()
