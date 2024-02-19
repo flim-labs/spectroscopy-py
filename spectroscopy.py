@@ -554,7 +554,7 @@ class SpectroscopyWindow(QWidget):
         self.update_plots_enabled = True
         self.top_bar_set_enabled(False)
         # self.timer_update.start(18)
-        self.pull_from_queue_timer.start(22)
+        self.pull_from_queue_timer.start(25)
         # self.pull_from_queue()
 
     def pull_from_queue(self):
@@ -572,6 +572,7 @@ class SpectroscopyWindow(QWidget):
                 channel_index = self.selected_channels.index(channel)
                 # self.decay_curves_queue.put((channel_index, time_ns, intensities))
                 self.update_plots2(channel_index, time_ns, intensities)
+                QApplication.processEvents()
         # QTimer.singleShot(1, self.pull_from_queue)
 
     def update_plots2(self, channel_index, time_ns, curve):
