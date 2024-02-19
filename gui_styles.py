@@ -37,9 +37,7 @@ class GUIStyles:
         for child in root.findChildren(QWidget):
             if child.objectName() == "font":
                 child.setFont(QFont("Montserrat", 14, QFont.Weight.Thin))
-                # check if it's a QPushbutton
             if child.metaObject().className() == "QPushButton":
-                print("Button")
                 child.setFont(QFont("Montserrat", 14, QFont.Weight.Thin))
             GUIStyles.set_fonts_deep(child)
         for child in root.findChildren(QLabel):
