@@ -553,8 +553,9 @@ class SpectroscopyWindow(QWidget):
         QApplication.processEvents()
         self.update_plots_enabled = True
         self.top_bar_set_enabled(False)
-        self.timer_update.start(1)
-        self.pull_from_queue_timer.start(1)
+        # self.timer_update.start(18)
+        self.pull_from_queue_timer.start(22)
+        # self.pull_from_queue()
 
     def pull_from_queue(self):
         val = flim_labs.pull_from_queue()
@@ -569,25 +570,46 @@ class SpectroscopyWindow(QWidget):
                     break
                 ((channel,), (time_ns,), intensities) = v
                 channel_index = self.selected_channels.index(channel)
-                self.decay_curves_queue.put((channel_index, time_ns, intensities))
+                # self.decay_curves_queue.put((channel_index, time_ns, intensities))
+                self.update_plots2(channel_index, time_ns, intensities)
+        # QTimer.singleShot(1, self.pull_from_queue)
 
-    def update_plots(self):
-        try:
-            (channel_index, time_ns, curve) = self.decay_curves_queue.get(block=False)
-        except queue.Empty:
-            QApplication.processEvents()
-            return
-        print(f"Updating plot for channel_index {channel_index}, len(self.intensity_lines) {len(self.intensity_lines)}, len(self.decay_curves) {len(self.decay_curves)}")
+    def update_plots2(self, channel_index, time_ns, curve):
         x, y = self.intensity_lines[channel_index].getData()
-        if x is None:
+        if x is None or (len(x) == 1 and x[0] == 0):
             x = np.array([time_ns / 1_000_000_000])
             y = np.array([np.sum(curve)])
         else:
             x = np.append(x, time_ns / 1_000_000_000)
             y = np.append(y, np.sum(curve))
-        if len(x) > 100:
-            x = x[1:]
-            y = y[1:]
+        # if len(x) > 100:
+        #     x = x[1:]
+        #     y = y[1:]
+        self.intensity_lines[channel_index].setData(x, y)
+        x, y = self.decay_curves[channel_index].getData()
+        self.decay_curves[channel_index].setData(x, curve + y)
+        QApplication.processEvents()
+        time.sleep(0.01)
+
+    def update_plots(self):
+        try:
+            (channel_index, time_ns, curve) = self.decay_curves_queue.get(block=True, timeout=0.1)
+        except queue.Empty:
+            QApplication.processEvents()
+            return
+        except Exception as e:
+            print("Error: " + str(e))
+            return
+        x, y = self.intensity_lines[channel_index].getData()
+        if x is None or (len(x) == 1 and x[0] == 0):
+            x = np.array([time_ns / 1_000_000_000])
+            y = np.array([np.sum(curve)])
+        else:
+            x = np.append(x, time_ns / 1_000_000_000)
+            y = np.append(y, np.sum(curve))
+        # if len(x) > 100:
+        #     x = x[1:]
+        #     y = y[1:]
         self.intensity_lines[channel_index].setData(x, y)
         x, y = self.decay_curves[channel_index].getData()
         self.decay_curves[channel_index].setData(x, curve + y)
