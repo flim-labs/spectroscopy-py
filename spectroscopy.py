@@ -44,6 +44,7 @@ class SpectroscopyWindow(QWidget):
         self.decay_curves = []
         self.decay_curves_queue = queue.Queue()
         self.cps = []
+        self.snr = []
 
         self.selected_channels = []
         self.selected_sync = self.settings.value(SETTINGS_SYNC, DEFAULT_SYNC)
@@ -276,6 +277,19 @@ class SpectroscopyWindow(QWidget):
         controls_row.addLayout(switch_show_cps_control)
         controls_row.addSpacing(20)
         self.control_inputs[SETTINGS_SHOW_CPS] = inp
+             
+        switch_show_snr_control = QVBoxLayout()     
+        inp = SwitchControl(
+            active_color="#8d4ef2",
+            checked=self.settings.value(SETTINGS_SHOW_SNR, DEFAULT_SHOW_SNR) == "true"
+        )
+        inp.toggled.connect(self.on_show_snr_changed)
+        switch_show_snr_control.addWidget(QLabel("Show SNR:"))
+        switch_show_snr_control.addSpacing(8)
+        switch_show_snr_control.addWidget(inp)
+        controls_row.addLayout(switch_show_snr_control)
+        controls_row.addSpacing(20)
+        self.control_inputs[SETTINGS_SHOW_SNR] = inp
 
         spacer = QWidget()
         spacer.setMaximumWidth(300)
@@ -375,8 +389,15 @@ class SpectroscopyWindow(QWidget):
 
     def on_show_cps_changed(self, state):
         self.settings.setValue(SETTINGS_SHOW_CPS, state)
-        for cps_label in self.cps:
-            cps_label.setVisible(state)
+        if len(self.cps) > 0:
+            for cps_label in self.cps:
+                cps_label.setVisible(state)
+
+    def on_show_snr_changed(self, state):
+        self.settings.setValue(SETTINGS_SHOW_SNR, state)
+        if len(self.snr) > 0:
+            for snr_label in self.snr:
+                snr_label.setVisible(state)       
 
     def create_channel_selector(self):
         grid = QHBoxLayout()
@@ -482,27 +503,49 @@ class SpectroscopyWindow(QWidget):
         return buttons_layout
 
 
+    def create_plot_indicator(self, plot_widget, label_text, label_style, settings_key, default_value, x, y):
+        indicator_label = QLabel(label_text, plot_widget)
+        indicator_label.setFixedWidth(200)
+        indicator_label.setStyleSheet(label_style)
+        indicator_label.move(x, y)
+        if self.settings.value(settings_key, default_value) != 'true':
+            indicator_label.setVisible(False)
+        return indicator_label
+
     def create_cps_indicator(self, plot_widget):
-        cps_label = QLabel("0 CPS", plot_widget)
-        cps_label.setFixedWidth(200)
-        cps_label.setStyleSheet(GUIStyles.set_cps_label_style())
-        cps_label.move(50, -2)
+        return self.create_plot_indicator(
+            plot_widget,
+            label_text="0 CPS",
+            label_style=GUIStyles.set_cps_label_style(),
+            settings_key=SETTINGS_SHOW_CPS,
+            default_value=DEFAULT_SHOW_CPS,
+            x=50,
+            y=-2
+        )
 
-        if self.settings.value(SETTINGS_SHOW_CPS, DEFAULT_SHOW_CPS) != 'true':
-            cps_label.setVisible(False)
-        return cps_label  
+    def create_snr_indicator(self, plot_widget):
+        return self.create_plot_indicator(
+            plot_widget,
+            label_text="0 SNR",
+            label_style=GUIStyles.set_snr_label_style(),
+            settings_key=SETTINGS_SHOW_SNR,
+            default_value=DEFAULT_SHOW_SNR,
+            x=50,
+            y=5
+        )
 
-    def clear_cps_indicators(self):
-        for cps_label in self.cps:
-            cps_label.setParent(None)
-            cps_label.deleteLater()
-        self.cps = []    
-
+    def clear_indicators(self, indicators):
+        indicators.clear()
+        indicators = []
 
     def generate_plots(self, frequency_mhz=0.0):
         if len(self.cps) > 0:
             # Clear existing CPS labels
-            self.clear_cps_indicators()
+            self.clear_indicators(self.cps)
+
+        if len(self.snr) > 0:
+            # Clear existing SNR labels
+            self.clear_indicators(self.snr)    
 
         if len(self.selected_channels) == 0:
             self.grid_layout.addWidget(QWidget(), 0, 0)
@@ -519,7 +562,7 @@ class SpectroscopyWindow(QWidget):
 
             x = np.arange(1)
             y = x * 0
-            intensity_plot = intensity_widget.plot(x, y, pen='y')
+            intensity_plot = intensity_widget.plot(x, y, pen='#8d4ef2')
             self.intensity_lines.append(intensity_plot)
 
             v_layout.addWidget(intensity_widget, 1)
@@ -539,9 +582,12 @@ class SpectroscopyWindow(QWidget):
                 x = np.arange(1)
 
             y = x * 0
-            static_curve = curve_widget.plot(x, y, pen='r')
+            static_curve = curve_widget.plot(x, y, pen='#23F3AB')
             self.decay_curves.append(static_curve)
             v_layout.addWidget(curve_widget, 3)
+            
+            snr_label = self.create_snr_indicator(curve_widget)
+            self.snr.append(snr_label)
 
             col_length = 1
             if len(self.selected_channels) == 2:
