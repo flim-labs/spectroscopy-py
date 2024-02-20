@@ -523,6 +523,11 @@ class SpectroscopyWindow(QWidget):
 
         connection_type = self.settings.value(SETTINGS_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
 
+        if str(connection_type) == "0":
+            connection_type = "USB"
+        else:
+            connection_type = "SMA"
+
         firmware_selected = flim_labs.get_spectroscopy_firmware(
             sync="in" if self.selected_sync == "sync_in" else "out",
             frequency_mhz=frequency_mhz,
@@ -680,7 +685,7 @@ class SyncInDialog(QDialog):
                 self.no_button.setText("Cancel")
             else:
                 self.frequency_mhz = round(res, 3)
-                self.label.setText(f"Frequency detected: {self.frequency_mhz} Mhz")
+                self.label.setText(f"Frequency detected: {self.frequency_mhz} MHz")
                 self.no_button.setText("Done")
         except Exception as e:
             self.frequency_mhz = 0.0
