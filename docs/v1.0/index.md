@@ -19,10 +19,19 @@
     </li>
     <li><a href="#gui-usage">GUI Usage</a>
      <ul>
-    <li><a href="#draw-frequency">Draw Frequency</a></li>
+    <li><a href="#automatic-plot-update">Automatic plot update</a>
+    <ul>
+    <li><a href="#pull-from-queue-function">Pull from queue function</a></li>
+    <li><a href="#update-plot-2-function">Update plot 2 function</a>
+    <ul>
+    <li><a href="#update-the-photon-intensity-plot">Update the photon intensity plot</a>
+    <li><a href="#update-the-photon-intensity-decay-plot">Update the photon intensity decay plot</a>
+        <li><a href="#gui-update">GUI update</a>
+    </ul></li>
+    </ul></li>
     </ul>
     </li>
-     <li><a href="#exported-data-visualization">Exported Data Visualization</a></li>
+    <li><a href="#automatic-firmware-detection">Automatic firmware detection</a></li>     
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
   </ol>
@@ -77,9 +86,13 @@ Here a table summary of the configurable parameters:
 
 <br/>
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ### Automatic plot update
 
 The software automatically use the `pull from queue` and `update_plots_2` functions in order to update the plots by pulling new data from a queue.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 #### Pull from queue function
 
@@ -104,23 +117,31 @@ def pull_from_queue(self):
                 QApplication.processEvents()
 ```
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 #### Update plot 2 function
 
 The purpose of the`update_plot_2` function is to update the plots when receiving new datas by the `pull_from_queue` function.  
 The function receive three parameters: `channel_index`, time in nanoseconds `time_ns`, and a data curve `curve`.  
 Then extracts the current x (time) and y (average intensity) data for the specified channel from `self.intensity_lines[channel_index].getData()`.
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ###### Update the photon intensity plot
 
 - If the current data is undefined or consists solely of a placeholder (for example, if x[0] == 0), it initializes x with the current time converted to seconds (time_ns / 1,000,000,000) and y with the sum of the curve values (np.sum(curve)).
 - If data already exists, it appends the new data point, converting the time to seconds and calculating the average intensity.
 
-###### Update the photon intensity declay plot
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+###### Update the photon intensity decay plot
 
 - Extracts the current x (time) and y (photon counts) data for the specified channel from self.decay_curves[channel_index].getData().
 - Updates the decay curve by adding the current data curve `curve` to the existing y values, without altering x. This indicates that the curve represents an increment or update of photon counts or intensity for the same time interval already depicted in x.
 
-###### GUI Update
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+###### GUI update
 
 - Invokes QApplication.processEvents() to ensure the user interface remains responsive and updates with the new plot data.
 - Introduces a brief pause (time.sleep(0.01)) to slow down the update process and potentially reduce the load on the UI or the application's main thread.
@@ -141,6 +162,8 @@ def update_plots2(self, channel_index, time_ns, curve):
         QApplication.processEvents()
         time.sleep(0.01)
 ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Automatic firmware detection
 
