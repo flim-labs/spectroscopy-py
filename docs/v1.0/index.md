@@ -5,7 +5,7 @@
 </div>
 <div align="center">
   <a href="https://www.flimlabs.com/">
-    <img src="../assets/images/shared/flimlabs-logo.png" alt="Logo" width="120" height="120">
+    <img src="../assets/images/shared/spectroscopy-logo.png" alt="Logo" width="120" height="120">
   </a>
 </div>
 <br>
@@ -41,6 +41,8 @@ For a general introduction to the aims and technical requirements of the project
 
 ## GUI Usage
 
+UPDATE IMAGE
+
 <div align="center">
     <img src="../assets/images/python/intensity-tracing-gui-1.0.png" alt="GUI" width="100%">
 </div>
@@ -48,73 +50,101 @@ For a general introduction to the aims and technical requirements of the project
 The GUI mode provides advanced functionality for configuring analysis **parameters** and displaying live-streamed fluorescence intensity decay data. It allows simultaneous acquisition from up to **8 channels**, offering real-time data visualization in the form of plots.
 There are two types of graphs used to represent the data:
 
-First graph:
+Photon intensity graph:
 
 - **X** Axis: represent _aquisition time_
 - **Y** Axis: represent _average photon counts_
 
-Second graph:
+Photon intensity decay graph:
 
 - **X** Axis: represent _aquisition time_
 - **Y** Axis: represent _average photon counts_
 
 Here a table summary of the configurable parameters:
 
-|                                 | data-type   | config                                                                            | default   | explanation                                                                                                                                                                                        |
-| ------------------------------- | ----------- | --------------------------------------------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled_channels`              | number[]    | set a list of enabled acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7] | []        | the list of enabled channels for photons data acquisition                                                                                                                                          |
-| `selected_conn_channel`         | string      | set the selected connection type for acquisition (USB or SMA)                     | "USB"     | If USB is selected, USB firmware is automatically used. If SMA is selected, SMA firmware is automatically used.                                                                                    |
-| `bin_width_micros`              | number      | Set the numerical value in microseconds                                           | 1000 (ms) | the time duration to wait for photons count accumulation.                                                                                                                                          |
-| `selected_update_rate`          | string      | Set the chart update frequency (**"LOW"** or **"HIGH"**)                          | "LOW"     | Based on the **selected_update_rate** value and the number of **enabled_channels** an algorithm determines the **draw_frequency** value assuring a balanced chart data visualization               |
-| `free_running_acquisition_time` | boolean     | Set the acquisition time mode (**True** or **False**)                             | True      | If set to True, the _acquisition_time_millis_ is indeterminate, but _keep_points_ param needs to be specified. If set to False, the acquisition_time_millis param is needed (acquisition duration) |
-| `keep_points`                   | number      | Set how many charts points to keep on the screen                                  | 1000      | This option sets the upper limit for the number of points visible in the chart display, aiming to prevent visual clutter and enhance readability                                                   |
-| `acquisition_time_millis`       | number/None | Set the data acquisition duration                                                 | None      | The acquisition duration is indeterminate (None) if _free_running_acquisition_time_ is set to True.                                                                                                |
-| `write_data`                    | boolean     | Set export data option to True/False                                              | False     | if set to _True_, the acquired raw data will be exported locally to the computer                                                                                                                   |
+| Parameter            | data-type        | config                                                                             | default | explanation                                                                                                                                       |
+| -------------------- | ---------------- | ---------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BIN_WIDTH`          | number           | Set the numerical value in microseconds                                            | 1000    | the time duration to wait for photons count accumulation.                                                                                         |
+| `CONNECTION_TYPE`    | string           | set the selected connection type for acquisition (USB or SMA)                      | "USB"   | If USB is selected, USB firmware is automatically used. If SMA is selected, SMA firmware is automatically used.                                   |
+| `FREE_RUNNING`       | boolean          | Set the acquisition time mode (**True** or **False**)                              | True    | If set to True, the _ACQUISITION_TIME_ is indeterminate. If set to False, the ACQUISITION_TIME param is needed (acquisition duration)             |
+| `selected_channels`  | number[]         | set a list of selected acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7] | []      | the list of selected channels for photons data acquisition                                                                                        |
+| `TIME_SPAN`          | number           | Time interval, in seconds, for the visible data range on the duration x-axis.      | 5       | For instance, if `time_span` is set to _5s_, the _x-axis_ will scroll to continuously display the latest 5 seconds of real-time data on the chart |
+| `ACQUISITION_TIME`   | number/None      | Set the data acquisition duration                                                  | None    | The acquisition duration is indeterminate (None) if _FREE_RUNNING_ is set to True.                                                                |
+| `sync_out_10_button` | enabled/disabled | Enable or disable the button                                                       | False   | Choose 10MHz as sync out frequency                                                                                                                |
+| `sync_out_20_button` | enabled/disabled | Enable or disable the button                                                       | False   | Choose 20MHz as sync out frequency                                                                                                                |
+| `sync_out_40_button` | enabled/disabled | Enable or disable the button                                                       | False   | Choose 40MHz as sync out frequency                                                                                                                |
+| `sync_out_80_button` | enabled/disabled | Enable or disable the button                                                       | True    | Choose 80MHz as sync out frequency                                                                                                                |
 
 <br/>
 
-### Draw Frequency
+### Automatic plot update
 
-The purpose of `set_draw_frequency` function is is to determine and set the charts drawing frequency based on certain conditions, taking into account the selected _update rate_ and the _number of enabled channels_.
+The software automatically use the `pull from queue` and `update_plots_2` functions in order to update the plots by pulling new data from a queue.
 
-- If the `selected_update_rate` is set to "LOW" the `draw_frequency` value will fall within a range between **5** and **20**, depending on the number of active channels.
-- If the `selected_update_rate` is set to "HIGH" the `draw_frequency` value will fall within a range between **21** and **100**, depending on the number of active channels.
+#### Pull from queue function
+
+The `pull_from_a_queue` function's primary objective is to monitor the queue for new data utilizing the Flim Labs API.  
+Upon detecting new data, the function updates the plots accordingly by calling the `update_plot_2` function. If no data is retrieved, the data acquisition process is halted.
 
 ```python
-def set_draw_frequency(self):
-    num_enabled_channels = len(self.enabled_channels)
-
-    # Set default draw frequency when no channels are enabled and update rate is not "LOW" or "HIGH"
-    if self.selected_update_rate not in ["LOW", "HIGH"] and num_enabled_channels == 0:
-        self.draw_frequency = 10
-        return
-
-    # Define minimum and maximum frequencies based on the selected update rate
-    if self.selected_update_rate == "LOW":
-        min_frequency = 5
-        max_frequency = 20
-    else:
-        min_frequency = 21
-        max_frequency = 100
-
-    # Calculate the frequency range and step based on the number of enabled channels
-    frequency_range = max_frequency - min_frequency
-    step = frequency_range / num_enabled_channels
-
-    # Adjust the frequency considering the number of enabled channels
-    adjusted_frequency = max_frequency - step * (num_enabled_channels - 1)
-
-    # Set the draw frequency within the specified range
-    self.draw_frequency = max(min_frequency, min(max_frequency, adjusted_frequency))
+def pull_from_queue(self):
+        val = flim_labs.pull_from_queue()
+        if len(val) > 0:
+            for v in val:
+                if v == ('end',):  # End of acquisition
+                    print("Got end of acquisition, stopping")
+                    self.on_start_button_click()
+                    self.mode = MODE_STOPPED
+                    self.style_start_button()
+                    QApplication.processEvents()
+                    break
+                ((channel,), (time_ns,), intensities) = v
+                channel_index = self.selected_channels.index(channel)
+                self.update_plots2(channel_index, time_ns, intensities)
+                QApplication.processEvents()
 ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+#### Update plot 2 function
 
-## Exported Data Visualization
+The purpose of the`update_plot_2` function is to update the plots when receiving new datas by the `pull_from_queue` function.  
+The function receive three parameters: `channel_index`, time in nanoseconds `time_ns`, and a data curve `curve`.  
+Then extracts the current x (time) and y (average intensity) data for the specified channel from `self.intensity_lines[channel_index].getData()`.
 
-The application GUI allows the user to export the analysis data in `binary file format`. For a detailed guide about data export and binary file structure see:
+###### Update the photon intensity plot
 
-- [Spectroscopy Data Export guide ](#) **update link**
+- If the current data is undefined or consists solely of a placeholder (for example, if x[0] == 0), it initializes x with the current time converted to seconds (time_ns / 1,000,000,000) and y with the sum of the curve values (np.sum(curve)).
+- If data already exists, it appends the new data point, converting the time to seconds and calculating the average intensity.
+
+###### Update the photon intensity declay plot
+
+- Extracts the current x (time) and y (photon counts) data for the specified channel from self.decay_curves[channel_index].getData().
+- Updates the decay curve by adding the current data curve `curve` to the existing y values, without altering x. This indicates that the curve represents an increment or update of photon counts or intensity for the same time interval already depicted in x.
+
+###### GUI Update
+
+- Invokes QApplication.processEvents() to ensure the user interface remains responsive and updates with the new plot data.
+- Introduces a brief pause (time.sleep(0.01)) to slow down the update process and potentially reduce the load on the UI or the application's main thread.
+
+```python
+def update_plots2(self, channel_index, time_ns, curve):
+        x, y = self.intensity_lines[channel_index].getData()
+        if x is None or (len(x) == 1 and x[0] == 0):
+            x = np.array([time_ns / 1_000_000_000])
+            y = np.array([np.sum(curve)])
+        else:
+            x = np.append(x, time_ns / 1_000_000_000)
+            y = np.append(y, np.sum(curve))
+
+        self.intensity_lines[channel_index].setData(x, y)
+        x, y = self.decay_curves[channel_index].getData()
+        self.decay_curves[channel_index].setData(x, curve + y)
+        QApplication.processEvents()
+        time.sleep(0.01)
+```
+
+### Automatic firmware detection
+
+In order to start the acquisition process, the function `begin_spectroscopy_experiment` automatically detect the firmware version of your flim data acquisition card.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
