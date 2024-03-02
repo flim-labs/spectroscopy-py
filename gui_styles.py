@@ -41,7 +41,7 @@ class GUIStyles:
                 child.setFont(QFont("Montserrat", 14, QFont.Weight.Thin))
             GUIStyles.set_fonts_deep(child)
         for child in root.findChildren(QLabel):
-            child.setFont(QFont("Montserrat", 14, QFont.Weight.Thin))
+            child.setFont(QFont("Montserrat", 14, QFont.Weight.Bold))
             GUIStyles.set_fonts_deep(child)
 
     @staticmethod

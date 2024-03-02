@@ -1,7 +1,6 @@
 import os
 import queue
 import sys
-import threading
 import time
 
 import flim_labs
@@ -23,7 +22,7 @@ from gui_styles import GUIStyles
 VERSION = "1.0"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
-TOP_BAR_HEIGHT = 210
+TOP_BAR_HEIGHT = 250
 MAX_CHANNELS = 8
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
