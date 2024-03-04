@@ -26,7 +26,7 @@ class LinkWidget(QWidget):
         self.link = link
 
         if icon_filename:
-            icon_path = os.path.join(project_root, 'assets', icon_filename)
+            icon_path = icon_filename
             original_icon_pixmap = QPixmap(icon_path).scaled(icon_dimensions, icon_dimensions,Qt.AspectRatioMode.KeepAspectRatio)
             self.link_label.setPixmap(original_icon_pixmap)
  

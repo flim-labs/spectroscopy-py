@@ -14,10 +14,11 @@ from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHB
 from gui_components.fancy_checkbox import FancyButton
 from gui_components.gradient_text import GradientText
 from gui_components.input_number_control import InputNumberControl
-from gui_components.logo_utilities import OverlayWidget
+from gui_components.logo_utilities import OverlayWidget, TitlebarIcon
 from gui_components.select_control import SelectControl
 from gui_components.switch_control import SwitchControl
 from gui_components.link_widget import LinkWidget
+from gui_components.resource_path import resource_path
 from gui_styles import GUIStyles
 
 from helpers import format_size
@@ -115,6 +116,7 @@ class SpectroscopyWindow(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("FlimLabs - SPECTROSCOPY v" + VERSION)
+        TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self)
         main_layout = QVBoxLayout()
         top_bar = self.create_top_bar()
@@ -172,9 +174,10 @@ class SpectroscopyWindow(QWidget):
 
     def create_logo_and_title(self):
         row = QHBoxLayout()
+    
         pixmap = QPixmap(
-            os.path.join(project_root, "assets", "flimlabs-logo.png")
-        ).scaledToWidth(60)
+               resource_path("assets/spectroscopy-logo-white.png")
+        ).scaledToWidth(38)
         ctl = QLabel(pixmap=pixmap)
         row.addWidget(ctl)
 
@@ -196,7 +199,8 @@ class SpectroscopyWindow(QWidget):
     def create_export_data_input(self):
         # Link to export data documentation
         info_link_widget = LinkWidget(
-            icon_filename="info-icon.png",
+                 
+            icon_filename= resource_path("assets/info-icon.png"),
             link="", #change with correct docs link
         )
         info_link_widget.setCursor(Qt.CursorShape.PointingHandCursor)
