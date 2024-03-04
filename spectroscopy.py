@@ -17,6 +17,7 @@ from gui_components.input_number_control import InputNumberControl
 from gui_components.logo_utilities import OverlayWidget
 from gui_components.select_control import SelectControl
 from gui_components.switch_control import SwitchControl
+from gui_components.resource_path import resource_path
 from gui_styles import GUIStyles
 
 VERSION = "1.0"
@@ -146,7 +147,7 @@ class SpectroscopyWindow(QWidget):
     def create_logo_and_title(self):
         row = QHBoxLayout()
         pixmap = QPixmap(
-            os.path.join(project_root, "assets", "flimlabs-logo.png")
+             resource_path("assets/flimlabs-logo.png")
         ).scaledToWidth(60)
         ctl = QLabel(pixmap=pixmap)
         row.addWidget(ctl)
