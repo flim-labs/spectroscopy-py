@@ -59,7 +59,7 @@ class GUIStyles:
             QLabel{
                 color: #23F3AB;
                 font-family: "Montserrat";
-                font-size: 45px;
+                font-size: 40px;
                 font-weight: 100;
                 font-style: italic;
             }
