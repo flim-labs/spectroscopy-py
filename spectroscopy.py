@@ -14,13 +14,14 @@ from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHB
 from gui_components.fancy_checkbox import FancyButton
 from gui_components.gradient_text import GradientText
 from gui_components.input_number_control import InputNumberControl
-from gui_components.logo_utilities import OverlayWidget
+from gui_components.logo_utilities import OverlayWidget, TitlebarIcon
 from gui_components.select_control import SelectControl
 from gui_components.switch_control import SwitchControl
 from gui_components.resource_path import resource_path
+from gui_components.link_widget import LinkWidget
 from gui_styles import GUIStyles
 
-from helpers import format_size
+from format_utilities import FormatUtils
 
 VERSION = "1.0"
 APP_DEFAULT_WIDTH = 1000
@@ -46,6 +47,8 @@ SETTINGS_SYNC_IN_FREQUENCY_MHZ = "sync_in_frequency_mhz"
 DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
 SETTINGS_WRITE_DATA = "write_data"
 DEFAULT_WRITE_DATA = True
+
+EXPORTED_DATA_BYTES_UNIT = 12083.2
 
 MODE_STOPPED = "stopped"
 MODE_RUNNING = "running"
@@ -114,6 +117,7 @@ class SpectroscopyWindow(QWidget):
             pass
 
     def init_ui(self):
+        TitlebarIcon.setup(self)
         self.setWindowTitle("FlimLabs - SPECTROSCOPY v" + VERSION)
         GUIStyles.customize_theme(self)
         main_layout = QVBoxLayout()
@@ -576,13 +580,18 @@ class SpectroscopyWindow(QWidget):
         free_running = self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
         acquisition_time = self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)
         bin_width = self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
-    
-        if  free_running is True or acquisition_time is None:
-            self.bin_file_size = 'XXXMB' 
+        
+        if free_running is True or acquisition_time is None:
+            file_size_bytes = int(EXPORTED_DATA_BYTES_UNIT *
+                                  (1000 / int(bin_width_micros)) * len(self.selected_channels))
+            self.bin_file_size = FormatUtils.format_size(file_size_bytes)
+            self.bin_file_size_label.setText("File size: " + str(self.bin_file_size) + "/s")
         else:
-            file_size_MB = int(int(acquisition_time) * len(self.selected_channels) * (int(bin_width) / 1000))
-            self.bin_file_size = format_size(file_size_MB * 1024 * 1024) 
-        self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))         
+            file_size_bytes = int(EXPORTED_DATA_BYTES_UNIT *
+                                  (int(acquisition_time)) *
+                                  (1000 / int(bin_width)) * len(self.selected_channels))
+            self.bin_file_size = FormatUtils.format_size(file_size_bytes)
+            self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))     
 
     def begin_spectroscopy_experiment(self):
         if self.selected_sync == "sync_in":

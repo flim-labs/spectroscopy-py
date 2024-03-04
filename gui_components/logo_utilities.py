@@ -28,5 +28,4 @@ class OverlayWidget(QWidget):
 class TitlebarIcon():
     @staticmethod
     def setup(window):
-        icon_path = resource_path("assets/spectroscopy-logo.png")
-        window.setWindowIcon(QIcon(icon_path))
+        window.setWindowIcon(QIcon(resource_path('assets/spectroscopy-logo.png')))
