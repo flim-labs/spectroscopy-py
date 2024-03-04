@@ -20,6 +20,8 @@ from gui_components.switch_control import SwitchControl
 from gui_components.resource_path import resource_path
 from gui_styles import GUIStyles
 
+from helpers import format_size
+
 VERSION = "1.0"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
@@ -42,6 +44,8 @@ SETTINGS_SYNC = "sync"
 DEFAULT_SYNC = "sync_in"
 SETTINGS_SYNC_IN_FREQUENCY_MHZ = "sync_in_frequency_mhz"
 DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
+SETTINGS_WRITE_DATA = "write_data"
+DEFAULT_WRITE_DATA = True
 
 MODE_STOPPED = "stopped"
 MODE_RUNNING = "running"
@@ -69,6 +73,12 @@ class SpectroscopyWindow(QWidget):
         self.sync_in_frequency_mhz = float(
             self.settings.value(SETTINGS_SYNC_IN_FREQUENCY_MHZ, DEFAULT_SYNC_IN_FREQUENCY_MHZ))
 
+        self.write_data = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA) == 'true' 
+        self.show_bin_file_size_helper = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA) == 'true'
+        
+        self.bin_file_size = ''
+        self.bin_file_size_label = QLabel("") 
+
         self.get_selected_channels_from_settings()
 
         (self.top_bar, self.grid_layout) = self.init_ui()
@@ -90,6 +100,8 @@ class SpectroscopyWindow(QWidget):
         self.pull_from_queue_timer = QTimer()
         self.pull_from_queue_timer.timeout.connect(self.pull_from_queue)
         # self.timer_update.start(25)
+
+        self.calc_exported_file_size()
 
     def eventFilter(self, source, event):
         try:
@@ -133,7 +145,21 @@ class SpectroscopyWindow(QWidget):
         top_bar = QVBoxLayout()
         top_bar.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        top_bar.addLayout(self.create_logo_and_title())
+        top_bar_header = QHBoxLayout()
+
+        top_bar_header.addLayout(self.create_logo_and_title())
+        top_bar_header.addStretch(1)
+        info_link_widget, export_data_control = self.create_export_data_input()
+        file_size_info_layout = self.create_file_size_info_row()
+        
+
+        top_bar_header.addWidget(info_link_widget)
+        top_bar_header.addLayout(export_data_control)
+        export_data_control.addSpacing(10)
+
+        top_bar_header.addLayout(file_size_info_layout)
+
+        top_bar.addLayout(top_bar_header)
         top_bar.addSpacing(10)
         top_bar.addLayout(self.create_channel_selector())
         top_bar.addLayout(self.create_sync_buttons())
@@ -165,6 +191,41 @@ class SpectroscopyWindow(QWidget):
         ctl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         row.addWidget(ctl)
         return row
+
+
+    def create_export_data_input(self):
+        # Link to export data documentation
+        info_link_widget = LinkWidget(
+            icon_filename="info-icon.png",
+            link="", #change with correct docs link
+        )
+        info_link_widget.setCursor(Qt.CursorShape.PointingHandCursor)
+        info_link_widget.show()
+        
+        # Export data switch control
+        export_data_control = QHBoxLayout()
+        export_data_label = QLabel("Export data:")
+        inp = SwitchControl(
+            active_color="#FB8C00", width=70, height=30, checked=self.write_data
+        )
+        inp.toggled.connect(self.on_export_data_changed)
+        export_data_control.addWidget(export_data_label)
+        export_data_control.addSpacing(8)
+        export_data_control.addWidget(inp)
+
+        return info_link_widget, export_data_control
+
+
+    def create_file_size_info_row(self): 
+        file_size_info_layout = QHBoxLayout()
+        self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
+        self.bin_file_size_label.setStyleSheet("QLabel { color : #FFA726; }")
+
+        file_size_info_layout.addWidget(self.bin_file_size_label)
+        self.bin_file_size_label.show() if self.write_data is True else self.bin_file_size_label.hide()
+
+        return file_size_info_layout
+         
 
     def create_control_inputs(self):
         controls_row = QHBoxLayout()
@@ -299,6 +360,7 @@ class SpectroscopyWindow(QWidget):
 
     def on_acquisition_time_change(self, value):
         self.settings.setValue(SETTINGS_ACQUISITION_TIME, value)
+        self.calc_exported_file_size() 
 
     def on_time_span_change(self, value):
         self.settings.setValue(SETTINGS_TIME_SPAN, value)
@@ -306,12 +368,19 @@ class SpectroscopyWindow(QWidget):
     def on_free_running_changed(self, state):
         self.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(not state)
         self.settings.setValue(SETTINGS_FREE_RUNNING, state)
+        self.calc_exported_file_size() 
 
     def on_bin_width_change(self, value):
         self.settings.setValue(SETTINGS_BIN_WIDTH, value)
+        self.calc_exported_file_size() 
 
     def on_connection_type_value_change(self, value):
         self.settings.setValue(SETTINGS_CONNECTION_TYPE, value)
+
+    def on_export_data_changed(self, state):
+        self.settings.setValue(SETTINGS_WRITE_DATA, state)
+        self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
+        self.calc_exported_file_size() if state else None
 
     def create_channel_selector(self):
         grid = QHBoxLayout()
@@ -358,6 +427,7 @@ class SpectroscopyWindow(QWidget):
         self.set_selected_channels_to_settings()
         self.clear_plots()
         self.generate_plots()
+        self.calc_exported_file_size() 
 
     def on_sync_selected(self, sync: str):
         if self.selected_sync == sync and sync == 'sync_in':
@@ -501,6 +571,19 @@ class SpectroscopyWindow(QWidget):
                     self.clear_layout_tree(item.layout())
             del layout
 
+
+    def calc_exported_file_size(self): 
+        free_running = self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
+        acquisition_time = self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)
+        bin_width = self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
+    
+        if  free_running is True or acquisition_time is None:
+            self.bin_file_size = 'XXXMB' 
+        else:
+            file_size_MB = int(int(acquisition_time) * len(self.selected_channels) * (int(bin_width) / 1000))
+            self.bin_file_size = format_size(file_size_MB * 1024 * 1024) 
+        self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))         
+
     def begin_spectroscopy_experiment(self):
         if self.selected_sync == "sync_in":
             frequency_mhz = self.sync_in_frequency_mhz
@@ -549,6 +632,7 @@ class SpectroscopyWindow(QWidget):
                 frequency_mhz=frequency_mhz,
                 firmware_file=firmware_selected,
                 acquisition_time_millis=acquisition_time_millis,
+                
             )
         except Exception as e:
             print("Error: " + str(e))

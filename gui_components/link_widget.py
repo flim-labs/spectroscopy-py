@@ -1,4 +1,5 @@
 import os
+from PyQt6 import QtCore
 from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QLabel, QHBoxLayout, QWidget
@@ -28,9 +29,10 @@ class LinkWidget(QWidget):
             original_icon_pixmap = QPixmap(icon_filename).scaled(icon_dimensions, icon_dimensions, Qt.KeepAspectRatio,
                                                              Qt.SmoothTransformation)
             self.link_label.setPixmap(original_icon_pixmap)
+ 
 
         layout.addWidget(self.link_label)
-        layout.setAlignment(Qt.AlignCenter)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setLayout(layout)
 
         if text:
