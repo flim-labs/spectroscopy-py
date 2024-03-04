@@ -22,36 +22,12 @@ from gui_components.link_widget import LinkWidget
 from gui_styles import GUIStyles
 
 from format_utilities import FormatUtils
+from settings import *
 
-VERSION = "1.0"
-APP_DEFAULT_WIDTH = 1000
-APP_DEFAULT_HEIGHT = 800
-TOP_BAR_HEIGHT = 250
-MAX_CHANNELS = 8
+
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
 
-SETTINGS_BIN_WIDTH = "bin_width"
-DEFAULT_BIN_WIDTH = 1000
-SETTINGS_TIME_SPAN = "time_span"
-DEFAULT_TIME_SPAN = 10
-SETTINGS_CONNECTION_TYPE = "connection_type"
-DEFAULT_CONNECTION_TYPE = "SMA"
-SETTINGS_FREE_RUNNING = "free_running"
-DEFAULT_FREE_RUNNING = "false"
-SETTINGS_ACQUISITION_TIME = "acquisition_time"
-DEFAULT_ACQUISITION_TIME = 10
-SETTINGS_SYNC = "sync"
-DEFAULT_SYNC = "sync_in"
-SETTINGS_SYNC_IN_FREQUENCY_MHZ = "sync_in_frequency_mhz"
-DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
-SETTINGS_WRITE_DATA = "write_data"
-DEFAULT_WRITE_DATA = True
-
-EXPORTED_DATA_BYTES_UNIT = 12083.2
-
-MODE_STOPPED = "stopped"
-MODE_RUNNING = "running"
 
 
 class SpectroscopyWindow(QWidget):
@@ -202,7 +178,7 @@ class SpectroscopyWindow(QWidget):
     def create_export_data_input(self):
         # Link to export data documentation
         info_link_widget = LinkWidget(
-            icon_filename="info-icon.png",
+            icon_filename= resource_path("assets/info-icon.png"),
             link="", #change with correct docs link
         )
         info_link_widget.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -629,7 +605,7 @@ class SpectroscopyWindow(QWidget):
         
         if free_running is True or acquisition_time is None:
             file_size_bytes = int(EXPORTED_DATA_BYTES_UNIT *
-                                  (1000 / int(bin_width_micros)) * len(self.selected_channels))
+                                  (1000 / int(bin_width)) * len(self.selected_channels))
             self.bin_file_size = FormatUtils.format_size(file_size_bytes)
             self.bin_file_size_label.setText("File size: " + str(self.bin_file_size) + "/s")
         else:
