@@ -70,6 +70,7 @@ class SpectroscopyWindow(QWidget):
         self.intensity_lines = []
         self.decay_curves = []
         self.decay_curves_queue = queue.Queue()
+        self.cps = []
 
         self.selected_channels = []
         self.selected_sync = self.settings.value(SETTINGS_SYNC, DEFAULT_SYNC)
@@ -81,6 +82,7 @@ class SpectroscopyWindow(QWidget):
         
         self.bin_file_size = ''
         self.bin_file_size_label = QLabel("") 
+        
 
         self.get_selected_channels_from_settings()
 
@@ -289,6 +291,19 @@ class SpectroscopyWindow(QWidget):
         inp.setStyleSheet(GUIStyles.set_input_number_style())
         self.control_inputs[SETTINGS_ACQUISITION_TIME] = inp
         self.on_free_running_changed(self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING) == "true")
+        
+        switch_show_cps_control = QVBoxLayout()
+        inp = SwitchControl(
+            active_color="#8d4ef2",
+            checked=self.settings.value(SETTINGS_SHOW_CPS, DEFAULT_SHOW_CPS) == "true"
+        )
+        inp.toggled.connect(self.on_show_cps_changed)
+        switch_show_cps_control.addWidget(QLabel("Show CPS:"))
+        switch_show_cps_control.addSpacing(8)
+        switch_show_cps_control.addWidget(inp)
+        controls_row.addLayout(switch_show_cps_control)
+        controls_row.addSpacing(20)
+        self.control_inputs[SETTINGS_SHOW_CPS] = inp
 
         spacer = QWidget()
         spacer.setMaximumWidth(300)
@@ -385,6 +400,11 @@ class SpectroscopyWindow(QWidget):
         self.settings.setValue(SETTINGS_WRITE_DATA, state)
         self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
         self.calc_exported_file_size() if state else None
+
+    def on_show_cps_changed(self, state):
+        self.settings.setValue(SETTINGS_SHOW_CPS, state)
+        for cps_label in self.cps:
+            cps_label.setVisible(state)
 
     def create_channel_selector(self):
         grid = QHBoxLayout()
@@ -489,7 +509,29 @@ class SpectroscopyWindow(QWidget):
 
         return buttons_layout
 
+
+    def create_cps_indicator(self, plot_widget):
+        cps_label = QLabel("0 CPS", plot_widget)
+        cps_label.setFixedWidth(200)
+        cps_label.setStyleSheet(GUIStyles.set_cps_label_style())
+        cps_label.move(50, -2)
+
+        if self.settings.value(SETTINGS_SHOW_CPS, DEFAULT_SHOW_CPS) != 'true':
+            cps_label.setVisible(False)
+        return cps_label  
+
+    def clear_cps_indicators(self):
+        for cps_label in self.cps:
+            cps_label.setParent(None)
+            cps_label.deleteLater()
+        self.cps = []    
+
+
     def generate_plots(self, frequency_mhz=0.0):
+        if len(self.cps) > 0:
+            # Clear existing CPS labels
+            self.clear_cps_indicators()
+
         if len(self.selected_channels) == 0:
             self.grid_layout.addWidget(QWidget(), 0, 0)
             return
@@ -501,6 +543,7 @@ class SpectroscopyWindow(QWidget):
             intensity_widget.setLabel('left', 'AVG. Photon counts', units='c')
             intensity_widget.setLabel('bottom', 'Time', units='s')
             intensity_widget.setTitle(f'Channel {self.selected_channels[i] + 1} intensity')
+            
 
             x = np.arange(1)
             y = x * 0
@@ -509,6 +552,9 @@ class SpectroscopyWindow(QWidget):
 
             v_layout.addWidget(intensity_widget, 1)
 
+            cps_label = self.create_cps_indicator(intensity_widget)
+            self.cps.append(cps_label)
+            
             curve_widget = pg.PlotWidget()
             curve_widget.setLabel('left', 'Photon counts', units='')
             curve_widget.setLabel('bottom', 'Time', units='ns')
