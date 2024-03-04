@@ -19,6 +19,7 @@ class GUIStyles:
         QLabel {
             color: #f8f8f8;
             font-family: "Montserrat";
+            font-size: 14px;
         }
         """)
 
@@ -186,9 +187,9 @@ class GUIStyles:
             QDoubleSpinBox, QSpinBox {
                 color: #f8f8f8;
                 font-family: "Montserrat";
-                font-size: 16px;
+                font-size: 14px;
                 padding: 8px;
-                min-width: 100px;
+                width: 40px;
                 border: 1px solid #8d4ef2;
                 border-radius: 5px;
                 background-color: transparent;
@@ -205,9 +206,9 @@ class GUIStyles:
             QComboBox {
                 color: #f8f8f8;
                 font-family: "Montserrat";
-                font-size: 16px;
+                font-size: 14px;
                 padding: 8px;
-                min-width: 100px;
+                width: 40px;
                 border: 1px solid #8d4ef2;
                 border-radius: 5px;
                 background-color: transparent;
@@ -262,9 +263,20 @@ class GUIStyles:
     def set_cps_label_style():
         return """
             QLabel{
-                color: white;
+                color: #8d4ef2;
                 font-weight: 700;
                 font-family: "Montserrat";
                 font-size: 20px;
             }
         """
+        
+    @staticmethod    
+    def set_snr_label_style():
+        return """
+            QLabel{
+                color: #23F3AB;
+                font-weight: 700;
+                font-family: "Montserrat";
+                font-size: 20px;
+            }
+        """    
