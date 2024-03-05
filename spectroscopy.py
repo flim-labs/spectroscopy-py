@@ -9,7 +9,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
 from PyQt6.QtGui import QPixmap, QFont
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout, QLayout, QCheckBox, QLabel, \
-    QSizePolicy, QPushButton, QDialog
+    QSizePolicy, QPushButton, QDialog, QTabWidget
 
 from gui_components.fancy_checkbox import FancyButton
 from gui_components.gradient_text import GradientText
@@ -82,7 +82,7 @@ class SpectroscopyWindow(QWidget):
 
         self.get_selected_channels_from_settings()
 
-        (self.top_bar, self.grid_layout) = self.init_ui()
+        (self.spectroscopy_top_bar, self.spectroscopy_grid_layout) = self.init_ui()
 
         # self.update_sync_in_button()
 
@@ -119,19 +119,41 @@ class SpectroscopyWindow(QWidget):
         TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self)
         main_layout = QVBoxLayout()
-        top_bar = self.create_top_bar()
-        main_layout.addWidget(top_bar)
-        grid_layout = QGridLayout()
-        main_layout.addLayout(grid_layout)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setLayout(main_layout)
+            
+        # Spectroscopy Page    
+        spectroscopy_page = QWidget(self)
+        spectroscopy_layout = QVBoxLayout()
+        spectroscopy_top_bar = self.create_top_bar()
+        spectroscopy_grid_layout = QGridLayout()
+        spectroscopy_layout.addWidget(spectroscopy_top_bar)
+        spectroscopy_layout.addLayout(spectroscopy_grid_layout)
+        spectroscopy_page.setLayout(spectroscopy_layout)
+
+        # Phasors Page
+        phasors_page = QWidget(self)
+        phasors_layout = QVBoxLayout()
+        phasors_page.setLayout(phasors_layout)
+        
+        # Irf-Deconv page
+        irf_deconv_page = QWidget(self)
+        irf_deconv_layout = QVBoxLayout()
+        irf_deconv_page.setLayout(irf_deconv_layout)
+        
+        tab = QTabWidget(self, movable=True)
+        tab.addTab(spectroscopy_page, 'Spectroscopy')
+        tab.addTab(phasors_page, 'Phasors')
+        tab.addTab(irf_deconv_page, 'Irf-deconv')
+        tab.setStyleSheet(GUIStyles.set_tab_style())
+        main_layout.addWidget(tab)
 
         self.resize(self.settings.value("size", QSize(APP_DEFAULT_WIDTH, APP_DEFAULT_HEIGHT)))
         self.move(
             self.settings.value("pos", QApplication.primaryScreen().geometry().center() - self.frameGeometry().center())
         )
+        return spectroscopy_top_bar, spectroscopy_grid_layout
 
-        return top_bar, grid_layout
 
     @staticmethod
     def init_settings():
@@ -144,8 +166,8 @@ class SpectroscopyWindow(QWidget):
         event.accept()
 
     def create_top_bar(self):
-        top_bar = QVBoxLayout()
-        top_bar.setAlignment(Qt.AlignmentFlag.AlignTop)
+        spectroscopy_top_bar = QVBoxLayout()
+        spectroscopy_top_bar.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         top_bar_header = QHBoxLayout()
 
@@ -161,14 +183,14 @@ class SpectroscopyWindow(QWidget):
 
         top_bar_header.addLayout(file_size_info_layout)
 
-        top_bar.addLayout(top_bar_header)
-        top_bar.addSpacing(10)
-        top_bar.addLayout(self.create_channel_selector())
-        top_bar.addLayout(self.create_sync_buttons())
-        top_bar.addLayout(self.create_control_inputs())
+        spectroscopy_top_bar.addLayout(top_bar_header)
+        spectroscopy_top_bar.addSpacing(10)
+        spectroscopy_top_bar.addLayout(self.create_channel_selector())
+        spectroscopy_top_bar.addLayout(self.create_sync_buttons())
+        spectroscopy_top_bar.addLayout(self.create_control_inputs())
 
         container = QWidget()
-        container.setLayout(top_bar)
+        container.setLayout(spectroscopy_top_bar)
         container.setFixedHeight(TOP_BAR_HEIGHT)
         return container
 
@@ -491,7 +513,7 @@ class SpectroscopyWindow(QWidget):
 
     def generate_plots(self, frequency_mhz=0.0):
         if len(self.selected_channels) == 0:
-            self.grid_layout.addWidget(QWidget(), 0, 0)
+            self.spectroscopy_grid_layout.addWidget(QWidget(), 0, 0)
             return
 
         for i in range(len(self.selected_channels)):
@@ -532,7 +554,7 @@ class SpectroscopyWindow(QWidget):
                 col_length = 3
             if len(self.selected_channels) > 3:
                 col_length = 2
-            self.grid_layout.addLayout(v_layout, i // col_length, i % col_length)
+            self.spectroscopy_grid_layout.addLayout(v_layout, i // col_length, i % col_length)
 
     def get_selected_channels_from_settings(self):
         self.selected_channels = []
@@ -556,11 +578,11 @@ class SpectroscopyWindow(QWidget):
             curve.clear()
         self.intensity_lines.clear()
         self.decay_curves.clear()
-        for i in reversed(range(self.grid_layout.count())):
-            widget = self.grid_layout.itemAt(i).widget()
+        for i in reversed(range(self.spectroscopy_grid_layout.count())):
+            widget = self.spectroscopy_grid_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
-            layout = self.grid_layout.itemAt(i).layout()
+            layout = self.spectroscopy_grid_layout.itemAt(i).layout()
             if layout is not None:
                 self.clear_layout_tree(layout)
 

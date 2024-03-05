@@ -11,7 +11,7 @@ class GUIStyles:
     @staticmethod
     def customize_theme(window):
         palette = QPalette()
-        background_color = QColor(28, 28, 28, 128)
+        background_color = QColor(0,0,0)
         palette.setColor(QPalette.ColorRole.Window, background_color)
         palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
         window.setPalette(palette)
@@ -268,3 +268,25 @@ class GUIStyles:
                 font-size: 26px;
             }
         """
+
+    @staticmethod
+    def set_tab_style():
+        return """
+        QTabWidget::pane {
+            border: 3px solid #222222;
+            background: #222222;
+         }       
+
+        QTabBar::tab{    
+            background: black; 
+            padding: 15px;
+            font-family: "Montserrat";
+            color: white;
+            font-size: 18px;
+        }     
+
+        QTabBar::tab:selected {     
+            background: #222222;
+            color: #FF0000;  
+        }
+        """    
