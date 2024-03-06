@@ -24,10 +24,8 @@ class GUIStyles:
 
     @staticmethod
     def set_fonts(font_name="Montserrat", font_size=10):
-        font_id = QFontDatabase.addApplicationFont(":/fonts/Montserrat-Regular.ttf")  # Adjust the path as needed
-        font_family = QFontDatabase.applicationFontFamilies(font_id)[0] if font_id != -1 else font_name
-        font = QFont(font_family, font_size)
-        QApplication.setFont(font)
+        general_font = QFont("Montserrat", 10)
+        QApplication.setFont(general_font)
 
 
     @staticmethod
@@ -75,7 +73,6 @@ class GUIStyles:
                 color: white;
                 letter-spacing: 0.1em;
                 min-width: {min_width};
-                padding: 12px;
                 border-radius: 4px;
                 font-size: 14px;
                 font-weight: bold;
