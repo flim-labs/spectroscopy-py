@@ -93,7 +93,7 @@ class SpectroscopyWindow(QWidget):
         self.installEventFilter(self)
         self.overlay.raise_()
 
-        GUIStyles.set_fonts_deep(self)
+        GUIStyles.set_fonts(self)
 
         self.timer_update = QTimer()
         self.timer_update.timeout.connect(self.update_plots)
@@ -165,6 +165,7 @@ class SpectroscopyWindow(QWidget):
         top_bar.addSpacing(10)
         top_bar.addLayout(self.create_channel_selector())
         top_bar.addLayout(self.create_sync_buttons())
+        top_bar.addSpacing(5)
         top_bar.addLayout(self.create_control_inputs())
 
         container = QWidget()
@@ -295,7 +296,7 @@ class SpectroscopyWindow(QWidget):
         controls_row.addWidget(spacer)
 
         # green background and white text
-        start_button = QPushButton("Start")
+        start_button = QPushButton("START")
         start_button.setFlat(True)
         start_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         start_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -308,47 +309,12 @@ class SpectroscopyWindow(QWidget):
 
     def style_start_button(self):
         if self.mode == MODE_STOPPED:
-            self.control_inputs["start_button"].setText("Start")
-            self.control_inputs["start_button"].setStyleSheet("""
-                        QPushButton {
-                            background-color: #13B6B4;
-                            border: 1px solid #13B6B4;
-                            color: white;
-                            min-width: 100px;
-                            border-radius: 4px;
-                            font-family: "Montserrat";
-                            font-size: 14px;
-                            font-weight: thin;
-                        }
-
-                        QPushButton:hover {
-                            background-color: #23F3AB;
-                            border: 2px solid #23F3AB;
-                            color: black;
-                        }
-                    """)
+            self.control_inputs["start_button"].setText("START")
+            GUIStyles.set_start_btn_style(self.control_inputs["start_button"])
         else:
-            self.control_inputs["start_button"].setText("Stop")
-            self.control_inputs["start_button"].setStyleSheet("""
-                        QPushButton {
-                            background-color: #f34d23;
-                            border: 1px solid #f34d23;
-                            font-family: "Montserrat";
-                            color: white;
-                            letter-spacing: 0.1em;
-                            min-width: 100px;
-                            border-radius: 4px;
-                            font-size: 14px;
-                            font-weight: bold;
-                        }
-                        
-                        QPushButton:hover {
-                            background-color: #b63613;
-                            border: 2px solid #b63613;
-                            color: white;
-                        }
-                    """)
-
+            self.control_inputs["start_button"].setText("STOP")
+            GUIStyles.set_stop_btn_style(self.control_inputs["start_button"])
+     
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.overlay.resize(event.size())
@@ -504,7 +470,7 @@ class SpectroscopyWindow(QWidget):
 
             x = np.arange(1)
             y = x * 0
-            intensity_plot = intensity_widget.plot(x, y, pen='y')
+            intensity_plot = intensity_widget.plot(x, y, pen='#23F3AB')
             self.intensity_lines.append(intensity_plot)
 
             v_layout.addWidget(intensity_widget, 1)
@@ -756,7 +722,6 @@ class SyncInDialog(QDialog):
 
         GUIStyles.customize_theme(self)
         GUIStyles.set_fonts()
-        GUIStyles.set_fonts_deep(self)
 
     def on_yes_button_click(self):
         self.label.setText(
