@@ -6,4 +6,4 @@ def format_size(size_in_bytes):
         size_in_bytes /= 1024.0
         unit_index += 1
 
-    return f"{size_in_bytes:.2f} {units[unit_index]}"
+    return f"{size_in_bytes:.2f}{units[unit_index]}"

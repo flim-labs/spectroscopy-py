@@ -464,9 +464,12 @@ class SpectroscopyWindow(QWidget):
             v_layout = QVBoxLayout()
 
             intensity_widget = pg.PlotWidget()
-            intensity_widget.setLabel('left', 'AVG. Photon counts', units='c')
+            intensity_widget.setLabel('left', 'AVG. Photon counts', units='')
             intensity_widget.setLabel('bottom', 'Time', units='s')
             intensity_widget.setTitle(f'Channel {self.selected_channels[i] + 1} intensity')
+
+            # remove margins
+            intensity_widget.plotItem.setContentsMargins(0, 0, 0, 0)
 
             x = np.arange(1)
             y = x * 0
@@ -489,7 +492,7 @@ class SpectroscopyWindow(QWidget):
             y = x * 0
             static_curve = curve_widget.plot(x, y, pen='r')
             self.decay_curves.append(static_curve)
-            v_layout.addWidget(curve_widget, 3)
+            v_layout.addWidget(curve_widget, 4)
 
             col_length = 1
             if len(self.selected_channels) == 2:
@@ -548,11 +551,13 @@ class SpectroscopyWindow(QWidget):
         bin_width = self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
     
         if  free_running is True or acquisition_time is None:
-            self.bin_file_size = 'XXXMB' 
+            file_size_MB = len(self.selected_channels) * (1000 / int(bin_width))
+            self.bin_file_size = format_size(file_size_MB * 1024 * 1024)
+            self.bin_file_size_label.setText("File size: " + str(self.bin_file_size) + "/s")
         else:
-            file_size_MB = int(int(acquisition_time) * len(self.selected_channels) * (int(bin_width) / 1000))
+            file_size_MB = int(acquisition_time) * len(self.selected_channels) * (1000 / int(bin_width))
             self.bin_file_size = format_size(file_size_MB * 1024 * 1024) 
-        self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))         
+            self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
 
     def begin_spectroscopy_experiment(self):
         if self.selected_sync == "sync_in":
