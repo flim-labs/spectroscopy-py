@@ -7,21 +7,21 @@ import flim_labs
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
-from PyQt6.QtGui import QPixmap, QFont
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout, QLayout, QCheckBox, QLabel, \
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout, QLayout, QLabel, \
     QSizePolicy, QPushButton, QDialog
 
-from gui_components.fancy_checkbox import FancyButton
-from gui_components.gradient_text import GradientText
-from gui_components.input_number_control import InputNumberControl
-from gui_components.logo_utilities import OverlayWidget, TitlebarIcon
-from gui_components.select_control import SelectControl
-from gui_components.switch_control import SwitchControl
-from gui_components.link_widget import LinkWidget
-from gui_components.resource_path import resource_path
-from gui_styles import GUIStyles
+from components.fancy_checkbox import FancyButton
+from components.gradient_text import GradientText
+from components.input_number_control import InputNumberControl
+from components.logo_utilities import OverlayWidget, TitlebarIcon
+from components.select_control import SelectControl
+from components.switch_control import SwitchControl
+from components.link_widget import LinkWidget
+from components.resource_path import resource_path
+from components.gui_styles import GUIStyles
 
-from helpers import format_size
+from components.helpers import format_size
 
 VERSION = "1.0"
 APP_DEFAULT_WIDTH = 1000
@@ -356,7 +356,7 @@ class SpectroscopyWindow(QWidget):
         grid = QHBoxLayout()
         grid.addSpacing(20)
         for i in range(MAX_CHANNELS):
-            from gui_components.fancy_checkbox import FancyCheckbox
+            from components.fancy_checkbox import FancyCheckbox
             fancy_checkbox = FancyCheckbox(text=f"Channel {i + 1}")
             if self.selected_channels:
                 fancy_checkbox.set_checked(i in self.selected_channels)

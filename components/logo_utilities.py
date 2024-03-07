@@ -2,7 +2,7 @@ import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtGui import QPixmap, QIcon, QPainter
 from PyQt6.QtCore import Qt
-from gui_components.resource_path import resource_path
+from components.resource_path import resource_path
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path, '..'))
