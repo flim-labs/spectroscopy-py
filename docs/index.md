@@ -74,7 +74,6 @@ Navigate to the following links to view detailed application usage guides:
 
 FLIM LABS: info@flimlabs.com
 
-**ADD UPDATED LINK**
-Project Link: [FLIM LABS - Spectroscopy](#)
+Project Link: [FLIM LABS - Spectroscopy](https://github.com/flim-labs/spectroscopy-py)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
