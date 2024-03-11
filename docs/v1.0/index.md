@@ -175,7 +175,7 @@ In order to start the acquisition process, the function `begin_spectroscopy_expe
 
 The application GUI allows the user to export the analysis data in `binary file format`.
 
-The user can also preview the final file size on the GUI. Since the calculation of the size depends on the values of the parameters 'SETTINGS_FREE_RUNNING', `SETTINGS_ACQUISITION_TIME`, `SETTINGS_BIN_WIDTH` and `selected_channels`, the value will be displayed if the following actions have been taken:
+The user can also preview the final file size on the GUI. Since the calculation of the size depends on the values of the parameters `SETTINGS_FREE_RUNNING`, `SETTINGS_ACQUISITION_TIME`, `SETTINGS_BIN_WIDTH` and `selected_channels`, the value will be displayed if the following actions have been taken:
 
 - At least one acquisition channel has been activated (`selected_channels` has a length greater than 0).
 - export_data_control is active
