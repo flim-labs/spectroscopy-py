@@ -26,7 +26,7 @@ Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py
 
 ## Getting Started
 
-To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this **ADD UPDATED LINK**[link](#) (_Note: you still need to have the FLIM LABS acquisition card_).
+To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this [link](https://github.com/flim-labs/spectroscopy-py/releases/tag/v1.0) (_Note: you still need to have the FLIM LABS acquisition card_).
 
 To get a local copy up and running follow these steps.
 
