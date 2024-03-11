@@ -1,4 +1,4 @@
-# Intensity Tracing
+# Spectroscopy
 
 Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py), a Python application designed to **analyze the fluorescence intensity decay as a function of time** and plotting a decay profile histogram. Facilitated by an underlying data processor developed in Rust, responsible for data retrieval from the hardware component, this application enables real-time data analysis and visualization. Whether your focus is on rigorous data analysis or dynamic visualizations, Spectroscopy serves as a flexible tool for the precise measurement and exploration of fluorescence intensity decay profile.
 
@@ -34,10 +34,12 @@ To get a local copy up and running follow these steps.
 
 To be able to run this project locally on your machine you need to satisfy these requirements:
 
+- Windows OS (>= Windows 10)
+- 4GB RAM
+- Multicore CPU
 - Possess a [FLIM LABS acquisition card](https://www.flimlabs.com/products/data-acquisition-card/) to be able to acquire your data
 - ZestSC3 drivers installed
 - Python version <= 3.9
-- Windows OS
 
 ### Installation
 
