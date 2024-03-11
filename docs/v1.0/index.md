@@ -54,7 +54,7 @@ For a general introduction to the aims and technical requirements of the project
 UPDATE IMAGE
 
 <div align="center">
-    <img src="../assets/images/python/intensity-tracing-gui-1.0.png" alt="GUI" width="100%">
+    <img src="../assets/images/spectroscopy-gui.png" alt="GUI" width="100%">
 </div>
 
 The GUI mode provides advanced functionality for configuring analysis **parameters** and displaying live-streamed fluorescence intensity decay data. It allows simultaneous acquisition from up to **8 channels**, offering real-time data visualization in the form of plots.
