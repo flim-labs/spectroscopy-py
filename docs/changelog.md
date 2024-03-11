@@ -1,5 +1,7 @@
 # Intensity Tracing Changelog
 
+## Version 1.1
+
 - Added visual errors
 - Simplified requirements for pyinstaller
 - UI/UX improvements
