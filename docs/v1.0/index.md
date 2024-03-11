@@ -42,7 +42,7 @@
 ## Introduction
 
 Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py) _v1.0_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
-For a general introduction to the aims and technical requirements of the project, read the [Spectroscopy Homepage](../index.md) and [Data export](#)**update link** dedicated guides links.
+For a general introduction to the aims and technical requirements of the project, read the [Spectroscopy Homepage](../index.md) link.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -197,10 +197,6 @@ def calc_exported_file_size(self):
             self.bin_file_size = format_size(file_size_MB * 1024 * 1024)
             self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
 ```
-
-For a detailed guide about data export and binary file structure see:
-
-- [Spectroscopy Data Export guide ](../python-flim-labs/spectroscopy-file-format.md)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
