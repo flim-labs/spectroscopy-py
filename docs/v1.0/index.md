@@ -31,7 +31,8 @@
     </ul></li>
     </ul>
     </li>
-    <li><a href="#automatic-firmware-detection">Automatic firmware detection</a></li>     
+    <li><a href="#automatic-firmware-detection">Automatic firmware detection</a></li>
+    <li><a href="#automatic-firmware-detection">Export Data Visualization</a></li>     
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
   </ol>
