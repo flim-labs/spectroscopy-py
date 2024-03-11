@@ -171,6 +171,39 @@ In order to start the acquisition process, the function `begin_spectroscopy_expe
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Exported Data Visualization
+
+The application GUI allows the user to export the analysis data in `binary file format`.
+
+The user can also preview the final file size on the GUI. Since the calculation of the size depends on the values of the parameters 'SETTINGS_FREE_RUNNING', `SETTINGS_ACQUISITION_TIME`, `SETTINGS_BIN_WIDTH` and `selected_channels`, the value will be displayed if the following actions have been taken:
+
+- At least one acquisition channel has been activated (`selected_channels` has a length greater than 0).
+- export_data_control is active
+
+Here is a code snippet which illustrates the algorithm used for the calculation:
+
+```python
+def calc_exported_file_size(self):
+        free_running = self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
+        acquisition_time = self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)
+        bin_width = self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
+
+        if free_running is True or acquisition_time is None:
+            file_size_MB = len(self.selected_channels) * (1000 / int(bin_width))
+            self.bin_file_size = format_size(file_size_MB * 1024 * 1024)
+            self.bin_file_size_label.setText("File size: " + str(self.bin_file_size) + "/s")
+        else:
+            file_size_MB = int(acquisition_time) * len(self.selected_channels) * (1000 / int(bin_width))
+            self.bin_file_size = format_size(file_size_MB * 1024 * 1024)
+            self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
+```
+
+For a detailed guide about data export and binary file structure see:
+
+- [Spectroscopy Data Export guide ](../python-flim-labs/spectroscopy-file-format.md)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## License
 
 Distributed under the MIT License.
