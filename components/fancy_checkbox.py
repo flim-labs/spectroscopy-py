@@ -2,7 +2,7 @@ from PyQt6.QtCore import pyqtSignal, Qt, QPropertyAnimation, QSize
 from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QMouseEvent, QFont, QCursor, QPalette, QIcon
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QVBoxLayout, QButtonGroup, QRadioButton, QMenu, QPushButton
 
-SELECTED_COLOR = "#0078D7"
+SELECTED_COLOR = "#8d4ef2"
 SELECTED_HOVER_COLOR = "#0053a4"
 DISABLED_SELECTED_COLOR = "#2E2E2E"
 UNSELECTED_COLOR = "#00000"
@@ -10,8 +10,11 @@ DISABLED_COLOR = "lightgrey"
 TEXT_COLOR = "#FFFFFF"
 
 
-CHECKED_COLOR = "#0078D7"
+CHECKED_COLOR = "#8d4ef2"
 UNCHECKED_COLOR = "lightgrey"
+
+SELECTED_COLOR_BUTTON = "#0078D7"
+
 
 
 class FancyCheckbox(QWidget):
@@ -68,7 +71,7 @@ class Checkbox(QWidget):
             outer_color = QColor(CHECKED_COLOR if self.enabled else DISABLED_COLOR)
         else:
             outer_color = QColor(CHECKED_COLOR if self.enabled else DISABLED_COLOR)
-        painter.setPen(QPen(outer_color, 2))
+        painter.setPen(QPen(outer_color, 1))
         painter.setBrush(QBrush(Qt.BrushStyle.NoBrush))
         painter.drawEllipse(1, 1, 18, 18)
         if self.checked:
@@ -119,11 +122,11 @@ class FancyButton(QPushButton):
         self.updateStyleSheet()
 
     def updateStyleSheet(self):
-        bg_color = SELECTED_COLOR if self.selected else UNSELECTED_COLOR
-        color = SELECTED_COLOR
+        bg_color = SELECTED_COLOR_BUTTON if self.selected else UNSELECTED_COLOR
+        color = SELECTED_COLOR_BUTTON
         if not self.isEnabled():
             bg_color = "#3c3c3c" if self.selected else "#000000"
-            color = "white"
+            color = "lightgrey"
         hover_color = SELECTED_HOVER_COLOR
         pressed_color = "#003d7a"
 
@@ -132,7 +135,7 @@ class FancyButton(QPushButton):
                 font-family: "Montserrat";
                 font-size: 14px;
                 font-weight: thin;
-                border: 2px solid {color};
+                border: 1px solid {color};
                 border-radius: 0px;
                 color: white;
                 padding: 5px;

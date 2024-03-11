@@ -2,6 +2,7 @@ import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtGui import QPixmap, QIcon, QPainter
 from PyQt6.QtCore import Qt
+from components.resource_path import resource_path
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path, '..'))
@@ -11,7 +12,8 @@ class OverlayWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.imagePath = os.path.join(project_root, 'assets', 'flimlabs-logo.png')
+            
+        self.imagePath = resource_path("assets/flimlabs-logo.png")
         self.pixmap = QPixmap(self.imagePath).scaledToWidth(100)
         self.opacity = 0.3
 
@@ -27,5 +29,5 @@ class OverlayWidget(QWidget):
 class TitlebarIcon():
     @staticmethod
     def setup(window):
-        icon_path = os.path.join(project_root, 'assets', 'flimlabs-icon.png')
+        icon_path = resource_path("assets/spectroscopy-logo.png")
         window.setWindowIcon(QIcon(icon_path))
