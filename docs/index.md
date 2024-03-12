@@ -68,7 +68,7 @@ To be able to run this project locally on your machine you need to satisfy these
 
 Navigate to the following links to view detailed application usage guides:
 
-- [Spectroscopy GUI guide](./docs/v1.0/index.md)
+- [Spectroscopy GUI guide](./v1.0/index.md)
 
 ## Contact
 
