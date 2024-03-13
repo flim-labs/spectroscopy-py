@@ -7,7 +7,7 @@ import flim_labs
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QPen, QColor,QFont
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout, QLayout, QLabel, \
     QSizePolicy, QPushButton, QDialog, QMessageBox
 
@@ -459,17 +459,33 @@ class SpectroscopyWindow(QWidget):
         for i in range(len(self.selected_channels)):
             v_layout = QVBoxLayout()
 
+            
+
             intensity_widget = pg.PlotWidget()
             intensity_widget.setLabel('left', 'AVG. Photon counts', units='')
             intensity_widget.setLabel('bottom', 'Time', units='s')
             intensity_widget.setTitle(f'Channel {self.selected_channels[i] + 1} intensity')
+
+            font = QFont()
+            font.setPointSize(12) 
+            intensity_widget.getAxis('left').setTickFont(font)
+            intensity_widget.getAxis('bottom').setTickFont(font)
+            
+            custom_color = QColor(150, 150, 150)
+            axis_pen=QPen(custom_color)
+            axis_pen.setWidth(4)
+
+            intensity_widget.getAxis('left').setPen(axis_pen)
+            intensity_widget.getAxis('bottom').setPen(axis_pen)
+
 
             # remove margins
             intensity_widget.plotItem.setContentsMargins(0, 0, 0, 0)
 
             x = np.arange(1)
             y = x * 0
-            intensity_plot = intensity_widget.plot(x, y, pen='#23F3AB')
+            pen=pg.mkPen(color='#23F3AB', width=5)
+            intensity_plot = intensity_widget.plot(x, y, pen=pen)
             self.intensity_lines.append(intensity_plot)
 
             v_layout.addWidget(intensity_widget, 1)
@@ -479,6 +495,18 @@ class SpectroscopyWindow(QWidget):
             curve_widget.setLabel('bottom', 'Time', units='ns')
             curve_widget.setTitle(f'Channel {self.selected_channels[i] + 1} decay')
 
+            font = QFont()
+            font.setPointSize(12) 
+            curve_widget.getAxis('left').setTickFont(font)
+            curve_widget.getAxis('bottom').setTickFont(font)
+            
+            custom_color = QColor(150, 150, 150)
+            axis_pen=QPen(custom_color)
+            axis_pen.setWidth(4)
+
+            curve_widget.getAxis('left').setPen(axis_pen)
+            curve_widget.getAxis('bottom').setPen(axis_pen)
+
             if frequency_mhz != 0.0:
                 period = 1_000 / frequency_mhz
                 x = np.linspace(0, period, 256)
@@ -486,7 +514,8 @@ class SpectroscopyWindow(QWidget):
                 x = np.arange(1)
 
             y = x * 0
-            static_curve = curve_widget.plot(x, y, pen='r')
+            pen=pg.mkPen(color='r', width=5)
+            static_curve = curve_widget.plot(x, y, pen=pen)
             self.decay_curves.append(static_curve)
             v_layout.addWidget(curve_widget, 4)
 
