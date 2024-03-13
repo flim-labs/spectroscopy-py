@@ -68,6 +68,22 @@ Photon intensity decay graph:
 - **X** Axis: represent _aquisition time_
 - **Y** Axis: represent _average photon counts_
 
+This is a quick overview of the steps you need to follow in order to run an experiment.
+More specifically starting from the top of the GUI and going down:
+
+- Choose whether to export the acquired data or not
+- Select the acquisition channels (1 or more)
+- Select the type of sync for the laser module, whether sync in or sync out
+- Select the channel connection type, whether SMA or USB
+- Specify the bin width
+- Specify the Time span (s)
+- Choose whether to use the Free running mode or not
+- Specify the acquisition time (s), available only when not using free running mode
+- Press the Start button to begin data acquisition
+- Press the Stop button to stop data acquisition
+
+We will analyze in more detail each step of the process listed in the section below
+
 Here a table summary of the configurable parameters:
 
 | Parameter            | data-type        | config                                                                             | default | explanation                                                                                                                                       |
