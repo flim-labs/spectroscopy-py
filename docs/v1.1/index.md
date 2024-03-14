@@ -171,6 +171,10 @@ When the Free Running mode is active, the 'Acquisition time' field is disabled, 
 
 #### Acquisition time
 
+<div align="center">
+    <img src="../assets/images/acquisition_time.PNG" alt="Acquisition time input field" width="100%">
+</div>
+
 Specify the duration of the data acquisition in the acquisition time imput field.
 This field is available only when the Free running mode is disabled.
 The longer the acquisition time, the larger the size of the exported file will be.
