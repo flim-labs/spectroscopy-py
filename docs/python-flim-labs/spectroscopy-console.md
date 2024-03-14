@@ -60,13 +60,13 @@ Set the value of the variable `connection_type_ accordingly`, to `connection_typ
 
 Set the number of selected channels using the enabled_channels variable.
 
-Set to 0 if you want to select channel 1, set to 1 if you want to select channel 2, and so on up to channel 8 (value 7).
+Set to `0` if you want to select channel 1, set to `1` if you want to select channel 2, and so on up to channel 8 (value `7`).
 
 You must select at least one channel, up to a maximum of 8. If you want to select more than one channel, separate the values with a comma as in the example:
 
-enabled_channels= [0,2,4]
+`enabled_channels= [0,2,4]`
 
-In the example, channels 1 (value 0), 3 (value 2), and 5 (value 4) are selected.
+In the example, channels 1 (value `0`), 3 (value `2`), and 5 (value `4`) are selected.
 
 #### Bin width
 
