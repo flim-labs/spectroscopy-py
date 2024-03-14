@@ -17,7 +17,22 @@
     <li>
       <a href="#introduction">Introduction</a>
     </li>
-    <li><a href="#gui-usage">GUI Usage</a></li>
+    <li><a href="#gui-usage">GUI Usage</a>
+        <ul>
+            <li><a href="#gui-features">GUI Features</a>
+                <ul>
+                    <li><a href="#export-data">Export Data</a></li>
+                    <li><a href="#channels-selection">Channels selection</a></li>
+                    <li><a href="#sync-in-and-sync-out">Sync in and sync out</a></li>
+                    <li><a href="#channels-connection-type">Channels connection type</a></li>
+                    <li><a href="#bin-width">Bin width</a></li>
+                    <li><a href="#time-span">Time span</a></li>
+                    <li><a href="#free-running-mode">Free running mode</a></li>
+                    <li><a href="#acquisition-time">Acquisition time</a></li>
+                </ul>
+            </li>
+        </ul>
+    </li>
     <li><a href="#python-codebase-illustration">Python codebase illustration</a>
     <ul>
       <li><a href="#parameters-configuration">Parameters configuration</a>
@@ -85,7 +100,9 @@ More specifically starting from the top of the GUI and going down:
 - Press the Start button to begin data acquisition
 - Press the Stop button to stop data acquisition
 
-We will analyze in more detail each step of the process listed in the section below
+We will analyze in more detail each step of the process listed in the section below.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### GUI Features
 
@@ -100,15 +117,19 @@ Starting from the top right corner, you'll find a switch to activate the data ex
 Furthermore, when data export is activated and at least one acquisition channel has been activated, you can see the estimated size of the file to be exported.
 The calculation of the size depends on the values of the settings Free running, Acquistion time, Bin width and the number of selected channels.
 
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
 #### Channels selection
 
 <br>
 <div align="center">
-    <img src="../assets/images/icons/channel_seection.PNG" alt="Channel selection" width="100%">
+    <img src="../assets/images/icons/channel_selection.PNG" alt="Channel selection" width="100%">
 </div><br>
 
 In the header, just below the export data button, you will find the selection bar for the acquisition channels that will be used for data collection.  
 To conduct the experiment, it is mandatory to select at least one channel. More than one channel can be selected at the same time, up to a maximum of 8.
+
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
 #### Sync in and sync out
 
@@ -122,6 +143,8 @@ By choosing Sync In, you'll automatically start the process to measure your lase
 Alternatively, select one of the Sync Out options by choosing the desired frequency (80MHz, 40MHz, 20MHz, 10MHz).  
 When the export data mode is active, the size of the generated file will increase as the number of active channels increases.
 
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
 #### Channels connection type
 
 <br>
@@ -133,7 +156,9 @@ Moving downwards, on the left side of the GUI, you can set the channel connectio
 Specify whether you will connect to the channels of your FLIM data acquisition card via USB cable or SMA.  
 The software will then select the appropriate firmware accordingly.
 
-#### Bin wdith
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
+#### Bin width
 
 <br>
 <div align="center">
@@ -145,6 +170,8 @@ This value is measured in microseconds and represents the time the software will
 More specifically, the software accumulates the counted photons during the bin width period, and plot them as a single point whose value is the average of the counted photons.  
 As a result, the larger the bin width value, the larger the size of the exported file will be.
 
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
 #### Time span
 
 <br>
@@ -154,6 +181,8 @@ As a result, the larger the bin width value, the larger the size of the exported
 
 The input field for time span, measured in seconds, represents the visible time interval on the x-axis.  
 Changing this value is purely for representational purposes and does not affect the size of the exported file or the values of the data represented.
+
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
 #### Free running mode
 
@@ -166,6 +195,8 @@ Beside the Time Span input field, you'll find the switch to activate the Free Ru
 By activating it, you can start a data acquisition without a predetermined maximum duration; the software will continue to acquire data until you click the stop button.  
 When the Free Running mode is active, the 'Acquisition time' field is disabled, and the File size of the exported file cannot be pre-calculated because its size depends on the duration of data acquisition. The longer the duration, the larger the size will be.
 
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
 #### Acquisition time
 
 <br>
@@ -176,6 +207,8 @@ When the Free Running mode is active, the 'Acquisition time' field is disabled, 
 Specify the duration of the data acquisition in the acquisition time imput field.
 This field is available only when the Free running mode is disabled.
 The longer the acquisition time, the larger the size of the exported file will be.
+
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
 ## Python codebase illustration
 
