@@ -38,23 +38,23 @@ The data displayed on the console screen indicates **the cannel** (number), **th
 
 Set the _selected_sync_ variable value choosing from the following:
 
-- _"sync_in"_: conseguently set the field sync_in_frequency_mhz
-- _"sync_out_10"_ : 10Mhz, the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
-- _"sync_out_20"_ : 20Mhz, the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
-- _"sync_out_40"_ : 40Mhz, the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
-- _"sync_out_80"_ : 80Mhz,the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
+- `"sync_in"`: conseguently set the field sync_in_frequency_mhz
+- `"sync_out_10"` : 10Mhz, the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
+- `"sync_out_20"` : 20Mhz, the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
+- `"sync_out_40"` : 40Mhz, the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
+- `"sync_out_80"` : 80Mhz,the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
 
 #### Sync in frequency
 
-Perform this step only if you have set _selected_sync="sync_in"_.
+Perform this step only if you have set `selected_sync="sync_in"`.
 
-Set the value of the _sync_in_frequency_mhz_ variable. You can set the value manually by changing the value in the line _sync_in_frequency_mhz=0.0_.
+Set the value of the `sync_in_frequency_mhz` variable. You can set the value manually by changing the value in the line `sync_in_frequency_mhz=0.0`.
 
-Alternatively, you can use the automatic laser frequency detection feature. To do this, comment out the line _sync_in_frequency_mhz=0.0_ and uncomment the line _# sync_in_frequency_mhz= detect_laser_sync_in_frequency()_ .
+Alternatively, you can use the automatic laser frequency detection feature. To do this, comment out the line `sync_in_frequency_mhz=0.0` and uncomment the line `# sync_in_frequency_mhz= detect_laser_sync_in_frequency()` .
 
 #### Connection_type
 
-Set the value of the variable _connection_type_ accordingly, to _connection_type="USB"_ if you are using a USB cable, or to _connection_type="SMA"_ if you are using an SMA cable to connect to your FLIM Data Acquisition Card.
+Set the value of the variable `connection_type_ accordingly`, to `connection_type="USB"` if you are using a USB cable, or to `connection_type="SMA"` if you are using an SMA cable to connect to your FLIM Data Acquisition Card.
 
 #### Enabled channels
 
@@ -70,27 +70,27 @@ In the example, channels 1 (value 0), 3 (value 2), and 5 (value 4) are selected.
 
 #### Bin width
 
-Set the bin width value through the _bin_width_micros_ variable.
+Set the bin width value through the `bin_width_micros` variable.
 The value must be a number.
 
-Example: _bin_width_micros=1000_
+Example: `bin_width_micros=1000`
 
 #### Acquisition time
 
-Set the acquisition time value through the _acquisition_time_millis_ variable.
+Set the acquisition time value through the `acquisition_time_millis` variable.
 The value must be a number.
 
-Example: _acquisition_time_millis=3000_
+Example: `acquisition_time_millis=3000`
 
 #### Start the data acquisition
 
 Once you have completed the settings of the variables mentioned above, you are ready to start the data acquisition.
-In order to do that, open your console and be sure to be on the project directory _/SPECTROSCOPY-PY_ and follow run the following commands:
+In order to do that, open your console and be sure to be on the project directory `/SPECTROSCOPY-PY` and follow run the following commands:
 
-- _python -3.9 -m venv venv_
-- _venv/scripts/activate_
-- _pip install -r requirements.txt_
-- _python console.py_
+- `python -3.9 -m venv venv`
+- `venv/scripts/activate`
+- `pip install -r requirements.txt`
+- `python console.py`
 
 The software will start the data acquisition and the console will log the acquired data in the following format:
 Lorem Ipsum
