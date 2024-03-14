@@ -91,33 +91,31 @@ We will analyze in more detail each step of the process listed in the section be
 
 #### Export Data
 
+<br>
 <div align="center">
-    <img src="../assets/images/icons/export_data_disabled.PNG" alt="Export Data disabled" width="200px">
-</div>
+    <img src="../assets/images/icons/export_data_enabled.PNG" alt="Export data enabled" width="400px">
+</div><br>
 
 Starting from the top right corner, you'll find a switch to activate the data export mode. Once this mode is activated and data acquisition is complete, the software will automatically save the analysis data to a binary file in the following directory: C:\Users\User.flim-labs\data.
-
-<div align="center">
-    <img src="../assets/images/icons/export_data_enabled.PNG" alt="Export data enabled" width="200px">
-</div>
-
 Furthermore, when data export is activated and at least one acquisition channel has been activated, you can see the estimated size of the file to be exported.
 The calculation of the size depends on the values of the settings Free running, Acquistion time, Bin width and the number of selected channels.
 
 #### Channels selection
 
+<br>
 <div align="center">
     <img src="../assets/images/icons/channel_seection.PNG" alt="Channel selection" width="100%">
-</div>
+</div><br>
 
 In the header, just below the export data button, you will find the selection bar for the acquisition channels that will be used for data collection.  
 To conduct the experiment, it is mandatory to select at least one channel. More than one channel can be selected at the same time, up to a maximum of 8.
 
 #### Sync in and sync out
 
+<br>
 <div align="center">
     <img src="../assets/images/icons/sync_selection.PNG" alt="Sync selection" width="100%">
-</div>
+</div><br>
 
 Just below the channel selection section, you'll find buttons for selecting the type of sync port to use and its respective sequence.  
 By choosing Sync In, you'll automatically start the process to measure your laser's frequency.  
@@ -126,9 +124,10 @@ When the export data mode is active, the size of the generated file will increas
 
 #### Channels connection type
 
+<br>
 <div align="center">
     <img src="../assets/images/icons/channel_type_closed.PNG" alt="Channel type selection" width="200px">
-</div>
+</div><br>
 
 Moving downwards, on the left side of the GUI, you can set the channel connection type.  
 Specify whether you will connect to the channels of your FLIM data acquisition card via USB cable or SMA.  
@@ -136,9 +135,10 @@ The software will then select the appropriate firmware accordingly.
 
 #### Bin wdith
 
+<br>
 <div align="center">
     <img src="../assets/images/icons/bin_width.PNG" alt="Bin width input field" width="200px">
-</div>
+</div><br>
 
 Near the channel connection type button, you will find Bin width setting field.  
 This value is measured in microseconds and represents the time the software will wait for photon accumulation to be counted.  
@@ -147,33 +147,31 @@ As a result, the larger the bin width value, the larger the size of the exported
 
 #### Time span
 
+<br>
 <div align="center">
     <img src="../assets/images/icons/time_span.PNG" alt="Time span input field" width="200px">
-</div>
+</div><br>
 
 The input field for time span, measured in seconds, represents the visible time interval on the x-axis.  
 Changing this value is purely for representational purposes and does not affect the size of the exported file or the values of the data represented.
 
 #### Free running mode
 
-<div align="center">
-    <img src="../assets/images/icons/free_running_disabled.PNG" alt="Free running input field" width="200px">
-</div>
-
-Beside the Time Span input field, you'll find the switch to activate the Free Running mode.
-
+<br>
 <div align="center">
     <img src="../assets/images/icons/free_running_enabled.PNG" alt="Free running input field" width="200px">
-</div>
+</div><br>
 
+Beside the Time Span input field, you'll find the switch to activate the Free Running mode.  
 By activating it, you can start a data acquisition without a predetermined maximum duration; the software will continue to acquire data until you click the stop button.  
 When the Free Running mode is active, the 'Acquisition time' field is disabled, and the File size of the exported file cannot be pre-calculated because its size depends on the duration of data acquisition. The longer the duration, the larger the size will be.
 
 #### Acquisition time
 
+<br>
 <div align="center">
     <img src="../assets/images/icons/acquisition_time.PNG" alt="Acquisition time input field" width="200px">
-</div>
+</div><br>
 
 Specify the duration of the data acquisition in the acquisition time imput field.
 This field is available only when the Free running mode is disabled.
