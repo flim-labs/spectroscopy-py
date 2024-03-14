@@ -17,22 +17,25 @@
     <li>
       <a href="#introduction">Introduction</a>
     </li>
-    <li><a href="#gui-usage">GUI Usage</a>
-     <ul>
-    <li><a href="#automatic-plot-update">Automatic plot update</a>
+    <li><a href="#gui-usage">GUI Usage</a></li>
+    <li><a href="#python-codebase">Python codebase</a>
     <ul>
-    <li><a href="#pull-from-queue-function">Pull from queue function</a></li>
-    <li><a href="#update-plot-2-function">Update plot 2 function</a>
-    <ul>
-    <li><a href="#update-the-photon-intensity-plot">Update the photon intensity plot</a>
-    <li><a href="#update-the-photon-intensity-decay-plot">Update the photon intensity decay plot</a>
-        <li><a href="#gui-update">GUI update</a>
-    </ul></li>
-    </ul></li>
+      <li><a href="#parameters-configuration">Parameters configuration</a>
+      <li><a href="#automatic-plot-update">Automatic plot update</a>
+         <ul>
+            <li><a href="#pull-from-queue-function">Pull from queue function</a></li>
+            <li><a href="#update-plot-2-function">Update plot 2 function</a>
+                  <ul>
+                      <li><a href="#update-the-photon-intensity-plot">Update the photon intensity plot</a></li>
+                      <li><a href="#update-the-photon-intensity-decay-plot">Update the photon intensity decay plot</a></li>
+                      <li><a href="#gui-update">GUI update</a></li>
+                  </ul>
+            </li>         
+         </ul>
+      <li><a href="#automatic-firmware-detection">Automatic firmware detection</a></li>
+      <li><a href="#automatic-firmware-detection">Export Data Visualization</a></li>    
     </ul>
-    </li>
-    <li><a href="#automatic-firmware-detection">Automatic firmware detection</a></li>
-    <li><a href="#automatic-firmware-detection">Export Data Visualization</a></li>     
+    </li>   
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
   </ol>
@@ -83,6 +86,12 @@ More specifically starting from the top of the GUI and going down:
 - Press the Stop button to stop data acquisition
 
 We will analyze in more detail each step of the process listed in the section below
+
+## Python codebase illustration
+
+The Python codebase is responsible for building the GUI for spectroscopy, making the parameters for data acquisition customizable, invoking the FLIM labs APIs which handle the actual data acquisition and processing, and rendering the data returned by the FLIM labs APIs.
+
+### Parameters configuration
 
 Here a table summary of the configurable parameters:
 
