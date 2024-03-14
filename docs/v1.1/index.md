@@ -92,13 +92,13 @@ We will analyze in more detail each step of the process listed in the section be
 #### Export Data
 
 <div align="center">
-    <img src="../assets/images/export_data_disabled.PNG" alt="Export Data disabled" width="100%">
+    <img src="../assets/images/icons/export_data_disabled.PNG" alt="Export Data disabled" width="100%">
 </div>
 
 Starting from the top right corner, you'll find a switch to activate the data export mode. Once this mode is activated and data acquisition is complete, the software will automatically save the analysis data to a binary file in the following directory: C:\Users\User.flim-labs\data.
 
 <div align="center">
-    <img src="../assets/images/export_data_enabled.PNG" alt="Export data enabled" width="100%">
+    <img src="../assets/images/icons/export_data_enabled.PNG" alt="Export data enabled" width="100%">
 </div>
 
 Furthermore, when data export is activated and at least one acquisition channel has been activated, you can see the estimated size of the file to be exported.
@@ -107,7 +107,7 @@ The calculation of the size depends on the values of the settings Free running, 
 #### Channels selection
 
 <div align="center">
-    <img src="../assets/images/channel_seection.PNG" alt="Channel selection" width="100%">
+    <img src="../assets/images/icons/channel_seection.PNG" alt="Channel selection" width="100%">
 </div>
 
 In the header, just below the export data button, you will find the selection bar for the acquisition channels that will be used for data collection.  
@@ -116,7 +116,7 @@ To conduct the experiment, it is mandatory to select at least one channel. More 
 #### Sync in and sync out
 
 <div align="center">
-    <img src="../assets/images/sync_selection.PNG" alt="Sync selection" width="100%">
+    <img src="../assets/images/icons/sync_selection.PNG" alt="Sync selection" width="100%">
 </div>
 
 Just below the channel selection section, you'll find buttons for selecting the type of sync port to use and its respective sequence.  
@@ -127,7 +127,7 @@ When the export data mode is active, the size of the generated file will increas
 #### Channels connection type
 
 <div align="center">
-    <img src="../assets/images/channel_type_closed.PNG" alt="Channel type selection" width="100%">
+    <img src="../assets/images/icons/channel_type_closed.PNG" alt="Channel type selection" width="100%">
 </div>
 
 Moving downwards, on the left side of the GUI, you can set the channel connection type.  
@@ -137,7 +137,7 @@ The software will then select the appropriate firmware accordingly.
 #### Bin wdith
 
 <div align="center">
-    <img src="../assets/images/bin_width.PNG" alt="Bin width input field" width="100%">
+    <img src="../assets/images/icons/bin_width.PNG" alt="Bin width input field" width="100%">
 </div>
 
 Near the channel connection type button, you will find Bin width setting field.  
@@ -148,7 +148,7 @@ As a result, the larger the bin width value, the larger the size of the exported
 #### Time span
 
 <div align="center">
-    <img src="../assets/images/time_span.PNG" alt="Time span input field" width="100%">
+    <img src="../assets/images/icons/time_span.PNG" alt="Time span input field" width="100%">
 </div>
 
 The input field for time span, measured in seconds, represents the visible time interval on the x-axis.  
@@ -157,13 +157,13 @@ Changing this value is purely for representational purposes and does not affect 
 #### Free running mode
 
 <div align="center">
-    <img src="../assets/images/free_running_disabled.PNG" alt="Free running input field" width="100%">
+    <img src="../assets/images/icons/free_running_disabled.PNG" alt="Free running input field" width="100%">
 </div>
 
 Beside the Time Span input field, you'll find the switch to activate the Free Running mode.
 
 <div align="center">
-    <img src="../assets/images/free_running_enabled.PNG" alt="Free running input field" width="100%">
+    <img src="../assets/images/icons/free_running_enabled.PNG" alt="Free running input field" width="100%">
 </div>
 
 By activating it, you can start a data acquisition without a predetermined maximum duration; the software will continue to acquire data until you click the stop button.  
@@ -172,7 +172,7 @@ When the Free Running mode is active, the 'Acquisition time' field is disabled, 
 #### Acquisition time
 
 <div align="center">
-    <img src="../assets/images/acquisition_time.PNG" alt="Acquisition time input field" width="100%">
+    <img src="../assets/images/icons/acquisition_time.PNG" alt="Acquisition time input field" width="100%">
 </div>
 
 Specify the duration of the data acquisition in the acquisition time imput field.
