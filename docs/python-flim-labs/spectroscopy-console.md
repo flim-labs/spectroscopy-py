@@ -23,11 +23,11 @@
                   <li><a href="#sync-in-frequency">Sync in frequency</a></li>
                   <li><a href="#connection-type">Connection type</a></li>
                   <li><a href="#enabled-channels">Enabled channels</a></li>
-                  <li><a href="#byn-width">Byn width</a></li>
-                  <li><a href="#acquisition-time">Acquisition time</a></li>
-                  <li><a href="#start-the-data-acquisition">Start the data acquisition</a></li>                  
+                  <li><a href="#bin-width">Bin width</a></li>
+                  <li><a href="#acquisition-time">Acquisition time</a></li>                                   
               </ul>
           </li>
+          <li><a href="#start-the-data-acquisition">Start the data acquisition</a></li> 
       </ul>
     </li>
     <li><a href="#useful-links">Useful links</a></li>
@@ -49,6 +49,11 @@ The data displayed on the console screen indicates **the cannel** (number), **th
 
 #### Sync
 
+<br>
+<div align="center">
+    <img src="../assets/images/screenshots/selected_sync.PNG" alt="Sync selection variable" width="100%">
+</div><br>
+
 Set the _selected_sync_ variable value choosing from the following:
 
 - `"sync_in"`: conseguently set the field sync_in_frequency_mhz
@@ -61,6 +66,11 @@ Set the _selected_sync_ variable value choosing from the following:
 
 #### Sync in frequency
 
+<br>
+<div align="center">
+    <img src="../assets/images/screenshots/sync_in_frequency_mhz.PNG" alt="Sync in frequency variable" width="100%">
+</div><br>
+
 Perform this step only if you have set `selected_sync="sync_in"`.
 
 Set the value of the `sync_in_frequency_mhz` variable.  
@@ -72,11 +82,21 @@ Alternatively, you can use the automatic laser frequency detection feature. To d
 
 #### Connection type
 
+<br>
+<div align="center">
+    <img src="../assets/images/screenshots/connection_type.PNG" alt="Connection type variable" width="100%">
+</div><br>
+
 Set the value of the variable `connection_type_ accordingly`, to `connection_type="USB"` if you are using a USB cable, or to `connection_type="SMA"` if you are using an SMA cable to connect to your FLIM LABS acquisition card.
 
 <p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
 #### Enabled channels
+
+<br>
+<div align="center">
+    <img id="console_activation_function" src="../assets/images/screenshots/console_activation_function.PNG" alt="Console activation function" width="100%">
+</div><br>
 
 Set the number of selected channels using the enabled_channels variable.
 
@@ -97,6 +117,8 @@ The value must be a number.
 
 Example: `bin_width_micros=1000`
 
+[Check image](#console_activation_function)
+
 <p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
 #### Acquisition time
@@ -106,9 +128,22 @@ The value must be a number.
 
 Example: `acquisition_time_millis=3000`
 
+[Check image](#console_activation_function)
+
 <p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
-#### Start the data acquisition
+Here a table summary of the configurable parameters:
+
+|                           | data-type   | config                                                                                              | default     | explanation                                                                                                |
+| ------------------------- | ----------- | --------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
+| `selected_sync`           | string      | choose a value from `"sync_in"`, `"sync_out_10"`, `"sync_out_20"`, `"sync_out_40"`, `"sync_out_80"` | `"sync_in"` | select whether you will connect to the `sync_in` or the `sync_out` port of your FLIM LABS acquisition card |
+| `enabled_channels`        | number[]    | set a list of enabled acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7]                   | [1]         | the list of enabled channels for photons data acquisition                                                  |
+| `bin_width_micros`        | number      | Set the numerical value in microseconds                                                             | 1000 (ms)   | the time duration to wait for photons count accumulation.                                                  |
+| `acquisition_time_millis` | number/None | Set the data acquisition duration                                                                   | None        | The acquisition duration could be determinate (_numeric value_) or indeterminate (_None_)                  |
+
+ <p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
+### Start the data acquisition
 
 Once you have completed the settings of the variables mentioned above, you are ready to start the data acquisition.
 In order to do that, open your console and be sure to be on the project directory `/SPECTROSCOPY-PY` and follow run the following commands:
@@ -122,19 +157,6 @@ The software will start the data acquisition and the console will log the acquir
 Lorem Ipsum
 
 <p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
-
-Here a table summary of the configurable parameters:
-
-|                           | data-type   | config                                                                                              | default     | explanation                                                                                                |
-| ------------------------- | ----------- | --------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
-| `selected_sync`           | string      | choose a value from `"sync_in"`, `"sync_out_10"`, `"sync_out_20"`, `"sync_out_40"`, `"sync_out_80"` | `"sync_in"` | select whether you will connect to the `sync_in` or the `sync_out` port of your FLIM LABS acquisition card |
-| `enabled_channels`        | number[]    | set a list of enabled acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7]                   | [1]         | the list of enabled channels for photons data acquisition                                                  |
-| `bin_width_micros`        | number      | Set the numerical value in microseconds                                                             | 1000 (ms)   | the time duration to wait for photons count accumulation.                                                  |
-| `acquisition_time_millis` | number/None | Set the data acquisition duration                                                                   | None        | The acquisition duration could be determinate (_numeric value_) or indeterminate (_None_)                  |
-
- <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
- <p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
 ## Useful Links
 

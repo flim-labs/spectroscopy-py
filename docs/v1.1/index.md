@@ -110,7 +110,7 @@ For a more detailed explenation of each steps check the [GUI Features section](#
 
 <br>
 <div align="center">
-    <img src="../assets/images/icons/export_data_enabled.PNG" alt="Export data enabled" width="400px">
+    <img src="../assets/images/screenshots/export_data_enabled.PNG" alt="Export data enabled" width="400px">
 </div><br>
 
 Starting from the top right corner, you'll find a switch to activate the data export mode. Once this mode is activated and data acquisition is complete, the software will automatically save the analysis data to a binary file in the following directory: C:\Users\User.flim-labs\data.
@@ -124,7 +124,7 @@ The calculation of the size depends on the values of the settings Free running, 
 
 <br>
 <div align="center">
-    <img src="../assets/images/icons/channel_selection.PNG" alt="Channel selection" width="100%">
+    <img src="../assets/images/screenshots/channel_selection.PNG" alt="Channel selection" width="100%">
 </div><br>
 
 In the header, just below the export data button, you will find the channels section where to select the acquisition channels to use for data acquisition.  
@@ -136,7 +136,7 @@ To conduct the experiment, it is mandatory to select at least one channel. More 
 
 <br>
 <div align="center">
-    <img src="../assets/images/icons/sync_selection.PNG" alt="Sync selection" width="100%">
+    <img src="../assets/images/screenshots/sync_selection.PNG" alt="Sync selection" width="100%">
 </div><br>
 
 Just below the channels section, you'll find buttons for selecting the type of sync port to use.  
@@ -150,7 +150,7 @@ When the [export data mode](#export-data) is active, the size of the generated f
 
 <br>
 <div align="center">
-    <img src="../assets/images/icons/channel_type_closed.PNG" alt="Channel type selection" width="200px">
+    <img src="../assets/images/screenshots/channel_type_closed.PNG" alt="Channel type selection" width="200px">
 </div><br>
 
 Moving downwards, on the left side of the GUI, you can set the channel connection type.  
@@ -163,7 +163,7 @@ The software will then select the appropriate firmware accordingly.
 
 <br>
 <div align="center">
-    <img src="../assets/images/icons/bin_width.PNG" alt="Bin width input field" width="200px">
+    <img src="../assets/images/screenshots/bin_width.PNG" alt="Bin width input field" width="200px">
 </div><br>
 
 Near the channel connection type input field, you will find Bin width input field.  
@@ -177,7 +177,7 @@ As a result, the larger the bin width value, the larger the size of the exported
 
 <br>
 <div align="center">
-    <img src="../assets/images/icons/time_span.PNG" alt="Time span input field" width="200px">
+    <img src="../assets/images/screenshots/time_span.PNG" alt="Time span input field" width="200px">
 </div><br>
 
 The input field for time span, measured in seconds, represents the visible time interval on the x-axis.  
@@ -189,7 +189,7 @@ Changing this value is purely for representational purposes and does not affect 
 
 <br>
 <div align="center">
-    <img src="../assets/images/icons/free_running_enabled.PNG" alt="Free running input field" width="200px">
+    <img src="../assets/images/screenshots/free_running_enabled.PNG" alt="Free running input field" width="200px">
 </div><br>
 
 Beside the Time Span input field, you'll find the switch to activate the Free Running mode.  
@@ -202,7 +202,7 @@ When the Free Running mode is active, the [acquisition time](#acquisition-time) 
 
 <br>
 <div align="center">
-    <img src="../assets/images/icons/acquisition_time.PNG" alt="Acquisition time input field" width="200px">
+    <img src="../assets/images/screenshots/acquisition_time.PNG" alt="Acquisition time input field" width="200px">
 </div><br>
 
 Specify the duration of the data acquisition in the acquisition time imput field.
