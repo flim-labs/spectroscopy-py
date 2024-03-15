@@ -154,7 +154,7 @@ When the [export data mode](#export-data) is active, the size of the generated f
 </div><br>
 
 Moving downwards, on the left side of the GUI, you can set the channel connection type.  
-Specify whether you will connect to the channels of your FLIM data acquisition card via USB or SMA cable.  
+Specify whether you will connect to the channels of your FLIM LABS acquisition card via USB or SMA cable.  
 The software will then select the appropriate firmware accordingly.
 
 <p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
@@ -315,7 +315,7 @@ def update_plots2(self, channel_index, time_ns, curve):
 
 ### Automatic firmware detection
 
-In order to start the acquisition process, the function `begin_spectroscopy_experiment` automatically detect the firmware version of your flim data acquisition card.
+In order to start the acquisition process, the function `begin_spectroscopy_experiment` automatically detect the firmware version of your FLIM LABS acquisition card.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

@@ -39,22 +39,23 @@ The data displayed on the console screen indicates **the cannel** (number), **th
 Set the _selected_sync_ variable value choosing from the following:
 
 - `"sync_in"`: conseguently set the field sync_in_frequency_mhz
-- `"sync_out_10"` : 10Mhz, the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
-- `"sync_out_20"` : 20Mhz, the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
-- `"sync_out_40"` : 40Mhz, the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
-- `"sync_out_80"` : 80Mhz,the field 'sync_in_frequency'\_mhz will not be taken into account accordingly
+- `"sync_out_10"` : 10Mhz, the field `sync_in_frequency_mhz` will not be taken into account accordingly
+- `"sync_out_20"` : 20Mhz, the field `sync_in_frequency_mhz` will not be taken into account accordingly
+- `"sync_out_40"` : 40Mhz, the field `sync_in_frequency_mhz` will not be taken into account accordingly
+- `"sync_out_80"` : 80Mhz,the field `sync_in_frequency_mhz` will not be taken into account accordingly
 
 #### Sync in frequency
 
 Perform this step only if you have set `selected_sync="sync_in"`.
 
-Set the value of the `sync_in_frequency_mhz` variable. You can set the value manually by changing the value in the line `sync_in_frequency_mhz=0.0`.
+Set the value of the `sync_in_frequency_mhz` variable.  
+You can set the value manually by changing the value in the line `sync_in_frequency_mhz=0.0`.
 
 Alternatively, you can use the automatic laser frequency detection feature. To do this, comment out the line `sync_in_frequency_mhz=0.0` and uncomment the line `# sync_in_frequency_mhz= detect_laser_sync_in_frequency()` .
 
 #### Connection_type
 
-Set the value of the variable `connection_type_ accordingly`, to `connection_type="USB"` if you are using a USB cable, or to `connection_type="SMA"` if you are using an SMA cable to connect to your FLIM Data Acquisition Card.
+Set the value of the variable `connection_type_ accordingly`, to `connection_type="USB"` if you are using a USB cable, or to `connection_type="SMA"` if you are using an SMA cable to connect to your FLIM LABS acquisition card.
 
 #### Enabled channels
 
@@ -95,14 +96,14 @@ In order to do that, open your console and be sure to be on the project director
 The software will start the data acquisition and the console will log the acquired data in the following format:
 Lorem Ipsum
 
-Here a table summary of the configurable parameters on code side:
+Here a table summary of the configurable parameters:
 
-|                           | data-type   | config                                                                            | default   | explanation                                                                               |
-| ------------------------- | ----------- | --------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- |
-| `enabled_channels`        | number[]    | set a list of enabled acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7] | [1]       | the list of enabled channels for photons data acquisition                                 |
-| `bin_width_micros`        | number      | Set the numerical value in microseconds                                           | 1000 (ms) | the time duration to wait for photons count accumulation.                                 |
-| `acquisition_time_millis` | number/None | Set the data acquisition duration                                                 | None      | The acquisition duration could be determinate (_numeric value_) or indeterminate (_None_) |
-| `write_data`              | boolean     | Set export data option to True/False                                              | True      | if set to _True_, the acquired raw data will be exported locally to the computer          |
+|                           | data-type   | config                                                                                              | default     | explanation                                                                                                     |
+| ------------------------- | ----------- | --------------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
+| `selected_sync`           | string      | choose a value from `"sync_in"`, `"sync_out_10"`, `"sync_out_20"`, `"sync_out_40"`, `"sync_out_80"` | `"sync_in"` | select whether you will connect to the `sync_in` port or the `sync_out` port of your FLIM LABS acquisition card |
+| `enabled_channels`        | number[]    | set a list of enabled acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7]                   | [1]         | the list of enabled channels for photons data acquisition                                                       |
+| `bin_width_micros`        | number      | Set the numerical value in microseconds                                                             | 1000 (ms)   | the time duration to wait for photons count accumulation.                                                       |
+| `acquisition_time_millis` | number/None | Set the data acquisition duration                                                                   | None        | The acquisition duration could be determinate (_numeric value_) or indeterminate (_None_)                       |
 
  <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

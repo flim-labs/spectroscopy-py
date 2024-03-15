@@ -166,7 +166,7 @@ def update_plots2(self, channel_index, time_ns, curve):
 
 ### Automatic firmware detection
 
-In order to start the acquisition process, the function `begin_spectroscopy_experiment` automatically detect the firmware version of your flim data acquisition card.
+In order to start the acquisition process, the function `begin_spectroscopy_experiment` automatically detect the firmware version of your FLIM LABS acquisition card.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
