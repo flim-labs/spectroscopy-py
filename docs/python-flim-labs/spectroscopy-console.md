@@ -16,6 +16,19 @@
   <ol>
     <li>
       <a href="#console-usage">Console Usage</a>
+      <ul>
+          <li><a href="#parameters configuration">Parameters configuration</a>
+              <ul>
+                  <li><a href="#sync">Sync</a></li>
+                  <li><a href="#sync-in-frequency">Sync in frequency</a></li>
+                  <li><a href="#connection-type">Connection type</a></li>
+                  <li><a href="#enabled-channels">Enabled channels</a></li>
+                  <li><a href="#byn-width">Byn width</a></li>
+                  <li><a href="#acquisition-time">Acquisition time</a></li>
+                  <li><a href="#start-the-data-acquisition">Start the data acquisition</a></li>                  
+              </ul>
+          </li>
+      </ul>
     </li>
     <li><a href="#useful-links">Useful links</a></li>
     <li><a href="#license">License</a></li>
@@ -44,6 +57,8 @@ Set the _selected_sync_ variable value choosing from the following:
 - `"sync_out_40"` : 40Mhz, the field `sync_in_frequency_mhz` will not be taken into account accordingly
 - `"sync_out_80"` : 80Mhz,the field `sync_in_frequency_mhz` will not be taken into account accordingly
 
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
 #### Sync in frequency
 
 Perform this step only if you have set `selected_sync="sync_in"`.
@@ -53,9 +68,13 @@ You can set the value manually by changing the value in the line `sync_in_freque
 
 Alternatively, you can use the automatic laser frequency detection feature. To do this, comment out the line `sync_in_frequency_mhz=0.0` and uncomment the line `# sync_in_frequency_mhz= detect_laser_sync_in_frequency()` .
 
-#### Connection_type
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
+#### Connection type
 
 Set the value of the variable `connection_type_ accordingly`, to `connection_type="USB"` if you are using a USB cable, or to `connection_type="SMA"` if you are using an SMA cable to connect to your FLIM LABS acquisition card.
+
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
 #### Enabled channels
 
@@ -69,6 +88,8 @@ You must select at least one channel, up to a maximum of 8. If you want to selec
 
 In the example, channels 1 (value `0`), 3 (value `2`), and 5 (value `4`) are selected.
 
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
 #### Bin width
 
 Set the bin width value through the `bin_width_micros` variable.
@@ -76,12 +97,16 @@ The value must be a number.
 
 Example: `bin_width_micros=1000`
 
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
 #### Acquisition time
 
 Set the acquisition time value through the `acquisition_time_millis` variable.
 The value must be a number.
 
 Example: `acquisition_time_millis=3000`
+
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
 #### Start the data acquisition
 
@@ -96,16 +121,20 @@ In order to do that, open your console and be sure to be on the project director
 The software will start the data acquisition and the console will log the acquired data in the following format:
 Lorem Ipsum
 
+<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+
 Here a table summary of the configurable parameters:
 
-|                           | data-type   | config                                                                                              | default     | explanation                                                                                                     |
-| ------------------------- | ----------- | --------------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
-| `selected_sync`           | string      | choose a value from `"sync_in"`, `"sync_out_10"`, `"sync_out_20"`, `"sync_out_40"`, `"sync_out_80"` | `"sync_in"` | select whether you will connect to the `sync_in` port or the `sync_out` port of your FLIM LABS acquisition card |
-| `enabled_channels`        | number[]    | set a list of enabled acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7]                   | [1]         | the list of enabled channels for photons data acquisition                                                       |
-| `bin_width_micros`        | number      | Set the numerical value in microseconds                                                             | 1000 (ms)   | the time duration to wait for photons count accumulation.                                                       |
-| `acquisition_time_millis` | number/None | Set the data acquisition duration                                                                   | None        | The acquisition duration could be determinate (_numeric value_) or indeterminate (_None_)                       |
+|                           | data-type   | config                                                                                              | default     | explanation                                                                                                |
+| ------------------------- | ----------- | --------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
+| `selected_sync`           | string      | choose a value from `"sync_in"`, `"sync_out_10"`, `"sync_out_20"`, `"sync_out_40"`, `"sync_out_80"` | `"sync_in"` | select whether you will connect to the `sync_in` or the `sync_out` port of your FLIM LABS acquisition card |
+| `enabled_channels`        | number[]    | set a list of enabled acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7]                   | [1]         | the list of enabled channels for photons data acquisition                                                  |
+| `bin_width_micros`        | number      | Set the numerical value in microseconds                                                             | 1000 (ms)   | the time duration to wait for photons count accumulation.                                                  |
+| `acquisition_time_millis` | number/None | Set the data acquisition duration                                                                   | None        | The acquisition duration could be determinate (_numeric value_) or indeterminate (_None_)                  |
 
  <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+ <p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
 
 ## Useful Links
 
