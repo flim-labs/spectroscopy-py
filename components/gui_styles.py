@@ -265,3 +265,27 @@ class GUIStyles:
                 font-size: 26px;
             }
         """
+    
+    @staticmethod
+    def set_tab_style(active):
+        return f"""
+            QPushButton {{
+                background-color: {"#222222" if active else "transparent"};
+                border: none;
+                width: 120px;
+                border-top-right-radius: 5px;
+                border-top-left-radius: 5px;
+                padding: 15px;
+                font-family: "Montserrat";
+                color: {"#FF0000" if active else "white"};
+                font-size: 16px;
+            }}
+
+            QPushButton:hover {{
+                background: #222222;
+            }}
+
+            QPushButton:pressed {{
+                background: {"#222222" if active else "#161616"};
+            }}
+        """
