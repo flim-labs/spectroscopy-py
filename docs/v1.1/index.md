@@ -62,7 +62,7 @@ For a general introduction to the aims and technical requirements of the project
 ## GUI Usage
 
 <div align="center">
-    <img src="../assets/images/spectroscopy_gui_screenshot.PNG" alt="Spectroscopy GUI" width="100%">
+    <img src="../assets/images/screenshots/spectroscopy_gui_screenshot.PNG" alt="Spectroscopy GUI" width="100%">
 </div>
 
 The GUI mode provides advanced functionality for configuring analysis **parameters** and displaying live-streamed fluorescence intensity decay data. It allows simultaneous acquisition from up to **8 channels**, offering real-time data visualization in the form of plots.
@@ -150,7 +150,9 @@ Refers to this sections for more details:
 
 - [Export Data](#export-data)
 
-<hr>.
+<hr>
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 #### Parameters table summary
 
