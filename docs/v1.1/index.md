@@ -19,38 +19,30 @@
     </li>
     <li><a href="#gui-usage">GUI Usage</a>
         <ul>
-            <li><a href="#gui-features">GUI Features</a>
-                <ul>
-                    <li><a href="#export-data">Export Data</a></li>
-                    <li><a href="#channels-selection">Channels selection</a></li>
-                    <li><a href="#sync-in-and-sync-out">Sync in and sync out</a></li>
-                    <li><a href="#channels-connection-type">Channels connection type</a></li>
-                    <li><a href="#bin-width">Bin width</a></li>
-                    <li><a href="#time-span">Time span</a></li>
-                    <li><a href="#free-running-mode">Free running mode</a></li>
-                    <li><a href="#acquisition-time">Acquisition time</a></li>
-                </ul>
-            </li>
+            <li><a href="#sync-in-and-sync-out">Sync in and sync out</a></li>
+            <li><a href="#acquisitions-channels">Acquisitions channels</a></li>
+            <li><a href="#connection-type">Connection type</a></li>
+            <li><a href="#bin-width">Bin width</a></li>
+            <li><a href="#acquisition-mode">Acquisition mode</a></li>
+            <li><a href="#acquisition-time">Acquisition time</a></li>
+            <li><a href="#time-span">Time span</a></li>
+             <li><a href="#export-data">Export Data</a></li>
         </ul>
     </li>
-    <li><a href="#python-codebase-illustration">Python codebase illustration</a>
-    <ul>
-      <li><a href="#parameters-configuration">Parameters configuration</a>
-      <li><a href="#automatic-plot-update">Automatic plot update</a>
-         <ul>
+    <li><a href="#parameters-table-summary">Parameters table summary</a>
+    <li><a href="#automatic-plot-update">Automatic plot update</a>
+        <ul>
             <li><a href="#pull-from-queue-function">Pull from queue function</a></li>
             <li><a href="#update-plot-2-function">Update plot 2 function</a>
-                  <ul>
-                      <li><a href="#update-the-photon-intensity-plot">Update the photon intensity plot</a></li>
-                      <li><a href="#update-the-photon-intensity-decay-plot">Update the photon intensity decay plot</a></li>
-                      <li><a href="#gui-update">GUI update</a></li>
-                  </ul>
+                <ul>
+                    <li><a href="#update-the-photon-intensity-plot">Update the photon intensity plot</a></li>
+                    <li><a href="#update-the-photon-intensity-decay-plot">Update the photon intensity decay plot</a></li>
+                    <li><a href="#gui-update">GUI update</a></li>
+                 </ul>
             </li>         
          </ul>
       <li><a href="#automatic-firmware-detection">Automatic firmware detection</a></li>
       <li><a href="#automatic-firmware-detection">Export Data Visualization</a></li>    
-    </ul>
-    </li>   
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
   </ol>
@@ -70,7 +62,7 @@ For a general introduction to the aims and technical requirements of the project
 ## GUI Usage
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-gui.PNG" alt="GUI" width="100%">
+    <img src="../assets/images/spectroscopy_gui_screenshot.PNG" alt="Spectroscopy GUI" width="100%">
 </div>
 
 The GUI mode provides advanced functionality for configuring analysis **parameters** and displaying live-streamed fluorescence intensity decay data. It allows simultaneous acquisition from up to **8 channels**, offering real-time data visualization in the form of plots.
@@ -86,136 +78,81 @@ Photon intensity decay graph:
 - **X** Axis: represent _aquisition time_
 - **Y** Axis: represent _average photon counts_
 
-This is a concise overview of the steps required to conduct an experiment, specifically proceeding from the top to the bottom of the Graphical User Interface (GUI):
-
-- Choose whether to [export the acquired data](#export-data) or not
-- Select the [acquisition channels](#channels-selection) (1 or more)
-- Select the [type of sync](#sync-in-and-sync-out) for the laser module, whether sync in or sync out
-- Select the [channel connection type](#channels-connection-type), whether SMA or USB
-- Specify the [bin width](#bin-width)
-- Specify the [time span](#time-span) (s)
-- Choose whether to use the [free running mode](#free-running-mode) or not
-- Specify the [acquisition time](#acquisition-time) (s), available only when not using free running mode
-- Press the Start button to begin data acquisition
-- Press the Stop button to stop data acquisition
-
-For a more detailed explenation of each steps check the [GUI Features section](#gui-features).
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-### GUI Features
-
-#### Export Data
-
-<br>
-<div align="center">
-    <img src="../assets/images/screenshots/export_data_enabled.PNG" alt="Export data enabled" width="400px">
-</div><br>
-
-Starting from the top right corner, you'll find a switch to activate the data export mode. Once this mode is activated and data acquisition is complete, the software will automatically save the analysis data to a binary file in the following directory: `C:\Users\User.flim-labs\data`.
-
-Furthermore, when data export is activated and at least one acquisition channel has been activated, you can see the estimated size of the file to be exported.
-The calculation of the size depends on the values of the [free running](#free-running-mode), [acquistion time](#acquisition-time), [bin width](#bin-width) settings and the number of [selected channels](#channels-selection).
-
-<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
-
-#### Channels selection
-
-<br>
-<div align="center">
-    <img src="../assets/images/screenshots/channel_selection.PNG" alt="Channel selection" width="100%">
-</div><br>
-
-Right below the export data button, you will find the channels section where to select the acquisition channels to use for data acquisition.  
-To conduct the experiment, it is mandatory to select at least one channel.  
-More than one channel can be selected at the same time, up to a maximum of 8.
-
-<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+Here an overview of each available feature:
 
 #### Sync in and sync out
 
-<br>
-<div align="center">
-    <img src="../assets/images/screenshots/sync_selection.PNG" alt="Sync selection" width="100%">
-</div><br>
+By setting "Sync In," you will automatically initiate the process of measuring your laser's frequency. Alternatively, by selecting one of the "Sync Out" options, you can choose the desired frequency (80MHz, 40MHz, 20MHz, 10MHz). When the [export data mode](#export-data) is active, the size of the generated file will increase in accordance with the number of active channels.
 
-Below the channels section, you'll find buttons for selecting the type of sync port to use.  
-By choosing Sync In, you'll automatically start the process to measure your laser's frequency.  
-Alternatively, select one of the Sync Out options by choosing the desired frequency (80MHz, 40MHz, 20MHz, 10MHz).  
-When the [export data mode](#export-data) is active, the size of the generated file will increase accordingly the number of active channels.
+#### Acquisition channels
 
-<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+The software allows for data acquisition in **single-channel** or **multi-channel** mode, with the user able to activate up to _8_ channels simultaneously.
 
-#### Channels connection type
+For each activated channel, its respective real-time acquisition plot will be displayed on the interface.
 
-<br>
-<div align="center">
-    <img src="../assets/images/screenshots/channel_type_closed.PNG" alt="Channel type selection" width="200px">
-</div><br>
+The number of active channels affects the _size of the exported data file_. With the same values set for `bin width ` and `acquisition time `, the file size _grows proportionally to the number of activated channels_.
 
-Moving downwards, on the left side of the GUI, you can set the channel connection type input field.  
-Specify whether you will connect to the channels of your FLIM LABS acquisition card via USB or SMA cable.  
-The software will then select the appropriate firmware accordingly.
+To start acquisition, at least one channel must be activated.
 
-<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+_Note: Ensure that the channel activated in the software corresponds to the channel number being used for acquisition on the [FLIM LABS Data Acquisition Card](https://www.flimlabs.com/products/data-acquisition-card/)._
+
+<hr>
+
+#### Connection type
+
+The user can choose the type of connection for data acquisition between **SMA** and **USB** connections.
+
+_Note: The connection type set in the software must match the actual connection type activated on the [FLIM LABS Data Acquisition Card](https://www.flimlabs.com/products/data-acquisition-card/)._
+
+<hr>
 
 #### Bin width
 
-<br>
-<div align="center">
-    <img src="../assets/images/screenshots/bin_width.PNG" alt="Bin width input field" width="200px">
-</div><br>
+The user can set a **bin width** value ranging from _1_ to _1,000,000_ microseconds (μs). Bin width represents the duration of time to wait for accumulating photon counts in the exported data file. In the interface plots, this value is adjusted to maintain real-time visualization.
 
-Near the channel connection type input field, you will find the Bin width input field.  
-This value is measured in microseconds and represents the time the software will wait for photon accumulation to be counted.  
-More specifically, the software accumulates the counted photons during the bin width period, and plot them as a single point whose value is the average of the counted photons.  
-As a result, the larger the bin width value, the larger the size of the exported file will be.
+The configured bin width value affects the size of the exported data file. With the number of `active channels` and `acquisition time` unchanged, the _file size grows inversely proportional to the bin width value_.
 
-<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+<hr>
 
-#### Time span
+#### Acquisition mode
 
-<br>
-<div align="center">
-    <img src="../assets/images/screenshots/time_span.PNG" alt="Time span input field" width="200px">
-</div><br>
+Users can choose between two data acquisition modes: **free running** or **fixed acquisition time**.
 
-The Time span input field, measured in seconds, represents the visible time interval on the x-axis.  
-Changing this value is purely for representational purposes and does not affect the size of the exported file or the values of the data represented.
+In free running mode, the total acquisition time is _not specified_. If users deactivate free running mode, they must set a specific acquisition time value.
 
-<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+The chosen acquisition mode impacts the size of the exported data file. Refer to the [Export Data](#export-data) section for details.
 
-#### Free running mode
-
-<br>
-<div align="center">
-    <img src="../assets/images/screenshots/free_running_enabled.PNG" alt="Free running input field" width="200px">
-</div><br>
-
-Beside the Time span input field, you'll find the switch to activate the free running mode.  
-This feature, allow to start a data acquisition without a predetermined maximum duration; the software will continue to acquire data until the stop button is clicked.  
-When the free running mode is active, the [acquisition time](#acquisition-time) input field is disabled, and the file size of the exported file cannot be pre-calculated because its size depends on the duration of data acquisition. The longer the duration, the larger the size will be.
-
-<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+<hr>
 
 #### Acquisition time
 
-<br>
-<div align="center">
-    <img src="../assets/images/screenshots/acquisition_time.PNG" alt="Acquisition time input field" width="200px">
-</div><br>
+When the free running acquisition mode is disabled, users must specify the **acquisition time** parameter to set the total data acquisition duration. Users can choose a value between _1_ and _1800_ s (seconds).
 
-Specify the duration of the data acquisition in the acquisition time imput field.
-This field is available only when the Free running mode is disabled.
-The longer the acquisition time, the larger the size of the exported file will be.
+For example, if a value of 10 is set, the acquisition will stop after 10 seconds.
 
-<p align="right">(<a href="#video">check the video</a>) (<a href="#readme-top">back to top</a>)</p>
+The acquisition time value directly affects the final size of the exported data file. Keeping the `bin width` and `active channels` values unchanged, the _file size increases proportionally to the acquisition time value_.
 
-## Python codebase illustration
+<hr>
 
-The Python codebase is responsible for building the GUI for spectroscopy, making the parameters for data acquisition customizable, invoking the FLIM labs APIs which handle the actual data acquisition and processing, and rendering the data returned by the FLIM labs APIs.
+#### Time span
 
-### Parameters configuration
+**Time span** set the time interval, in seconds, for the _last visible data range on the duration x-axis_. For instance, if this value is set to 5s, the x-axis will scroll to continuously display the latest 5 seconds of real-time data on the chart.
+Users can choose a value from _1_ to _300_ s (seconds).
+
+The time span value, along with `update rate` affects the maximum number of points maintained on the plot. For further details, refer to the [Max Points and Draw Frequency](#max-points-and-draw-frequency) section.
+
+<hr>
+
+#### Export data
+
+Users can choose to **export acquired data** in _.bin_ file format for further analysis.
+Refers to this sections for more details:
+
+- [Export Data](#export-data)
+
+<hr>.
+
+#### Parameters table summary
 
 Here a table summary of the configurable parameters:
 
