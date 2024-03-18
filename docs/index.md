@@ -23,7 +23,7 @@
 
 # About the project
 
-[![Spectroscopy GUI overview](./assets/images/screenshot/spectroscopy-gui-screenshot.jpeg)]
+[![Spectroscopy GUI overview](./assets/images/screenshots/spectroscopy-gui-screenshot.jpeg)]
 
 Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py), a Python application designed to **analyze the fluorescence intensity decay as a function of time** and plotting a decay profile histogram. Facilitated by an underlying data processor developed in Rust, responsible for data retrieval from the hardware component, this application enables real-time data analysis and visualization. Whether your focus is on rigorous data analysis or dynamic visualizations, Spectroscopy serves as a flexible tool for the precise measurement and exploration of fluorescence intensity decay profile.
 
