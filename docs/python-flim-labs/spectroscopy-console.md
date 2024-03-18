@@ -55,7 +55,7 @@ Perform this step only if `selected_sync="sync_in"`.
 Set the value of the `sync_in_frequency_mhz` variable.  
 The value can be set manually by modifyng the line `sync_in_frequency_mhz=0.0`.
 
-Alternatively, the automatic laser frequency detection feature, can be used commenting out the line `sync_in_frequency_mhz=0.0` and uncommenting the line `# sync_in_frequency_mhz= detect_laser_sync_in_frequency()` .
+Alternatively, the **automatic laser** frequency detection feature, can be used by commenting out the line `sync_in_frequency_mhz=0.0` and uncommenting the line `# sync_in_frequency_mhz= detect_laser_sync_in_frequency()` .
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
