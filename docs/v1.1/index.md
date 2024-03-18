@@ -20,7 +20,7 @@
     <li><a href="#gui-usage">GUI Usage</a>
         <ul>
             <li><a href="#sync-in-and-sync-out">Sync in and sync out</a></li>
-            <li><a href="#acquisitions-channels">Acquisitions channels</a></li>
+            <li><a href="#acquisition-channels">Acquisition channels</a></li>
             <li><a href="#connection-type">Connection type</a></li>
             <li><a href="#bin-width">Bin width</a></li>
             <li><a href="#acquisition-mode">Acquisition mode</a></li>
@@ -148,7 +148,7 @@ The time span value, along with `update rate` affects the maximum number of poin
 Users can choose to **export acquired data** in _.bin_ file format for further analysis.
 Refers to this sections for more details:
 
-- [Export Data](#export-data)
+- [Exported Data Visualization](#export-data-visualization)
 
 <hr>
 
