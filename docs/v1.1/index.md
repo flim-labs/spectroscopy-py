@@ -82,7 +82,7 @@ Here an overview of each available feature:
 
 #### Sync in and sync out
 
-By setting "Sync In," you will automatically initiate the process of measuring your laser's frequency. Alternatively, by selecting one of the "Sync Out" options, you can choose the desired frequency (80MHz, 40MHz, 20MHz, 10MHz). When the [export data mode](#export-data) is active, the size of the generated file will increase in accordance with the number of active channels.
+By selecting `Sync In`, you will automatically initiate the process of measuring your laser's frequency. Alternatively, by selecting one of the `Sync Out` options, you can choose the desired frequency (`80MHz`, `40MHz`, `20MHz`, `10MHz`). When the [export data mode](#export-data) is active, the size of the generated file will increase in accordance with the number of active channels.
 
 Selecting the Sync value is essential, as it determines the **laser frequency** and directly impacts the **laser period** and the **time resolution** of the measurements. A higher frequency reduces the laser period, enhancing the **time resolution** and enabling the capture of events in shorter time intervals.  
 The X-axis of the graphs reflects the laser period, depicting the time period of a single laser pulse. This aspect is crucial because the decay curve represented on the graph is the sum of curves from each chunk, where each **chunk** is defined by the **bin width** [refer to the bin width section for more details](#bin-width).
@@ -90,7 +90,7 @@ The X-axis of the graphs reflects the laser period, depicting the time period of
 The software **automatically adjusts** the time resolution according to the selected frequency, ensuring precision.  
 Each decay curve is represented by **256 points**, maintaining this constancy despite changes in frequency or temporal resolution.
 
-Selecting a "Sync out" of 80MHz, we obtain a laser period of 12.5 ns and a temporal resolution of about 48.828 ps; thus, each point represents an interval of approximately 48.828 ps across the cumulative decay curves.
+Selecting a `Sync out` of 80MHz, we obtain a laser period of 12.5 ns and a temporal resolution of about 48.828 ps; thus, each point represents an interval of approximately 48.828 ps across the cumulative decay curves.
 
 Conversely, at 20MHz, the laser period extends to 50 ns with a temporal resolution of about 195.312 ps, indicating that each point on the curve corresponds to an interval of approximately 195.312 ps across the cumulative decay curves of each chunk.
 
@@ -122,7 +122,7 @@ The user can set a **bin width** value ranging from _1_ to _1,000,000_ microseco
 
 The **bin width** value specifies the time interval, in microseconds (μs), used to divide the data acquisition into **chunks**. For each chunk, a theoretical **photon decay curve** is generated. The final graph represents the **cumulative** decay curves of each individual chunk. This approach provides a detailed representation of fluorescence over time, illustrating both the intensity and decay of photon signals.
 
-As an example, consider an acquisition time (_acquisition time_) of 10 seconds and a bin width of 10,000 microseconds (μs). This configuration results in the creation of 1000 chunks, each contributing to the overall decay curve displayed in the graph.
+As an example, consider an [acquisition time](#acquisition-time) of 10 seconds and a bin width of 10,000 microseconds (μs). This configuration results in the creation of 1000 chunks, each contributing to the overall decay curve displayed in the graph.
 
 This methodology allows users to analyze fluorescence data in a more granular manner, enabling the identification of specific signal characteristics and trends.
 
