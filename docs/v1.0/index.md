@@ -94,6 +94,8 @@ Selecting a `Sync out` of 80MHz, we obtain a laser period of 12.5 ns and a tempo
 
 Conversely, at 20MHz, the laser period extends to 50 ns with a temporal resolution of about 195.312 ps, indicating that each point on the curve corresponds to an interval of approximately 195.312 ps across the cumulative decay curves of each chunk.
 
+<hr>
+
 #### Acquisition channels
 
 The software allows for data acquisition in **single-channel** or **multi-channel** mode, with the user able to activate up to _8_ channels simultaneously.
