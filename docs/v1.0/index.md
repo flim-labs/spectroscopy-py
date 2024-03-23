@@ -26,10 +26,10 @@
             <li><a href="#acquisition-mode">Acquisition mode</a></li>
             <li><a href="#acquisition-time">Acquisition time</a></li>
             <li><a href="#time-span">Time span</a></li>
-             <li><a href="#export-data">Export Data</a></li>
+            <li><a href="#export-data">Export Data</a></li>
         </ul>
     </li>
-    <li><a href="#parameters-table-summary">Parameters table summary</a>
+    <li><a href="#parameters-table-summary">Parameters table summary</a></li>
     <li><a href="#automatic-plot-update">Automatic plot update</a>
         <ul>
             <li><a href="#pull-from-queue-function">Pull from queue function</a></li>
@@ -41,6 +41,7 @@
                  </ul>
             </li>         
          </ul>
+      </li>   
       <li><a href="#automatic-firmware-detection">Automatic firmware detection</a></li>
       <li><a href="#automatic-firmware-detection">Export Data Visualization</a></li>    
     <li><a href="#license">License</a></li>
