@@ -51,7 +51,7 @@ def detect_laser_sync_in_frequency():
 def select_firmware():
     firmware_selected = flim_labs.get_spectroscopy_firmware(
             sync="in" if selected_sync == "sync_in" else "out",
-            frequency_mhz=frequenzy_mhz,
+            frequency_mhz=frequency_mhz,
             channel=connection_type.lower(),
             sync_connection="sma"
         )
@@ -59,7 +59,7 @@ def select_firmware():
 
 
 
-def select_frequenzy_mhz():
+def select_frequency_mhz():
      if selected_sync == "sync_in":
         frequency_mhz = sync_in_frequency_mhz
      else:
@@ -96,16 +96,16 @@ if __name__ == "__main__":
 
 # -------------------------------------------------------------------------------------------------------------------
 
-    frequenzy_mhz=select_frequenzy_mhz()
+    frequency_mhz=select_frequency_mhz()
 
     # choose between USB or SMA
     connection_type="USB" 
    
-    if frequenzy_mhz:
+    if frequency_mhz:
         result = flim_labs.start_spectroscopy(
             enabled_channels=[0],
             bin_width_micros=1000,
-            frequency_mhz=frequenzy_mhz,
+            frequency_mhz=frequency_mhz,
             firmware_file= select_firmware(),
             acquisition_time_millis=3000,
         )
