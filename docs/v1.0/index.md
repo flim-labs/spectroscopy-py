@@ -43,7 +43,9 @@
          </ul>
       </li>   
       <li><a href="#automatic-firmware-detection">Automatic firmware detection</a></li>
-      <li><a href="#automatic-firmware-detection">Export Data Visualization</a></li>    
+      <li><a href="#automatic-firmware-detection">Export Data Visualization</a></li>
+    <li><a href="#console-usage">Console usage</a></li> 
+    <li><a href="#spectroscopy-introduction">Spectroscopy introduction</a></li>        
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
   </ol>
@@ -303,6 +305,20 @@ def calc_exported_file_size(self):
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Console Usage
+
+For a detailed guide about console mode usage follow this link:
+
+- [Spectroscopy Console guide ](../python-flim-labs/spectroscopy-console.md)
+
+ <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Spectroscopy introduction
+
+Check the spectroscopy introduction documentation at these link:
+
+- [Spectroscopy introduction](../index.md)
 
 ## License
 

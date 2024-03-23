@@ -69,6 +69,15 @@ To run the process the console should be opened inside the project directory `/S
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Useful Links
+
+For more details about the project follow these links:
+
+- [Spectroscopy introduction](../index.md)
+- [Spectroscopy GUI guide](../v1.0/index.md)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## License
 
 Distributed under the MIT License.
