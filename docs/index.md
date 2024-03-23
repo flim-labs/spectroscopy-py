@@ -23,7 +23,7 @@
 
 # About the project
 
-[![Spectroscopy GUI Overview](./docs/assets/images/screenshots/spectroscopy_gui_thumbnail_general.png)](https://www.youtube.com/watch?v=-ys8IoJaCI0)
+[![Spectroscopy GUI Overview](./assets/images/screenshots/spectroscopy_gui_thumbnail.png)](https://www.youtube.com/watch?v=-ys8IoJaCI0)
 
 Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py), a Python application designed to **analyze the fluorescence intensity decay as a function of time** and plotting a decay profile histogram. Facilitated by an underlying data processor developed in Rust, responsible for data retrieval from the hardware component, this application enables real-time data analysis and visualization. Whether your focus is on rigorous data analysis or dynamic visualizations, Spectroscopy serves as a flexible tool for the precise measurement and exploration of fluorescence intensity decay profile.
 
@@ -63,7 +63,7 @@ To be able to run this project locally on your machine you need to satisfy these
 - 4GB RAM
 - Multicore CPU
 - Possess a [FLIM LABS acquisition card](https://www.flimlabs.com/products/data-acquisition-card/) to be able to acquire your data
-- ZestSC3 drivers installed
+- FLIM LABS Data Acquisition Card drivers installed [(download here)](https://flim-labs.github.io/flim-labs-drivers/data-acquisition-card-drivers/)
 - Python version <= 3.9
 
 ### Installation
@@ -93,8 +93,8 @@ To be able to run this project locally on your machine you need to satisfy these
 
 Navigate to the following links to view detailed application usage guides:
 
-- [Spectroscopy GUI guide](./docs/v1.0/index.md)
-- [Spectroscopy Console guide](./docs/python-flim-labs/spectroscopy-console.md)
+- [Spectroscopy GUI guide](./v1.0/index.md)
+- [Spectroscopy Console guide](./python-flim-labs/spectroscopy-console.md)
 
 ## Contact
 

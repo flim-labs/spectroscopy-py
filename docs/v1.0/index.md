@@ -61,7 +61,7 @@ For a general introduction to the aims and technical requirements of the project
 
 ## GUI Usage
 
-[![Spectroscopy GUI features](../assets/images/screenshots/spectroscopy_gui_features_thumbnail.png)](https://www.youtube.com/watch?v=LVi3BD7OFrw)
+[![Spectroscopy GUI features](../assets/images/screenshots/spectroscopy_gui_features_thumbnail_general.png)](https://www.youtube.com/watch?v=LVi3BD7OFrw)
 
 The GUI mode provides advanced functionality for configuring analysis **parameters** and displaying live-streamed fluorescence intensity decay data. It allows simultaneous acquisition from up to **8 channels**, offering real-time data visualization in the form of plots.
 There are two types of graphs used to represent the data:
