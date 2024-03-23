@@ -64,7 +64,7 @@ For a general introduction to the aims and technical requirements of the project
 
 ## GUI Usage
 
-[![Spectroscopy GUI features](../assets/images/screenshots/spectroscopy_gui_features_thumbnail.png)](https://www.youtube.com/watch?v=LVi3BD7OFrw)
+[![Spectroscopy GUI features](../assets/images/screenshots/spectroscopy_gui_features_thumbnail.png)](https://www.youtube.com/watch?v=gOcA0R2C6HQ)
 
 The GUI mode provides advanced functionality for configuring analysis **parameters** and displaying live-streamed fluorescence intensity decay data. It allows simultaneous acquisition from up to **8 channels**, offering real-time data visualization in the form of plots.
 There are two types of graphs used to represent the data:
@@ -121,7 +121,7 @@ _Note: The connection type set in the software must match the actual connection 
 
 #### Bin width
 
-The user can set a **bin width** value ranging from _1_ to _1,000,000_ microseconds (μs).
+The user can set a **bin width** value ranging from _100_ to _1,000,000_ microseconds (μs).
 
 The **bin width** value specifies the time interval, in microseconds (μs), used to divide the data acquisition into **chunks**. For each chunk, a theoretical **photon decay curve** is generated. The final graph represents the **cumulative** decay curves of each individual chunk. This approach provides a detailed representation of fluorescence over time, illustrating both the intensity and decay of photon signals.
 
