@@ -64,7 +64,7 @@ class GUIStyles:
         """
 
     @staticmethod
-    def button_style(color_base, color_border, color_hover, color_pressed, min_width):
+    def button_style(color_base, color_border, color_hover, color_pressed, min_width, override=""):
         return f"""
             QPushButton {{
                 background-color: {color_base};
@@ -93,6 +93,8 @@ class GUIStyles:
                 border: 2px solid #cecece;
                 color: #8c8b8b;
             }}
+            
+            {override}
         """
 
     @staticmethod
@@ -148,6 +150,8 @@ class GUIStyles:
             "pressed": "#E65100",
         }
         GUIStyles._set_button_style(button, color_dict, min_width="100px")
+        # set no rounded corners
+        button.setStyleSheet(button.styleSheet() + "QPushButton {border-radius: 0px; padding-left: 10px; padding-right: 10px;}  QPushButton:checked {background-color: #FFA726;}")
 
     @staticmethod
     def set_checkbox_style():
