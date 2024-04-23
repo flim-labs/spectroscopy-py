@@ -9,11 +9,11 @@ class SelectControl:
         input = QComboBox()
         for value in options:
             input.addItem(value)
-        input.setCurrentText(selectedValue)
+        input.setCurrentIndex(0)
         input.currentIndexChanged.connect(event_callback)
         control.addWidget(q_label)
         control.addWidget(input)
         container.addLayout(control)
         if spacing:
             container.addSpacing(spacing)
-        return control, input
+        return control, input, q_label
