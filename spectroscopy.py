@@ -89,6 +89,7 @@ class SpectroscopyWindow(QWidget):
         self.decay_curves = []
         self.decay_curves_queue = queue.Queue()
         self.harmonic_selector_value = 1
+        self.cached_time_span_seconds = 3
 
         self.selected_channels = []
         self.selected_sync = self.settings.value(SETTINGS_SYNC, DEFAULT_SYNC)
@@ -490,6 +491,7 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC].hide()
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
             self.control_inputs[LOAD_REF_BTN].show()
+            self.control_inputs[LOAD_REF_BTN].setText("LOAD IRF")
         elif tab_name == "tab_data":
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -498,6 +500,7 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC].hide()
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
             self.control_inputs[LOAD_REF_BTN].show()
+            self.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
 
         self.control_inputs["save"].setHidden(True)
 
@@ -755,7 +758,6 @@ class SpectroscopyWindow(QWidget):
                 self.decay_curves.append(static_curve)
                 v_layout.addWidget(curve_widget, 4)
             else:
-                # add h layout, with a label 10K CPS, and a curve_widget
                 h_layout = QHBoxLayout()
                 label = QLabel("No CPS")
                 label.setStyleSheet(
@@ -787,13 +789,14 @@ class SpectroscopyWindow(QWidget):
 
                 # mantain aspect ratio
                 phasors_widget.setAspectLocked(True)
-                phasors_widget.setLabel('left', '', units='')
+                phasors_widget.setLabel('left', 's', units='')
+                phasors_widget.setLabel('bottom', 'g', units='')
                 phasors_widget.setTitle(f'Channel {self.selected_channels[i] + 1} phasors')
                 phasors_widget.setCursor(Qt.CursorShape.BlankCursor)
                 self.draw_semi_circle(phasors_widget)
 
                 self.phasors_charts.append(
-                    phasors_widget.plot([], [], pen=None, symbol='o', symbolPen=None, symbolSize=5,
+                    phasors_widget.plot([], [], pen=None, symbol='o', symbolPen=None, symbolSize=1,
                                         symbolBrush='#23F3AB'))
 
                 self.phasors_widgets.append(phasors_widget)
@@ -1001,6 +1004,8 @@ class SpectroscopyWindow(QWidget):
         print(f"Tau: {self.settings.value(SETTINGS_TAU_NS, '0')} ns")
         print(f"Reference file: {self.reference_file}")
 
+        self.cached_time_span_seconds = float(self.settings.value(SETTINGS_TIME_SPAN, DEFAULT_TIME_SPAN))
+
         if self.tab_selected == "tab_data":
             if not self.reference_file:
                 QMessageBox(QMessageBox.Icon.Warning, "Error", "No reference file selected",
@@ -1139,7 +1144,6 @@ class SpectroscopyWindow(QWidget):
             x = np.array([])
             y = np.array([])
 
-        # phasors is a list of 2 points: (g,s), (g,s), (g,s), ... I need to append them to x and y
         new_x = [p[0] for p in phasors]
         new_y = [p[1] for p in phasors]
 
@@ -1170,13 +1174,23 @@ class SpectroscopyWindow(QWidget):
             image_item = pg.ImageItem()
             image_item.setImage(h, levels=(0, 1))
             image_item.setLookupTable(self.create_cool_colormap().getLookupTable(0, 1.0))
-            image_item.setOpacity(0.5)
+            image_item.setOpacity(1)
             image_item.resetTransform()
+            # no change on chart
             image_item.setScale(1 / bins)
+            image_item.setPos(-2, -2)
             self.phasors_widgets[channel_index].clear()
             self.phasors_widgets[channel_index].addItem(image_item)
             self.draw_semi_circle(self.phasors_widgets[channel_index])
             self.generate_coords(channel_index)
+            self.generate_colorbar(channel_index, hMin, hMax)
+
+    def generate_colorbar(self, channel_index, min_value, max_value):
+        # Create a colorbar
+        colorbar = pg.GradientLegend((10, 100), (10, 100))
+        colorbar.setColorMap(self.create_cool_colormap(min_value, max_value))
+        colorbar.setLabels({'min': min_value, 'max': max_value})
+        self.phasors_widgets[channel_index].addItem(colorbar)
 
     def add_harmonic_selector(self, harmonics):
         if harmonics > 1:
@@ -1202,13 +1216,13 @@ class SpectroscopyWindow(QWidget):
         cmap = pg.ColorMap(pos, color)
         return cmap
 
-    def create_cool_colormap(self):
+    def create_cool_colormap(self, start=0.0, end=1.0):
         # Define the color stops from cyan to magenta
         pos = np.array([0.0, 1.0])
         color = np.array([
             [0, 255, 255, 255],  # Cyan
             [255, 0, 255, 255]  # Magenta
-        ], dtype=np.ubyte)
+        ], dtype=np.float32)
         cmap = pg.ColorMap(pos, color)
         return cmap
 
@@ -1284,6 +1298,7 @@ class SpectroscopyWindow(QWidget):
             print("Error: " + str(e))
             return
         x, y = self.intensity_lines[channel_index].getData()
+
         if x is None or (len(x) == 1 and x[0] == 0):
             x = np.array([time_ns / 1_000_000_000])
             y = np.array([np.sum(curve)])
