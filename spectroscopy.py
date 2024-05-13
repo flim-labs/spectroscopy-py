@@ -443,6 +443,24 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs["save"] = save_button
         controls_row.addWidget(save_button)
 
+        export_button = QPushButton("EXPORT")
+        export_button.setFlat(True)
+        export_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        export_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        export_button.setHidden(True)
+        export_button.clicked.connect(self.export_data)
+        export_button.setStyleSheet("""
+        QPushButton {
+            background-color: #8d4ef2;
+            color: white;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 16px;
+        }
+        """)
+        self.control_inputs["export_button"] = export_button
+        controls_row.addWidget(export_button)
+
         start_button = QPushButton("START")
         start_button.setFlat(True)
         start_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
@@ -956,6 +974,30 @@ class SpectroscopyWindow(QWidget):
         else:
             frequency_mhz = int(self.selected_sync.split("_")[-1])
         return frequency_mhz
+
+    def export_data(self):
+        if not self.write_data:
+            return
+
+        dialog = QFileDialog()
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        dialog.setNameFilter("Binary files (*.bin)")
+        dialog.setDefaultSuffix("bin")
+        file_name, _ = dialog.getSaveFileName(
+            self,
+            "Save binary file",
+            "",
+            "Binary files (*.bin)",
+            options=QFileDialog.Option.DontUseNativeDialog
+        )
+        if file_name:
+            if not file_name.endswith('.bin'):
+                file_name += '.bin'
+            try:
+                flim_labs.export_data(file_name)
+            except Exception as e:
+                QMessageBox(QMessageBox.Icon.Warning, "Error", "Error exporting data: " + str(e),
+                            QMessageBox.StandardButton.Ok).exec()
 
     def begin_spectroscopy_experiment(self):
         if self.selected_sync == "sync_in":
