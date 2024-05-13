@@ -33,3 +33,5 @@ share/python-wheels/
 MANIFEST
 
 .idea
+
+settings.ini
