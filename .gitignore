@@ -36,3 +36,4 @@ MANIFEST
 
 settings.ini
 *.reference.json
+.pid

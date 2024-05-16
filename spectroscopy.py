@@ -39,7 +39,7 @@ DEFAULT_TIME_SPAN = 10
 SETTINGS_CONNECTION_TYPE = "connection_type"
 SETTINGS_CALIBRATION_TYPE = "calibration"
 DEFAULT_SETTINGS_CALIBRATION_TYPE = 0
-DEFAULT_CONNECTION_TYPE = "SMA"
+DEFAULT_CONNECTION_TYPE = "1"
 SETTINGS_FREE_RUNNING = "free_running"
 DEFAULT_FREE_RUNNING = "false"
 SETTINGS_ACQUISITION_TIME = "acquisition_time"
@@ -895,10 +895,10 @@ class SpectroscopyWindow(QWidget):
 
         tau_m_component = (1 / (s ** 2 + g ** 2)) - 1
         if tau_m_component < 0:
-            text.setText(f"𝜏ϕ={round(tau_phi, 2)}")
+            text.setText(f"𝜏ϕ={round(tau_phi, 2)} μs")
         else:
             tau_m = (1 / (2 * np.pi * freq_mhz * harmonic)) * np.sqrt(tau_m_component) * 1e3
-            text.setText(f"𝜏ϕ={round(tau_phi, 2)}; 𝜏m={round(tau_m, 2)}")
+            text.setText(f"𝜏ϕ={round(tau_phi, 2)} μs; 𝜏m={round(tau_m, 2)} μs")
 
     def draw_semi_circle(self, widget):
         x = np.linspace(0, 1, 1000)
@@ -1021,9 +1021,9 @@ class SpectroscopyWindow(QWidget):
             self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)) * 1000
         bin_width_micros = int(self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH))
 
-        connection_type = self.settings.value(SETTINGS_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
+        connection_type = self.control_inputs["channel_type"].currentText()
 
-        if str(connection_type) == "0":
+        if str(connection_type) == "USB":
             connection_type = "USB"
         else:
             connection_type = "SMA"
@@ -1207,8 +1207,14 @@ class SpectroscopyWindow(QWidget):
             if x is None:
                 continue
             # Create a 2D histogram on x, y with 256 bins
-            # TODO quadrato=> x -0.5 a 1.5 (128 bin) y -0.5 a 1.5 (128 bin)
-            h, xedges, yedges = np.histogram2d(x, y, bins=bins, range=[[0, 1], [0, 1]])
+
+            h, xedges, yedges = np.histogram2d(x, y, bins=bins * 4, range=[[-2, 2], [-2, 2]])
+
+            nonZeroH = h[h > 0]
+            hMin = np.min(nonZeroH)
+            hMax = np.max(h)
+
+            print(f"Min: {hMin}, Max: {hMax}")
 
             h = h / np.max(h)
             h[h == 0] = np.nan
@@ -1222,7 +1228,7 @@ class SpectroscopyWindow(QWidget):
             image_item.setScale(1 / bins)
             image_item.setPos(-2, -2)
             self.phasors_widgets[channel_index].clear()
-            self.phasors_widgets[channel_index].addItem(image_item)
+            self.phasors_widgets[channel_index].addItem(image_item, ignoreBounds=True)
             self.draw_semi_circle(self.phasors_widgets[channel_index])
             self.generate_coords(channel_index)
             self.generate_colorbar(channel_index, hMin, hMax)
@@ -1260,7 +1266,7 @@ class SpectroscopyWindow(QWidget):
 
     def create_cool_colormap(self, start=0.0, end=1.0):
         # Define the color stops from cyan to magenta
-        pos = np.array([0.0, 1.0])
+        pos = np.array([start, end])
         color = np.array([
             [0, 255, 255, 255],  # Cyan
             [255, 0, 255, 255]  # Magenta
@@ -1314,9 +1320,14 @@ class SpectroscopyWindow(QWidget):
             else:
                 x = np.append(x, time_ns / 1_000_000_000)
                 y = np.append(y, np.sum(curve))
-            # if len(x) > 100:
-            #     x = x[1:]
-            #     y = y[1:]
+
+            # trim the data based on self.cached_time_span_seconds
+
+            if len(x) > 2:
+                while x[-1] - x[0] > self.cached_time_span_seconds:
+                    x = x[1:]
+                    y = y[1:]
+
             intensity_line.setData(x, y)
 
         decay_curve = self.decay_curves[channel_index] if channel_index < len(self.decay_curves) else None
