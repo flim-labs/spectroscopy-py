@@ -8,10 +8,11 @@ from math import floor, log
 import flim_labs
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
-from PyQt6.QtGui import QPixmap, QFont
+from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent, QRect
+from PyQt6.QtGui import QPixmap, QFont, QPainter, QColor
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout, QLayout, QLabel, \
     QSizePolicy, QPushButton, QDialog, QMessageBox, QFileDialog
+from pyqtgraph import QtWidgets, QtGui, QtCore
 
 from components.fancy_checkbox import FancyButton
 from components.gradient_text import GradientText
@@ -64,6 +65,36 @@ MODE_STOPPED = "stopped"
 MODE_RUNNING = "running"
 
 
+class FixedRectangleWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        button = QPushButton("Test Button")
+        layout.addWidget(button)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        self.drawRectangle(painter)
+
+    def drawRectangle(self, painter):
+        # Define the fixed position and size of the rectangle
+        rect_x = 50
+        rect_y = 50
+        rect_width = 100
+        rect_height = 50
+
+        # Set the rectangle color
+        painter.setBrush(QColor(255, 0, 0, 127))  # Semi-transparent red
+        painter.setPen(QColor(0, 0, 0))  # Black border
+
+        # Draw the rectangle
+        painter.drawRect(QRect(rect_x, rect_y, rect_width, rect_height))
+
 class SpectroscopyWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -78,7 +109,7 @@ class SpectroscopyWindow(QWidget):
         self.mode = MODE_STOPPED
         self.tab_selected = "tab_spectroscopy"
         self.reference_file = None
-
+        self.overlay2 = None
         self.intensity_lines = []
         self.phasors_charts = []
         self.phasors_widgets = []
@@ -111,6 +142,7 @@ class SpectroscopyWindow(QWidget):
         # self.update_sync_in_button()
 
         self.generate_plots()
+        self.all_phasors_points = self.get_empty_phasors_points()
 
         self.overlay = OverlayWidget(self)
         self.overlay.resize(QSize(100, 100))
@@ -127,6 +159,17 @@ class SpectroscopyWindow(QWidget):
         # self.timer_update.start(25)
 
         self.calc_exported_file_size()
+
+    def get_empty_phasors_points(self):
+        empty = []
+        for i in range(8):
+            empty.append({
+                1: [],
+                2: [],
+                3: [],
+                4: []
+            })
+        return empty
 
     def eventFilter(self, source, event):
         try:
@@ -381,7 +424,7 @@ class SpectroscopyWindow(QWidget):
         label, inp = InputNumberControl.setup(
             "Harmonics",
             1,
-            1,
+            4,
             int(self.settings.value(SETTINGS_HARMONIC, "1")),
             controls_row,
             self.on_harmonic_change
@@ -390,8 +433,12 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[SETTINGS_HARMONIC] = inp
         self.control_inputs[SETTINGS_HARMONIC_LABEL] = label
 
+
+        spacer = QWidget()
+        controls_row.addWidget(spacer, 1)
+
         ctl, inp, label = SelectControl.setup(
-            "Harmonic:",
+            "Harmonic displayed:",
             1,
             controls_row,
             ["1", "2", "3", "4"],
@@ -402,10 +449,6 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[HARMONIC_SELECTOR] = inp
         label.hide()
         inp.hide()
-
-        spacer = QWidget()
-        spacer.setMaximumWidth(300)
-        controls_row.addWidget(spacer)
 
         save_button = QPushButton("LOAD REFERENCE")
         save_button.setFlat(True)
@@ -488,6 +531,7 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(False)
         self.tab_selected = tab_name
         self.control_inputs[self.tab_selected].setChecked(True)
+        self.hide_harmonic_selector()
         if tab_name == "tab_spectroscopy":
             # hide tau input
             self.control_inputs["tau_label"].hide()
@@ -556,9 +600,6 @@ class SpectroscopyWindow(QWidget):
 
     def on_save_reference(self):
         if self.tab_selected == "tab_spectroscopy":
-
-            print("TODO: CHECK id OF COMBO!")
-
             # read all lines from .pid file
             with open(".pid", "r") as f:
                 lines = f.readlines()
@@ -895,10 +936,10 @@ class SpectroscopyWindow(QWidget):
 
         tau_m_component = (1 / (s ** 2 + g ** 2)) - 1
         if tau_m_component < 0:
-            text.setText(f"𝜏ϕ={round(tau_phi, 2)} μs")
+            text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns")
         else:
             tau_m = (1 / (2 * np.pi * freq_mhz * harmonic)) * np.sqrt(tau_m_component) * 1e3
-            text.setText(f"𝜏ϕ={round(tau_phi, 2)} μs; 𝜏m={round(tau_m, 2)} μs")
+            text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏m={round(tau_m, 2)} ns")
 
     def draw_semi_circle(self, widget):
         x = np.linspace(0, 1, 1000)
@@ -1011,6 +1052,7 @@ class SpectroscopyWindow(QWidget):
 
         self.clear_plots()
         self.generate_plots(frequency_mhz)
+        self.hide_harmonic_selector()
 
         if len(self.selected_channels) == 0:
             QMessageBox(QMessageBox.Icon.Warning, "Error", "No channels selected",
@@ -1035,6 +1077,8 @@ class SpectroscopyWindow(QWidget):
             sync_connection="sma"
         )
 
+        self.harmonic_selector_value = self.control_inputs[SETTINGS_HARMONIC].value()
+
         print(f"Firmware selected: {firmware_selected}")
         print(f"Connection type: {connection_type}")
         print(f"Frequency: {frequency_mhz} Mhz")
@@ -1045,6 +1089,7 @@ class SpectroscopyWindow(QWidget):
         print(f"Tau: {self.settings.value(SETTINGS_TAU_NS, '0')} ns")
         print(f"Tau: {self.settings.value(SETTINGS_TAU_NS, '0')} ns")
         print(f"Reference file: {self.reference_file}")
+        print(f"Harmonics: {self.harmonic_selector_value}")
 
         self.cached_time_span_seconds = float(self.settings.value(SETTINGS_TIME_SPAN, DEFAULT_TIME_SPAN))
 
@@ -1074,6 +1119,7 @@ class SpectroscopyWindow(QWidget):
             #   ],
             #   "laser_period_ns": 25.0,
             #   "tau_ns": 2.0
+            #   "harmonics": 1
             # }
             with open(self.reference_file, "r") as f:
                 reference_data = json.load(f)
@@ -1085,6 +1131,12 @@ class SpectroscopyWindow(QWidget):
                     QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (channels mismatch)",
                                 QMessageBox.StandardButton.Ok).exec()
                     return
+                if "harmonics" not in reference_data:
+                    QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (missing harmonics)",
+                                QMessageBox.StandardButton.Ok).exec()
+                    return
+                self.harmonic_selector_value = int(reference_data["harmonics"])
+                print(f"Harmonics from reference file: {self.harmonic_selector_value}")
                 if "curves" not in reference_data:
                     QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (missing curves)",
                                 QMessageBox.StandardButton.Ok).exec()
@@ -1108,6 +1160,8 @@ class SpectroscopyWindow(QWidget):
 
             reference_file = None if self.tab_selected != "tab_data" else self.reference_file
 
+            self.all_phasors_points = self.get_empty_phasors_points()
+
             flim_labs.start_spectroscopy(
                 enabled_channels=self.selected_channels,
                 bin_width_micros=bin_width_micros,
@@ -1115,7 +1169,8 @@ class SpectroscopyWindow(QWidget):
                 firmware_file=firmware_selected,
                 acquisition_time_millis=acquisition_time_millis,
                 tau_ns=tau_ns,
-                reference_file=reference_file
+                reference_file=reference_file,
+                harmonics=int(self.harmonic_selector_value),
             )
         except Exception as e:
             QMessageBox(QMessageBox.Icon.Warning, "Error", "Error starting spectroscopy: " + str(e),
@@ -1153,17 +1208,22 @@ class SpectroscopyWindow(QWidget):
                         break
 
                     if self.is_phasors():
-                        self.quantize_phasors()
-                        self.add_harmonic_selector(int(self.settings.value(SETTINGS_HARMONIC, "1")))
+                        self.quantize_phasors(1)
+                        self.show_harmonic_selector(self.harmonic_selector_value)
                         break
 
                     break
 
                 if 'sp_phasors' in v[0]:
                     channel = v[1][0]
-                    harmonic = v[1][0]
+                    harmonic = v[2][0]
                     phasors = v[3]
-                    self.draw_points_in_phasors(channel, harmonic, phasors)
+                    if harmonic == 1:
+                        self.draw_points_in_phasors(channel, harmonic, phasors)
+
+                    channel_index = self.selected_channels.index(channel)
+                    self.all_phasors_points[channel_index][harmonic].extend(phasors)
+
                     continue
 
                 try:
@@ -1195,57 +1255,56 @@ class SpectroscopyWindow(QWidget):
         self.phasors_charts[channel_index].setData(x, y)
         pass
 
-    def quantize_phasors(self):
-        # create an 2d histogram of the phasors on the unit circle splitting the circle in 256 bins
-        # the histogram will be normalized to the maximum value
-        # the histogram will be quantized to 256 bins
-        # for every channel:
-        bins = 64
+    def quantize_phasors(self, harmonic, bins=64):
         for selected_channel in self.selected_channels:
             channel_index = self.selected_channels.index(selected_channel)
-            x, y = self.phasors_charts[channel_index].getData()
-            if x is None:
-                continue
-            # Create a 2D histogram on x, y with 256 bins
 
+            x = [p[0] for p in self.all_phasors_points[channel_index][harmonic]]
+            y = [p[1] for p in self.all_phasors_points[channel_index][harmonic]]
+
+            if x is None or y is None or len(x) == 0 or len(y) == 0:
+                continue
             h, xedges, yedges = np.histogram2d(x, y, bins=bins * 4, range=[[-2, 2], [-2, 2]])
 
-            nonZeroH = h[h > 0]
-            hMin = np.min(nonZeroH)
-            hMax = np.max(h)
-
-            print(f"Min: {hMin}, Max: {hMax}")
-
+            non_zero_h = h[h > 0]
+            all_zeros = len(non_zero_h) == 0
+            h_min = np.min(non_zero_h)
+            h_max = np.max(h)
             h = h / np.max(h)
             h[h == 0] = np.nan
-            # Applying a colormap and setting image with half opacity
             image_item = pg.ImageItem()
             image_item.setImage(h, levels=(0, 1))
             image_item.setLookupTable(self.create_cool_colormap().getLookupTable(0, 1.0))
             image_item.setOpacity(1)
             image_item.resetTransform()
-            # no change on chart
             image_item.setScale(1 / bins)
             image_item.setPos(-2, -2)
             self.phasors_widgets[channel_index].clear()
             self.phasors_widgets[channel_index].addItem(image_item, ignoreBounds=True)
             self.draw_semi_circle(self.phasors_widgets[channel_index])
             self.generate_coords(channel_index)
-            self.generate_colorbar(channel_index, hMin, hMax)
+            if not all_zeros:
+                self.generate_colorbar(channel_index, h_min, h_max)
 
     def generate_colorbar(self, channel_index, min_value, max_value):
-        # Create a colorbar
+        print(f"create a color bar Min: {min_value}, Max: {max_value}")
         colorbar = pg.GradientLegend((10, 100), (10, 100))
-        colorbar.setColorMap(self.create_cool_colormap(min_value, max_value))
-        colorbar.setLabels({'min': min_value, 'max': max_value})
+        colorbar.setColorMap(self.create_cool_colormap(0, 1))
+        colorbar.setLabels(
+            { f"{min_value}": 0, f"{max_value}": 1 }
+        )
         self.phasors_widgets[channel_index].addItem(colorbar)
 
-    def add_harmonic_selector(self, harmonics):
+    def show_harmonic_selector(self, harmonics):
         if harmonics > 1:
             self.control_inputs[HARMONIC_SELECTOR].show()
             self.control_inputs[HARMONIC_SELECTOR_LABEL].show()
-            self.control_inputs[HARMONIC_SELECTOR].setMaximum(harmonics)
-            self.control_inputs[HARMONIC_SELECTOR].setValue(1)
+            # clear the items
+            self.control_inputs[HARMONIC_SELECTOR].clear()
+            for i in range(harmonics):
+                self.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))
+
+            self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
             self.harmonic_selector_value = 1
 
     def hide_harmonic_selector(self):
@@ -1338,8 +1397,10 @@ class SpectroscopyWindow(QWidget):
         time.sleep(0.01)
 
     def on_harmonic_selector_change(self, value):
-        self.harmonic_selector_value = value
-        print(f"Harmonic selected: {value}")
+        self.harmonic_selector_value = int(value) + 1
+        if self.harmonic_selector_value >= 1:
+            print(f"Harmonic selector changed to {self.harmonic_selector_value}")
+            self.quantize_phasors(self.harmonic_selector_value)
 
     def update_plots(self):
         try:
