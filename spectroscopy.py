@@ -753,6 +753,13 @@ class SpectroscopyWindow(QWidget):
             v_layout = QVBoxLayout()
 
             if self.tab_selected != "tab_data":
+                h_layout = QHBoxLayout()
+                label = QLabel("No CPS")
+                label.setStyleSheet(
+                    "QLabel { color : #FFA726; font-size: 65px; weight: bold; background-color: #000000; padding: 8px; }")
+                # label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
+                self.cps_widgets.append(label)
+                self.cps_counts.append({"last_time_ns": 0, "last_count": 0, "current_count": 0})
 
                 intensity_widget = pg.PlotWidget()
                 intensity_widget.setLabel('left', 'AVG. Photon counts', units='')
@@ -767,7 +774,9 @@ class SpectroscopyWindow(QWidget):
                 intensity_plot = intensity_widget.plot(x, y, pen='#23F3AB')
                 self.intensity_lines.append(intensity_plot)
 
-                v_layout.addWidget(intensity_widget, 1)
+                h_layout.addWidget(label, stretch=1)
+                h_layout.addWidget(intensity_widget, stretch=1)
+                v_layout.addLayout(h_layout, 1)
 
                 curve_widget = pg.PlotWidget()
                 curve_widget.setLabel('left', 'Photon counts', units='')
