@@ -508,10 +508,15 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
             self.control_inputs["calibration"].show()
             self.control_inputs["calibration_label"].show()
-            self.control_inputs[SETTINGS_CALIBRATION_TYPE].setCurrentIndex(DEFAULT_SETTINGS_CALIBRATION_TYPE)
-            self.on_tau_change(0.0)
-            self.on_harmonic_change(1)
-            self.on_calibration_change(DEFAULT_SETTINGS_CALIBRATION_TYPE)
+
+            current_tau = self.settings.value(SETTINGS_TAU_NS, "0")
+            self.control_inputs["tau"].setValue(float(current_tau))
+            current_harmonic = self.settings.value(SETTINGS_HARMONIC, "1")
+            self.control_inputs[SETTINGS_HARMONIC].setValue(int(current_harmonic))
+            self.on_tau_change(float(current_tau))
+            self.on_harmonic_change(int(current_harmonic))
+            current_calibration = self.settings.value(SETTINGS_CALIBRATION_TYPE, DEFAULT_SETTINGS_CALIBRATION_TYPE)
+            self.on_calibration_change(int(current_calibration))
             self.control_inputs[LOAD_REF_BTN].hide()
         elif tab_name == "tab_deconv":
             self.control_inputs["tau_label"].hide()
@@ -625,10 +630,6 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["tau"].show()
             self.control_inputs[SETTINGS_HARMONIC].show()
             self.control_inputs[SETTINGS_HARMONIC_LABEL].show()
-            self.on_harmonic_change(1)
-            self.on_tau_change(0.0)
-            self.control_inputs["tau"].setValue(0.0)
-            self.control_inputs[SETTINGS_HARMONIC].setValue(1)
         else:
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -756,7 +757,7 @@ class SpectroscopyWindow(QWidget):
                 h_layout = QHBoxLayout()
                 label = QLabel("No CPS")
                 label.setStyleSheet(
-                    "QLabel { color : #FFA726; font-size: 65px; weight: bold; background-color: #000000; padding: 8px; }")
+                    "QLabel { color : #FFA726; font-size: 65px; font-weight: bold; background-color: #000000; padding: 8px; }")
                 # label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
                 self.cps_widgets.append(label)
                 self.cps_counts.append({"last_time_ns": 0, "last_count": 0, "current_count": 0})
@@ -797,7 +798,7 @@ class SpectroscopyWindow(QWidget):
                 h_layout = QHBoxLayout()
                 label = QLabel("No CPS")
                 label.setStyleSheet(
-                    "QLabel { color : #FFA726; font-size: 65px; weight: bold; background-color: #000000; padding: 8px; }")
+                    "QLabel { color : #FFA726; font-size: 65px; font-weight: bold; background-color: #000000; padding: 8px; }")
                 # label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
                 self.cps_widgets.append(label)
                 self.cps_counts.append({"last_time_ns": 0, "last_count": 0, "current_count": 0})
@@ -909,14 +910,19 @@ class SpectroscopyWindow(QWidget):
         g = mouse_point.x()
         s = mouse_point.y()
 
+        if freq_mhz == 0.0:
+            return
+
         tau_phi = (1 / (2 * np.pi * freq_mhz * harmonic)) * (s / g) * 1e3
 
         tau_m_component = (1 / (s ** 2 + g ** 2)) - 1
         if tau_m_component < 0:
             text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns")
+            text.setHtml('<div style="background-color: rgba(0, 0, 0, 0.5);">{}</div>'.format(f"𝜏ϕ={round(tau_phi, 2)} ns"))
         else:
             tau_m = (1 / (2 * np.pi * freq_mhz * harmonic)) * np.sqrt(tau_m_component) * 1e3
             text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏m={round(tau_m, 2)} ns")
+            text.setHtml('<div style="background-color: rgba(0, 0, 0, 0.5);">{}</div>'.format(f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏m={round(tau_m, 2)} ns"))
 
     def draw_semi_circle(self, widget):
         x = np.linspace(0, 1, 1000)
