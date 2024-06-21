@@ -772,7 +772,8 @@ class SpectroscopyWindow(QWidget):
 
                 x = np.arange(1)
                 y = x * 0
-                intensity_plot = intensity_widget.plot(x, y, pen='#23F3AB')
+                intensity_plot = intensity_widget.plot(x, y, pen='#23F3AB', pen_width=2)
+
                 self.intensity_lines.append(intensity_plot)
 
                 h_layout.addWidget(label, stretch=1)
@@ -791,7 +792,7 @@ class SpectroscopyWindow(QWidget):
                     x = np.arange(1)
 
                 y = x * 0
-                static_curve = curve_widget.plot(x, y, pen='r')
+                static_curve = curve_widget.plot(x, y, pen='r', pen_width=2)
                 self.decay_curves.append(static_curve)
                 v_layout.addWidget(curve_widget, 4)
             else:
@@ -815,7 +816,7 @@ class SpectroscopyWindow(QWidget):
                     x = np.arange(1)
 
                 y = x * 0
-                static_curve = curve_widget.plot(x, y, pen='r')
+                static_curve = curve_widget.plot(x, y, pen='r', pen_width=2)
                 self.decay_curves.append(static_curve)
                 h_layout.addWidget(label, stretch=1)
                 h_layout.addWidget(curve_widget, stretch=1)
