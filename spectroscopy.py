@@ -7,9 +7,13 @@ from math import floor, log
 
 import flim_labs
 import numpy as np
+from components.box_message import BoxMessage
+from components.buttons import CollapseButton
+from components.layout_utilities import draw_layout_separator
+from components.plots_config import PlotsConfigPopup
 import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
-from PyQt6.QtGui import QPixmap, QFont
+from PyQt6.QtGui import QPixmap, QFont, QIcon
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout, QLayout, QLabel, \
     QSizePolicy, QPushButton, QDialog, QMessageBox, QFileDialog
 
@@ -23,46 +27,10 @@ from components.logo_utilities import OverlayWidget, TitlebarIcon
 from components.resource_path import resource_path
 from components.select_control import SelectControl
 from components.switch_control import SwitchControl
+from settings import *
 
-VERSION = "1.2"
-APP_DEFAULT_WIDTH = 1000
-APP_DEFAULT_HEIGHT = 800
-TOP_BAR_HEIGHT = 250
-MAX_CHANNELS = 8
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
-
-SETTINGS_BIN_WIDTH = "bin_width"
-DEFAULT_BIN_WIDTH = 1000
-SETTINGS_TIME_SPAN = "time_span"
-DEFAULT_TIME_SPAN = 10
-SETTINGS_CONNECTION_TYPE = "connection_type"
-SETTINGS_CALIBRATION_TYPE = "calibration"
-DEFAULT_SETTINGS_CALIBRATION_TYPE = 0
-DEFAULT_CONNECTION_TYPE = "1"
-SETTINGS_FREE_RUNNING = "free_running"
-DEFAULT_FREE_RUNNING = "false"
-SETTINGS_ACQUISITION_TIME = "acquisition_time"
-SETTINGS_TAU_NS = "tau_ns"
-SETTINGS_HARMONIC = "harmonic"
-HARMONIC_SELECTOR = "harmonic_selector"
-HARMONIC_SELECTOR_LABEL = "harmonic_selector_label"
-SETTINGS_HARMONIC_LABEL = "harmonic_label"
-SETTINGS_HARMONIC_DEFAULT = 1
-DEFAULT_ACQUISITION_TIME = 10
-SETTINGS_SYNC = "sync"
-DEFAULT_SYNC = "sync_in"
-SETTINGS_SYNC_IN_FREQUENCY_MHZ = "sync_in_frequency_mhz"
-DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
-SETTINGS_WRITE_DATA = "write_data"
-DEFAULT_WRITE_DATA = True
-CURSOR_TEXT = "⨁"
-
-LOAD_REF_BTN = "load_reference_btn"
-
-MODE_STOPPED = "stopped"
-MODE_RUNNING = "running"
-
 
 class SpectroscopyWindow(QWidget):
     def __init__(self):
@@ -70,6 +38,8 @@ class SpectroscopyWindow(QWidget):
 
         self.update_plots_enabled = False
         self.settings = self.init_settings()
+        
+        self.widgets = {}
 
         self.channel_checkboxes = []
         self.sync_buttons = []
@@ -79,19 +49,23 @@ class SpectroscopyWindow(QWidget):
         self.tab_selected = "tab_spectroscopy"
         self.reference_file = None
         self.overlay2 = None
-        self.intensity_lines = []
-        self.phasors_charts = []
-        self.phasors_widgets = []
-        self.phasors_coords = []
-        self.phasors_crosshairs = []
-        self.cps_widgets = []
-        self.cps_counts = []
-        self.decay_curves = []
+     
+        self.intensity_lines = {}
+        self.phasors_charts = {}
+        self.phasors_widgets = {}
+        self.phasors_coords = {}
+        self.phasors_crosshairs = {}
+        self.cps_widgets = {}
+        self.cps_counts = {}
+        self.decay_curves = {}
+        
         self.decay_curves_queue = queue.Queue()
         self.harmonic_selector_value = 1
         self.cached_time_span_seconds = 3
 
         self.selected_channels = []
+        default_plots_to_show = self.settings.value(SETTINGS_PLOTS_TO_SHOW, DEFAULT_PLOTS_TO_SHOW)
+        self.plots_to_show = json.loads(default_plots_to_show) if default_plots_to_show is not None else []
         self.selected_sync = self.settings.value(SETTINGS_SYNC, DEFAULT_SYNC)
         self.sync_in_frequency_mhz = float(
             self.settings.value(SETTINGS_SYNC_IN_FREQUENCY_MHZ, DEFAULT_SYNC_IN_FREQUENCY_MHZ))
@@ -105,7 +79,7 @@ class SpectroscopyWindow(QWidget):
         self.get_selected_channels_from_settings()
 
         (self.top_bar, self.grid_layout) = self.init_ui()
-
+       
         self.on_tab_selected("tab_spectroscopy")
 
         # self.update_sync_in_button()
@@ -114,11 +88,7 @@ class SpectroscopyWindow(QWidget):
         self.all_phasors_points = self.get_empty_phasors_points()
 
         self.overlay = OverlayWidget(self)
-        self.overlay.resize(QSize(100, 100))
         self.installEventFilter(self)
-        self.overlay.raise_()
-
-        GUIStyles.set_fonts(self)
 
         self.timer_update = QTimer()
         self.timer_update.timeout.connect(self.update_plots)
@@ -140,33 +110,21 @@ class SpectroscopyWindow(QWidget):
             })
         return empty
 
-    def eventFilter(self, source, event):
-        try:
-            if event.type() in (
-                    QEvent.Type.Resize, QEvent.Type.Show, QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
-                self.overlay.raise_()
-                self.overlay.resize(self.size())
-            return super().eventFilter(source, event)
-        except:
-            pass
-
     def init_ui(self):
         self.setWindowTitle("FlimLabs - SPECTROSCOPY v" + VERSION)
         TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self)
         main_layout = QVBoxLayout()
         top_bar = self.create_top_bar()
-        main_layout.addWidget(top_bar)
+        main_layout.addWidget(top_bar, 0, Qt.AlignmentFlag.AlignTop)
         grid_layout = QGridLayout()
         main_layout.addLayout(grid_layout)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setLayout(main_layout)
-
         self.resize(self.settings.value("size", QSize(APP_DEFAULT_WIDTH, APP_DEFAULT_HEIGHT)))
         self.move(
             self.settings.value("pos", QApplication.primaryScreen().geometry().center() - self.frameGeometry().center())
         )
-
         return top_bar, grid_layout
 
     @staticmethod
@@ -174,27 +132,25 @@ class SpectroscopyWindow(QWidget):
         settings = QSettings('settings.ini', QSettings.Format.IniFormat)
         return settings
 
-    def closeEvent(self, event):
-        self.settings.setValue("size", self.size())
-        self.settings.setValue("pos", self.pos())
-        event.accept()
-
     def create_top_bar(self):
         top_bar = QVBoxLayout()
+        top_bar.setContentsMargins(0,0,0,0)
         top_bar.setAlignment(Qt.AlignmentFlag.AlignTop)
-
+        top_collapsible_widget = QWidget()
+        top_collapsible_layout = QVBoxLayout()
+        top_collapsible_layout.setContentsMargins(0,0,0,0)
+        top_collapsible_layout.setSpacing(0)
+        self.widgets[TOP_COLLAPSIBLE_WIDGET] = top_collapsible_widget
         top_bar_header = QHBoxLayout()
-
+        top_bar_header.addSpacing(10)
         top_bar_header.addLayout(self.create_logo_and_title())
-
         # add hlayout
         tabs_layout = QHBoxLayout()
         # set height of parent
         tabs_layout.setContentsMargins(0, 0, 0, 0)
         # no spacing
         tabs_layout.setSpacing(0)
-
-        self.control_inputs["tab_spectroscopy"] = QPushButton("Spectroscopy")
+        self.control_inputs["tab_spectroscopy"] = QPushButton("SPECTROSCOPY")
         self.control_inputs["tab_spectroscopy"].setFlat(True)
         self.control_inputs["tab_spectroscopy"].setSizePolicy(QSizePolicy.Policy.Preferred,
                                                               QSizePolicy.Policy.Preferred)
@@ -204,8 +160,7 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs["tab_spectroscopy"].setChecked(True)
         self.control_inputs["tab_spectroscopy"].clicked.connect(lambda: self.on_tab_selected("tab_spectroscopy"))
         tabs_layout.addWidget(self.control_inputs["tab_spectroscopy"])
-
-        self.control_inputs["tab_data"] = QPushButton("Phasors")
+        self.control_inputs["tab_data"] = QPushButton("PHASORS")
         self.control_inputs["tab_data"].setFlat(True)
         self.control_inputs["tab_data"].setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self.control_inputs["tab_data"].setCursor(Qt.CursorShape.PointingHandCursor)
@@ -213,8 +168,7 @@ class SpectroscopyWindow(QWidget):
         GUIStyles.set_config_btn_style(self.control_inputs["tab_data"])
         self.control_inputs["tab_data"].clicked.connect(lambda: self.on_tab_selected("tab_data"))
         tabs_layout.addWidget(self.control_inputs["tab_data"])
-
-        self.control_inputs["tab_deconv"] = QPushButton("Fitting")
+        self.control_inputs["tab_deconv"] = QPushButton("FITTING")
         self.control_inputs["tab_deconv"].setFlat(True)
         self.control_inputs["tab_deconv"].setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self.control_inputs["tab_deconv"].setCursor(Qt.CursorShape.PointingHandCursor)
@@ -222,54 +176,49 @@ class SpectroscopyWindow(QWidget):
         GUIStyles.set_config_btn_style(self.control_inputs["tab_deconv"])
         self.control_inputs["tab_deconv"].clicked.connect(lambda: self.on_tab_selected("tab_deconv"))
         tabs_layout.addWidget(self.control_inputs["tab_deconv"])
-
         top_bar_header.addLayout(tabs_layout)
-
         top_bar_header.addStretch(1)
         info_link_widget, export_data_control = self.create_export_data_input()
         file_size_info_layout = self.create_file_size_info_row()
-
         top_bar_header.addWidget(info_link_widget)
         top_bar_header.addLayout(export_data_control)
         export_data_control.addSpacing(10)
-
         top_bar_header.addLayout(file_size_info_layout)
-
+        top_bar_header.addSpacing(10)
         top_bar.addLayout(top_bar_header)
-        top_bar.addSpacing(10)
-        top_bar.addLayout(self.create_channel_selector())
-        top_bar.addLayout(self.create_sync_buttons())
-        top_bar.addSpacing(5)
+        channels_widget = QWidget()
+        sync_buttons_widget = QWidget()
+        channels_widget.setLayout(self.create_channel_selector())
+        sync_buttons_widget.setLayout(self.create_sync_buttons())
+        top_collapsible_layout.addWidget(channels_widget, 0, Qt.AlignmentFlag.AlignTop)
+        top_collapsible_layout.addWidget(sync_buttons_widget, 0, Qt.AlignmentFlag.AlignTop)
+        top_collapsible_widget.setLayout(top_collapsible_layout)
+        top_bar.addWidget(top_collapsible_widget)
         top_bar.addLayout(self.create_control_inputs())
-
+        top_bar.addWidget(draw_layout_separator())
+        top_bar.addSpacing(20)
         # # add a label to use as status
         # self.control_inputs["status"] = QLabel("Status: Ready")
         # self.control_inputs["status"].setStyleSheet("QLabel { color : #FFA726; }")
         # top_bar.addWidget(self.control_inputs["status"])
-
         container = QWidget()
         container.setLayout(top_bar)
-        container.setFixedHeight(TOP_BAR_HEIGHT)
         return container
 
     def create_logo_and_title(self):
         row = QHBoxLayout()
-
         pixmap = QPixmap(
             resource_path("assets/spectroscopy-logo-white.png")
-        ).scaledToWidth(38)
+        ).scaledToWidth(40)
         ctl = QLabel(pixmap=pixmap)
         row.addWidget(ctl)
-
         row.addSpacing(10)
-
         ctl = GradientText(self,
                            text="SPECTROSCOPY",
-                           colors=[(0.5, "#23F3AB"), (1.0, "#8d4ef2")],
+                           colors=[(0.7, "#1E90FF"), (1.0, PALETTE_RED_1)],
                            stylesheet=GUIStyles.set_main_title_style())
         ctl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         row.addWidget(ctl)
-
         ctl = QWidget()
         ctl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         row.addWidget(ctl)
@@ -278,38 +227,34 @@ class SpectroscopyWindow(QWidget):
     def create_export_data_input(self):
         # Link to export data documentation
         info_link_widget = LinkWidget(
-
             icon_filename=resource_path("assets/info-icon.png"),
             link="https://flim-labs.github.io/spectroscopy-py/v1.0/#gui-usage",
         )
         info_link_widget.setCursor(Qt.CursorShape.PointingHandCursor)
         info_link_widget.show()
-
         # Export data switch control
         export_data_control = QHBoxLayout()
         export_data_label = QLabel("Export data:")
         inp = SwitchControl(
-            active_color="#FB8C00", width=70, height=30, checked=self.write_data
+            active_color=PALETTE_BLUE_1, width=70, height=30, checked=self.write_data
         )
         inp.toggled.connect(self.on_export_data_changed)
         export_data_control.addWidget(export_data_label)
         export_data_control.addSpacing(8)
         export_data_control.addWidget(inp)
-
         return info_link_widget, export_data_control
 
     def create_file_size_info_row(self):
         file_size_info_layout = QHBoxLayout()
         self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
-        self.bin_file_size_label.setStyleSheet("QLabel { color : #FFA726; }")
-
+        self.bin_file_size_label.setStyleSheet("QLabel { color : #f8f8f8; }")
         file_size_info_layout.addWidget(self.bin_file_size_label)
         self.bin_file_size_label.show() if self.write_data is True else self.bin_file_size_label.hide()
-
         return file_size_info_layout
 
     def create_control_inputs(self):
         controls_row = QHBoxLayout()
+        controls_row.addSpacing(10)
         _, inp, __ = SelectControl.setup(
             "Channel type:",
             self.settings.value(SETTINGS_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE),
@@ -319,7 +264,6 @@ class SpectroscopyWindow(QWidget):
         )
         inp.setStyleSheet(GUIStyles.set_input_select_style())
         self.control_inputs["channel_type"] = inp
-
         _, inp = InputNumberControl.setup(
             "Bin width (µs):",
             100,
@@ -330,7 +274,6 @@ class SpectroscopyWindow(QWidget):
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style())
         self.control_inputs[SETTINGS_BIN_WIDTH] = inp
-
         _, inp = InputNumberControl.setup(
             "Time span (s):",
             1,
@@ -341,10 +284,9 @@ class SpectroscopyWindow(QWidget):
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style())
         self.control_inputs[SETTINGS_TIME_SPAN] = inp
-
         switch_control = QVBoxLayout()
         inp = SwitchControl(
-            active_color="#8d4ef2",
+            active_color="#11468F",
             checked=self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING) == "true"
         )
         inp.toggled.connect(self.on_free_running_changed)
@@ -354,7 +296,6 @@ class SpectroscopyWindow(QWidget):
         controls_row.addLayout(switch_control)
         controls_row.addSpacing(20)
         self.control_inputs[SETTINGS_FREE_RUNNING] = inp
-
         _, inp = InputNumberControl.setup(
             "Acquisition time (s):",
             1,
@@ -366,7 +307,6 @@ class SpectroscopyWindow(QWidget):
         inp.setStyleSheet(GUIStyles.set_input_number_style())
         self.control_inputs[SETTINGS_ACQUISITION_TIME] = inp
         self.on_free_running_changed(self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING) == "true")
-
         _, inp, label = SelectControl.setup(
             "Calibration:",
             int(self.settings.value(SETTINGS_CALIBRATION_TYPE, DEFAULT_SETTINGS_CALIBRATION_TYPE)),
@@ -377,7 +317,6 @@ class SpectroscopyWindow(QWidget):
         inp.setStyleSheet(GUIStyles.set_input_select_style())
         self.control_inputs["calibration"] = inp
         self.control_inputs["calibration_label"] = label
-
         label, inp = InputFloatControl.setup(
             "TAU (ns):",
             0,
@@ -389,7 +328,6 @@ class SpectroscopyWindow(QWidget):
         inp.setStyleSheet(GUIStyles.set_input_number_style())
         self.control_inputs["tau"] = inp
         self.control_inputs["tau_label"] = label
-
         label, inp = InputNumberControl.setup(
             "Harmonics",
             1,
@@ -401,10 +339,8 @@ class SpectroscopyWindow(QWidget):
         inp.setStyleSheet(GUIStyles.set_input_number_style())
         self.control_inputs[SETTINGS_HARMONIC] = inp
         self.control_inputs[SETTINGS_HARMONIC_LABEL] = label
-
         spacer = QWidget()
         controls_row.addWidget(spacer, 1)
-
         ctl, inp, label = SelectControl.setup(
             "Harmonic displayed:",
             1,
@@ -417,43 +353,42 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[HARMONIC_SELECTOR] = inp
         label.hide()
         inp.hide()
-
         save_button = QPushButton("LOAD REFERENCE")
         save_button.setFlat(True)
-        save_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        save_button.setFixedHeight(55)
         save_button.setCursor(Qt.CursorShape.PointingHandCursor)
         save_button.setHidden(True)
         save_button.clicked.connect(self.on_load_reference)
         save_button.setStyleSheet("""
         QPushButton {
-            background-color: #8d4ef2;
+            background-color: #1E90FF;
             color: white;
             border-radius: 5px;
-            padding: 5px 10px;
+            padding: 5px 12px;
+            font-weight: bold;
             font-size: 16px;
         }
         """)
         self.control_inputs[LOAD_REF_BTN] = save_button
         controls_row.addWidget(save_button)
-
         save_button = QPushButton("SAVE")
         save_button.setFlat(True)
-        save_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        save_button.setFixedHeight(55)
         save_button.setCursor(Qt.CursorShape.PointingHandCursor)
         save_button.setHidden(True)
         save_button.clicked.connect(self.on_save_reference)
         save_button.setStyleSheet("""
         QPushButton {
-            background-color: #8d4ef2;
+            background-color: #1E90FF;
             color: white;
             border-radius: 5px;
-            padding: 5px 10px;
+            padding: 5px 12px;
+            font-weight: bold;
             font-size: 16px;
         }
         """)
         self.control_inputs["save"] = save_button
         controls_row.addWidget(save_button)
-
         export_button = QPushButton("EXPORT")
         export_button.setFlat(True)
         export_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
@@ -471,16 +406,18 @@ class SpectroscopyWindow(QWidget):
         """)
         self.control_inputs["export_button"] = export_button
         controls_row.addWidget(export_button)
-
         start_button = QPushButton("START")
+        start_button.setObjectName("btn")
         start_button.setFlat(True)
-        start_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        start_button.setFixedHeight(55)
         start_button.setCursor(Qt.CursorShape.PointingHandCursor)
         start_button.clicked.connect(self.on_start_button_click)
         self.control_inputs["start_button"] = start_button
         self.style_start_button()
+        collapse_button = CollapseButton(self.widgets[TOP_COLLAPSIBLE_WIDGET])
         controls_row.addWidget(start_button)
-
+        controls_row.addWidget(collapse_button)
+        controls_row.addSpacing(10)
         return controls_row
 
     def style_start_button(self):
@@ -490,10 +427,6 @@ class SpectroscopyWindow(QWidget):
         else:
             self.control_inputs["start_button"].setText("STOP")
             GUIStyles.set_stop_btn_style(self.control_inputs["start_button"])
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.overlay.resize(event.size())
 
     def on_tab_selected(self, tab_name):
         self.control_inputs[self.tab_selected].setChecked(False)
@@ -508,7 +441,6 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
             self.control_inputs["calibration"].show()
             self.control_inputs["calibration_label"].show()
-
             current_tau = self.settings.value(SETTINGS_TAU_NS, "0")
             self.control_inputs["tau"].setValue(float(current_tau))
             current_harmonic = self.settings.value(SETTINGS_HARMONIC, "1")
@@ -518,6 +450,10 @@ class SpectroscopyWindow(QWidget):
             current_calibration = self.settings.value(SETTINGS_CALIBRATION_TYPE, DEFAULT_SETTINGS_CALIBRATION_TYPE)
             self.on_calibration_change(int(current_calibration))
             self.control_inputs[LOAD_REF_BTN].hide()
+            channels_grid = self.widgets[CHANNELS_GRID]
+            plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
+            if plot_config_btn is not None:
+                plot_config_btn.setVisible(True)
         elif tab_name == "tab_deconv":
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -527,6 +463,10 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
             self.control_inputs[LOAD_REF_BTN].show()
             self.control_inputs[LOAD_REF_BTN].setText("LOAD IRF")
+            channels_grid = self.widgets[CHANNELS_GRID]
+            plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
+            if plot_config_btn is not None:
+                plot_config_btn.setVisible(True)
         elif tab_name == "tab_data":
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -536,9 +476,12 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
             self.control_inputs[LOAD_REF_BTN].show()
             self.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
-
+            channels_grid = self.widgets[CHANNELS_GRID]
+            plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
+            if plot_config_btn is not None:
+                plot_config_btn.setVisible(False)
+            
         self.control_inputs["save"].setHidden(True)
-
         self.clear_plots()
         self.generate_plots()
 
@@ -577,7 +520,6 @@ class SpectroscopyWindow(QWidget):
             with open(".pid", "r") as f:
                 lines = f.readlines()
                 reference_file = lines[0].split("=")[1]
-
             dialog = QFileDialog()
             dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
             # extension supported: .reference.json
@@ -598,8 +540,7 @@ class SpectroscopyWindow(QWidget):
                         with open(file_name, "w") as f2:
                             f2.write(f.read())
                 except:
-                    QMessageBox(QMessageBox.Icon.Warning, "Error", "Error saving reference file",
-                                QMessageBox.StandardButton.Ok).exec()
+                    BoxMessage.setup("Error", "Error saving reference file", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
 
     def get_free_running_state(self):
         return self.control_inputs[SETTINGS_FREE_RUNNING].isChecked()
@@ -643,16 +584,30 @@ class SpectroscopyWindow(QWidget):
 
     def create_channel_selector(self):
         grid = QHBoxLayout()
-        grid.addSpacing(20)
+        plots_config_btn = QPushButton("PLOTS CONFIG")
+        plots_config_btn.setIcon(QIcon(resource_path("assets/chart-icon.png")))
+        GUIStyles.set_stop_btn_style(plots_config_btn)
+        plots_config_btn.setFixedWidth(150)
+        plots_config_btn.setFixedHeight(40)
+        plots_config_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        plots_config_btn.clicked.connect(self.open_plots_config_popup) 
         for i in range(MAX_CHANNELS):
+            ch_wrapper = QWidget()
+            ch_wrapper.setObjectName(f"ch_checkbox_wrapper")
+            row = QHBoxLayout()
             from components.fancy_checkbox import FancyCheckbox
             fancy_checkbox = FancyCheckbox(text=f"Channel {i + 1}")
+            fancy_checkbox.setStyleSheet(GUIStyles.set_checkbox_style())
             if self.selected_channels:
                 fancy_checkbox.set_checked(i in self.selected_channels)
             fancy_checkbox.toggled.connect(lambda checked, channel=i: self.on_channel_selected(checked, channel))
-            grid.addWidget(fancy_checkbox)
+            row.addWidget(fancy_checkbox)
+            ch_wrapper.setLayout(row)
+            ch_wrapper.setStyleSheet(GUIStyles.checkbox_wrapper_style())
+            grid.addWidget(ch_wrapper)
             self.channel_checkboxes.append(fancy_checkbox)
-        grid.addSpacing(20)
+        grid.addWidget(plots_config_btn)   
+        self.widgets[CHANNELS_GRID] = grid 
         return grid
 
     def controls_set_enabled(self, enabled: bool):
@@ -676,16 +631,18 @@ class SpectroscopyWindow(QWidget):
             self.channel_checkboxes[i].setEnabled(enabled)
 
     def on_channel_selected(self, checked: bool, channel: int):
+        self.plots_to_show.clear()
+        self.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(self.plots_to_show))
         if checked:
             if channel not in self.selected_channels:
                 self.selected_channels.append(channel)
         else:
             if channel in self.selected_channels:
-                self.selected_channels.remove(channel)
+                self.selected_channels.remove(channel)      
         self.selected_channels.sort()
         self.set_selected_channels_to_settings()
         self.clear_plots()
-        self.generate_plots()
+        #self.generate_plots()
         self.calc_exported_file_size()
 
     def on_sync_selected(self, sync: str):
@@ -711,188 +668,161 @@ class SpectroscopyWindow(QWidget):
 
     def create_sync_buttons(self):
         buttons_layout = QHBoxLayout()
-
         sync_in_button = FancyButton("Sync In")
         buttons_layout.addWidget(sync_in_button)
         self.sync_buttons.append((sync_in_button, 'sync_in'))
         self.update_sync_in_button()
-
         sync_out_80_button = FancyButton("Sync Out (80MHz)")
         buttons_layout.addWidget(sync_out_80_button)
         self.sync_buttons.append((sync_out_80_button, 'sync_out_80'))
-
         sync_out_40_button = FancyButton("Sync Out (40MHz)")
         buttons_layout.addWidget(sync_out_40_button)
         self.sync_buttons.append((sync_out_40_button, 'sync_out_40'))
-
         sync_out_20_button = FancyButton("Sync Out (20MHz)")
         buttons_layout.addWidget(sync_out_20_button)
         self.sync_buttons.append((sync_out_20_button, 'sync_out_20'))
-
         sync_out_10_button = FancyButton("Sync Out (10MHz)")
         buttons_layout.addWidget(sync_out_10_button)
         self.sync_buttons.append((sync_out_10_button, 'sync_out_10'))
-
         for button, name in self.sync_buttons:
             def on_toggle(toggled_name):
                 for b, n in self.sync_buttons:
                     b.set_selected(n == toggled_name)
                 self.on_sync_selected(toggled_name)
-
             button.clicked.connect(lambda _, n=name: on_toggle(n))
             button.set_selected(self.selected_sync == name)
-
         return buttons_layout
 
     def generate_plots(self, frequency_mhz=0.0):
-        if len(self.selected_channels) == 0:
+        if len(self.plots_to_show) == 0:
             self.grid_layout.addWidget(QWidget(), 0, 0)
             return
-
-        for i in range(len(self.selected_channels)):
-            channel_index = i
+        for i, channel in enumerate(self.plots_to_show):
             v_layout = QVBoxLayout()
-
+            v_widget = QWidget()
+            v_widget.setObjectName("chart_wrapper")
             if self.tab_selected != "tab_data":
                 h_layout = QHBoxLayout()
                 label = QLabel("No CPS")
                 label.setStyleSheet(
-                    "QLabel { color : #FFA726; font-size: 65px; font-weight: bold; background-color: #000000; padding: 8px; }")
+                    "QLabel { color : #285da6; font-size: 42px; font-weight: bold; background-color: transparent; padding: 8px; }")
                 # label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-                self.cps_widgets.append(label)
-                self.cps_counts.append({"last_time_ns": 0, "last_count": 0, "current_count": 0})
-
+                self.cps_widgets[channel] =label
+                self.cps_counts[channel] = {"last_time_ns": 0, "last_count": 0, "current_count": 0}
                 intensity_widget = pg.PlotWidget()
                 intensity_widget.setLabel('left', 'AVG. Photon counts', units='')
                 intensity_widget.setLabel('bottom', 'Time', units='s')
-                intensity_widget.setTitle(f'Channel {self.selected_channels[i] + 1} intensity')
-
+                intensity_widget.setTitle(f'Channel {channel + 1} intensity')
+                intensity_widget.setBackground("#141414")
                 # remove margins
                 intensity_widget.plotItem.setContentsMargins(0, 0, 0, 0)
-
                 x = np.arange(1)
                 y = x * 0
-                intensity_plot = intensity_widget.plot(x, y, pen='#23F3AB', pen_width=2)
-
-                self.intensity_lines.append(intensity_plot)
-
+                intensity_plot = intensity_widget.plot(x, y, pen='#1E90FF', pen_width=2)
+                self.intensity_lines[channel] = intensity_plot
                 h_layout.addWidget(label, stretch=1)
                 h_layout.addWidget(intensity_widget, stretch=1)
-                v_layout.addLayout(h_layout, 1)
-
+                v_layout.addLayout(h_layout, 2)
                 curve_widget = pg.PlotWidget()
                 curve_widget.setLabel('left', 'Photon counts', units='')
                 curve_widget.setLabel('bottom', 'Time', units='ns')
-                curve_widget.setTitle(f'Channel {self.selected_channels[i] + 1} decay')
-
+                curve_widget.setTitle(f'Channel {channel + 1} decay')
+                curve_widget.setBackground("#0a0a0a")
                 if frequency_mhz != 0.0:
                     period = 1_000 / frequency_mhz
                     x = np.linspace(0, period, 256)
                 else:
                     x = np.arange(1)
-
                 y = x * 0
-                static_curve = curve_widget.plot(x, y, pen='r', pen_width=2)
-                self.decay_curves.append(static_curve)
-                v_layout.addWidget(curve_widget, 4)
+                static_curve = curve_widget.plot(x, y, pen='#f72828', pen_width=2)
+                self.decay_curves[channel] = static_curve
+                v_layout.addWidget(curve_widget, 3)
+                v_widget.setLayout(v_layout)
             else:
                 h_layout = QHBoxLayout()
                 label = QLabel("No CPS")
                 label.setStyleSheet(
-                    "QLabel { color : #FFA726; font-size: 65px; font-weight: bold; background-color: #000000; padding: 8px; }")
+                     "QLabel { color : #f72828; font-size: 42px; font-weight: bold; background-color: #000000; padding: 8px; }")
                 # label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-                self.cps_widgets.append(label)
-                self.cps_counts.append({"last_time_ns": 0, "last_count": 0, "current_count": 0})
-
+                self.cps_widgets[channel] = label
+                self.cps_counts[channel] = {"last_time_ns": 0, "last_count": 0, "current_count": 0}
                 curve_widget = pg.PlotWidget()
                 curve_widget.setLabel('left', 'Photon counts', units='')
                 curve_widget.setLabel('bottom', 'Time', units='ns')
-                curve_widget.setTitle(f'Channel {self.selected_channels[i] + 1} decay')
-
+                curve_widget.setTitle(f'Channel {channel + 1} decay')
                 if frequency_mhz != 0.0:
                     period = 1_000 / frequency_mhz
                     x = np.linspace(0, period, 256)
                 else:
                     x = np.arange(1)
-
                 y = x * 0
-                static_curve = curve_widget.plot(x, y, pen='r', pen_width=2)
-                self.decay_curves.append(static_curve)
+                static_curve = curve_widget.plot(x, y, pen='#f72828', pen_width=2)
+                self.decay_curves[channel] = static_curve
                 h_layout.addWidget(label, stretch=1)
                 h_layout.addWidget(curve_widget, stretch=1)
                 v_layout.addLayout(h_layout, 1)
-
                 # add a phasors chart
                 phasors_widget = pg.PlotWidget()
-
                 # mantain aspect ratio
                 phasors_widget.setAspectLocked(True)
                 phasors_widget.setLabel('left', 's', units='')
                 phasors_widget.setLabel('bottom', 'g', units='')
-                phasors_widget.setTitle(f'Channel {self.selected_channels[i] + 1} phasors')
+                phasors_widget.setTitle(f'Channel {channel + 1} phasors')
                 phasors_widget.setCursor(Qt.CursorShape.BlankCursor)
                 self.draw_semi_circle(phasors_widget)
-
-                self.phasors_charts.append(
-                    phasors_widget.plot([], [], pen=None, symbol='o', symbolPen=None, symbolSize=1,
-                                        symbolBrush='#23F3AB'))
-
-                self.phasors_widgets.append(phasors_widget)
-
+                self.phasors_charts[channel] = phasors_widget.plot([], [], pen=None, symbol='o', symbolPen='#1E90FF', symbolSize=1,
+                                        symbolBrush='#1E90FF')
+                self.phasors_widgets[channel] = phasors_widget
                 v_layout.addWidget(phasors_widget, 4)
-
-                self.generate_coords(i)
-
+                v_widget.setLayout(v_layout)
+                self.generate_coords(channel)
                 # create crosshair for phasors (a circle)
-                crosshair = pg.TextItem("", anchor=(0.5, 0.5), color=(35, 243, 171))
+                crosshair = pg.TextItem("", anchor=(0.5, 0.5), color=(30, 144, 255))
                 font = QFont()
                 font.setPixelSize(25)
                 crosshair.setFont(font)
                 phasors_widget.addItem(crosshair, ignoreBounds=True)
-                self.phasors_crosshairs.append(crosshair)
-
+                self.phasors_crosshairs[channel] = crosshair
             col_length = 1
-            if len(self.selected_channels) == 2:
+            if len(self.plots_to_show) == 2:
                 col_length = 2
-            elif len(self.selected_channels) == 3:
+            elif len(self.plots_to_show) == 3:
                 col_length = 3
-            if len(self.selected_channels) > 3:
+            if len(self.plots_to_show) > 3:
                 col_length = 2
-            self.grid_layout.addLayout(v_layout, i // col_length, i % col_length)
+            v_widget.setStyleSheet(GUIStyles.chart_wrapper_style())    
+            self.grid_layout.addWidget(v_widget, i // col_length, i % col_length)
 
     def generate_coords(self, channel_index):
         font = QFont()
         font.setPixelSize(25)
         coord_text = pg.TextItem("", anchor=(0.5, 1))
         coord_text.setFont(font)
-
-        crosshair = pg.TextItem("", anchor=(0.5, 0.5), color=(35, 243, 171))
+        crosshair = pg.TextItem("", anchor=(0.5, 0.5), color=(30, 144, 255))
         font = QFont()
         font.setPixelSize(25)
         crosshair.setFont(font)
         is_in_array = len(self.phasors_crosshairs) > channel_index
         if not is_in_array:
-            self.phasors_crosshairs.append(crosshair)
+            self.phasors_crosshairs[channel_index] = crosshair
         else:
             self.phasors_crosshairs[channel_index] = crosshair
-
         is_in_array = len(self.phasors_coords) > channel_index
         if not is_in_array:
             self.phasors_widgets[channel_index].sceneObj.sigMouseMoved.connect(
                 lambda event, ccc=channel_index: self.on_phasors_mouse_moved(event, ccc)
             )
-            self.phasors_coords.append(coord_text)
+            self.phasors_coords[channel_index] = coord_text
         else:
             self.phasors_coords[channel_index] = coord_text
         self.phasors_widgets[channel_index].addItem(coord_text, ignoreBounds=True)
         self.phasors_widgets[channel_index].addItem(crosshair, ignoreBounds=True)
 
     def on_phasors_mouse_moved(self, event, channel_index):
-        for i in range(len(self.phasors_coords)):
-            if i != channel_index:
-                self.phasors_coords[i].setText("")
-                self.phasors_crosshairs[i].setText("")
-
+        for i, channel in enumerate(self.phasors_coords):
+            if channel != channel_index:
+                self.phasors_coords[channel].setText("")
+                self.phasors_crosshairs[channel].setText("")
         try:
             phasor_widget = self.phasors_widgets[channel_index]
             text = self.phasors_coords[channel_index]
@@ -900,22 +830,16 @@ class SpectroscopyWindow(QWidget):
         except:
             return
         mouse_point = phasor_widget.plotItem.vb.mapSceneToView(event)
-
         crosshair.setPos(mouse_point.x(), mouse_point.y())
         crosshair.setText(CURSOR_TEXT)
-
         text.setPos(mouse_point.x(), mouse_point.y())
-
         freq_mhz = self.get_current_frequency_mhz()
         harmonic = self.harmonic_selector_value
         g = mouse_point.x()
         s = mouse_point.y()
-
         if freq_mhz == 0.0:
             return
-
         tau_phi = (1 / (2 * np.pi * freq_mhz * harmonic)) * (s / g) * 1e3
-
         tau_m_component = (1 / (s ** 2 + g ** 2)) - 1
         if tau_m_component < 0:
             text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns")
@@ -928,8 +852,8 @@ class SpectroscopyWindow(QWidget):
     def draw_semi_circle(self, widget):
         x = np.linspace(0, 1, 1000)
         y = np.sqrt(0.5 ** 2 - (x - 0.5) ** 2)
-        widget.plot(x, y, pen='#23F3AB')
-        widget.plot([-0.1, 1.1], [0, 0], pen='#23F3AB')
+        widget.plot(x, y, pen='#1E90FF', pen_width=4)
+        widget.plot([-0.1, 1.1], [0, 0], pen='#1E90FF', pen_width=4)
 
     def get_selected_channels_from_settings(self):
         self.selected_channels = []
@@ -947,12 +871,6 @@ class SpectroscopyWindow(QWidget):
         self.timer_update.stop()
 
     def clear_plots(self):
-        for curve in self.intensity_lines:
-            curve.clear()
-        for curve in self.decay_curves:
-            curve.clear()
-        for phasor in self.phasors_charts:
-            phasor.clear()
         self.phasors_charts.clear()
         self.phasors_widgets.clear()
         self.phasors_coords.clear()
@@ -983,7 +901,6 @@ class SpectroscopyWindow(QWidget):
         free_running = self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
         acquisition_time = self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)
         bin_width = self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
-
         if free_running is True or acquisition_time is None:
             file_size_MB = len(self.selected_channels) * (1000 / int(bin_width))
             self.bin_file_size = format_size(file_size_MB * 1024 * 1024)
@@ -1003,7 +920,6 @@ class SpectroscopyWindow(QWidget):
     def export_data(self):
         if not self.write_data:
             return
-
         dialog = QFileDialog()
         dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
         dialog.setNameFilter("Binary files (*.bin)")
@@ -1021,8 +937,7 @@ class SpectroscopyWindow(QWidget):
             try:
                 flim_labs.export_data(file_name)
             except Exception as e:
-                QMessageBox(QMessageBox.Icon.Warning, "Error", "Error exporting data: " + str(e),
-                            QMessageBox.StandardButton.Ok).exec()
+                BoxMessage.setup("Error", "Error exporting data: " + str(e), QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
 
     def begin_spectroscopy_experiment(self):
         if self.selected_sync == "sync_in":
@@ -1030,39 +945,35 @@ class SpectroscopyWindow(QWidget):
         else:
             frequency_mhz = int(self.selected_sync.split("_")[-1])
         if frequency_mhz == 0.0:
-            QMessageBox(QMessageBox.Icon.Warning, "Error", "Frequency not detected",
-                        QMessageBox.StandardButton.Ok).exec()
+            BoxMessage.setup("Error", "Frequency not detected", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
             return
-
+        if len(self.selected_channels) == 0:
+            BoxMessage.setup("Error", "No channels selected", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+            return
+        if self.tab_selected != "tab_data":
+            open_config_plots_popup = len(self.plots_to_show) == 0   
+            if open_config_plots_popup: 
+                popup = PlotsConfigPopup(self, start_acquisition=True)
+                popup.show()
+                return
         self.clear_plots()
         self.generate_plots(frequency_mhz)
         self.hide_harmonic_selector()
-
-        if len(self.selected_channels) == 0:
-            QMessageBox(QMessageBox.Icon.Warning, "Error", "No channels selected",
-                        QMessageBox.StandardButton.Ok).exec()
-            return
-
         acquisition_time_millis = None if self.get_free_running_state() else int(
             self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)) * 1000
         bin_width_micros = int(self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH))
-
         connection_type = self.control_inputs["channel_type"].currentText()
-
         if str(connection_type) == "USB":
             connection_type = "USB"
         else:
             connection_type = "SMA"
-
         firmware_selected = flim_labs.get_spectroscopy_firmware(
             sync="in" if self.selected_sync == "sync_in" else "out",
             frequency_mhz=frequency_mhz,
             channel=connection_type.lower(),
             sync_connection="sma"
         )
-
         self.harmonic_selector_value = self.control_inputs[SETTINGS_HARMONIC].value()
-
         print(f"Firmware selected: {firmware_selected}")
         print(f"Connection type: {connection_type}")
         print(f"Frequency: {frequency_mhz} Mhz")
@@ -1073,52 +984,42 @@ class SpectroscopyWindow(QWidget):
         print(f"Tau: {self.settings.value(SETTINGS_TAU_NS, '0')} ns")
         print(f"Reference file: {self.reference_file}")
         print(f"Harmonics: {self.harmonic_selector_value}")
-
         self.cached_time_span_seconds = float(self.settings.value(SETTINGS_TIME_SPAN, DEFAULT_TIME_SPAN))
-
         if self.tab_selected == "tab_data":
             if not self.reference_file:
-                QMessageBox(QMessageBox.Icon.Warning, "Error", "No reference file selected",
-                            QMessageBox.StandardButton.Ok).exec()
+                BoxMessage.setup("Error", "No reference file selected", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
                 return
-
             with open(self.reference_file, "r") as f:
                 reference_data = json.load(f)
                 if "channels" not in reference_data:
-                    QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (missing channels)",
-                                QMessageBox.StandardButton.Ok).exec()
+                    BoxMessage.setup("Error", "Invalid reference file (missing channels)", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
                     return
                 elif len(reference_data["channels"]) != len(self.selected_channels):
-                    QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (channels mismatch)",
-                                QMessageBox.StandardButton.Ok).exec()
+                    BoxMessage.setup("Error", "Invalid reference file (channels mismatch)", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
                     return
                 if "harmonics" not in reference_data:
-                    QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (missing harmonics)",
-                                QMessageBox.StandardButton.Ok).exec()
+                    BoxMessage.setup("Error", "Invalid reference file (missing harmonics)", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
                     return
                 self.harmonic_selector_value = int(reference_data["harmonics"])
                 if "curves" not in reference_data:
-                    QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (missing curves)",
-                                QMessageBox.StandardButton.Ok).exec()
+                    BoxMessage.setup("Error", "Invalid reference file (missing curves)", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
                     return
                 elif len(reference_data["curves"]) != len(self.selected_channels):
-                    QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (curves mismatch)",
-                                QMessageBox.StandardButton.Ok).exec()
                     return
                 if "laser_period_ns" not in reference_data:
-                    QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (missing laser period)",
-                                QMessageBox.StandardButton.Ok).exec()
+                    BoxMessage.setup("Error", "Invalid reference file (missing laser period)", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
                     return
                 if "tau_ns" not in reference_data:
-                    QMessageBox(QMessageBox.Icon.Warning, "Error", "Invalid reference file (missing tau)",
-                                QMessageBox.StandardButton.Ok).exec()
+                    BoxMessage.setup("Error", "Invalid reference file (missing tau)", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
                     return
-
+                if (not (all(plot in reference_data["channels"] for plot in self.plots_to_show))) or len(self.plots_to_show) == 0:
+                    popup = PlotsConfigPopup(self, start_acquisition=True, is_reference_loaded=True, reference_channels= reference_data["channels"])
+                    popup.show()
+                    return
         try:
             tau_ns = float(self.settings.value(SETTINGS_TAU_NS, "0")) if self.is_reference_phasors() else None
             reference_file = None if self.tab_selected != "tab_data" else self.reference_file
             self.all_phasors_points = self.get_empty_phasors_points()
-
             flim_labs.start_spectroscopy(
                 enabled_channels=self.selected_channels,
                 bin_width_micros=bin_width_micros,
@@ -1130,8 +1031,7 @@ class SpectroscopyWindow(QWidget):
                 harmonics=int(self.harmonic_selector_value),
             )
         except Exception as e:
-            QMessageBox(QMessageBox.Icon.Warning, "Error", "Error starting spectroscopy: " + str(e),
-                        QMessageBox.StandardButton.Ok).exec()
+            BoxMessage.setup("Error", "Error starting spectroscopy: " + str(e), QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
             return
         self.mode = MODE_RUNNING
         self.style_start_button()
@@ -1152,7 +1052,6 @@ class SpectroscopyWindow(QWidget):
                     self.style_start_button()
                     self.control_inputs["save"].setHidden(True)
                     QApplication.processEvents()
-
                     if self.is_reference_phasors():
                         # read reference file from .pid file
                         with open(".pid", "r") as f:
@@ -1161,65 +1060,54 @@ class SpectroscopyWindow(QWidget):
                         self.reference_file = reference_file
                         self.control_inputs["save"].setHidden(False)
                         print(f"Last reference file: {reference_file}")
-
                         break
-
                     if self.is_phasors():
                         self.quantize_phasors(1)
                         self.show_harmonic_selector(self.harmonic_selector_value)
                         break
-
                     break
-
                 if 'sp_phasors' in v[0]:
                     channel = v[1][0]
                     harmonic = v[2][0]
                     phasors = v[3]
+                    channel_index = next((item for item in self.plots_to_show if item == channel), None)
                     if harmonic == 1:
-                        self.draw_points_in_phasors(channel, harmonic, phasors)
-
-                    channel_index = self.selected_channels.index(channel)
-                    self.all_phasors_points[channel_index][harmonic].extend(phasors)
-
+                        if channel_index is not None:
+                            self.draw_points_in_phasors(channel, harmonic, phasors)
+                    if channel_index is not None:        
+                        self.all_phasors_points[channel_index][harmonic].extend(phasors)
                     continue
-
                 try:
                     ((channel,), (time_ns,), intensities) = v
                 except:
                     print(v)
                 ((channel,), (time_ns,), intensities) = v
-                channel_index = self.selected_channels.index(channel)
-                self.update_plots2(channel_index, time_ns, intensities)
-                self.update_cps(channel_index, time_ns, intensities)
+                channel_index = next((item for item in self.plots_to_show if item == channel), None)
+                if channel_index is not None:
+                    self.update_plots2(channel_index, time_ns, intensities)
+                    self.update_cps(channel_index, time_ns, intensities)
                 QApplication.processEvents()
 
     def draw_points_in_phasors(self, channel, harmonic, phasors):
-        channel_index = self.selected_channels.index(channel)
-        x, y = self.phasors_charts[channel_index].getData()
-        if x is None:
-            x = np.array([])
-            y = np.array([])
-
-        new_x = [p[0] for p in phasors]
-        new_y = [p[1] for p in phasors]
-
-        x = np.concatenate((x, new_x))
-        y = np.concatenate((y, new_y))
-
-        self.phasors_charts[channel_index].setData(x, y)
-        pass
+        if channel in self.plots_to_show:
+            x, y = self.phasors_charts[channel].getData()
+            if x is None:
+                x = np.array([])
+                y = np.array([])
+            new_x = [p[0] for p in phasors]
+            new_y = [p[1] for p in phasors]
+            x = np.concatenate((x, new_x))
+            y = np.concatenate((y, new_y))
+            self.phasors_charts[channel].setData(x, y)
+            pass
 
     def quantize_phasors(self, harmonic, bins=64):
-        for selected_channel in self.selected_channels:
-            channel_index = self.selected_channels.index(selected_channel)
-
+        for i, channel_index in enumerate(self.plots_to_show):
             x = [p[0] for p in self.all_phasors_points[channel_index][harmonic]]
             y = [p[1] for p in self.all_phasors_points[channel_index][harmonic]]
-
             if x is None or y is None or len(x) == 0 or len(y) == 0:
                 continue
             h, xedges, yedges = np.histogram2d(x, y, bins=bins * 4, range=[[-2, 2], [-2, 2]])
-
             non_zero_h = h[h > 0]
             all_zeros = len(non_zero_h) == 0
             h_min = np.min(non_zero_h)
@@ -1256,7 +1144,6 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[HARMONIC_SELECTOR].clear()
             for i in range(harmonics):
                 self.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))
-
             self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
             self.harmonic_selector_value = 1
 
@@ -1295,11 +1182,9 @@ class SpectroscopyWindow(QWidget):
         return self.tab_selected == "tab_data"
 
     def update_cps(self, channel_index, time_ns, curve):
-
         # check if there is channel_index'th element in cps_counts
-        if len(self.cps_counts) <= channel_index:
+        if not (channel_index in self.cps_counts):
             return
-
         cps = self.cps_counts[channel_index]
         curve_sum = np.sum(curve)
         if cps["last_time_ns"] == 0:
@@ -1313,7 +1198,7 @@ class SpectroscopyWindow(QWidget):
             cps_value = (cps["current_count"] - cps["last_count"]) / (time_elapsed / 1_000_000_000)
             self.cps_widgets[channel_index].setText(f"{self.humanize_number(cps_value)} CPS")
             cps["last_time_ns"] = time_ns
-            cps["last_count"] = cps["current_count"]
+            cps["last_count"] = cps["current_count"]   
 
     def humanize_number(self, number):
         if number == 0:
@@ -1324,26 +1209,23 @@ class SpectroscopyWindow(QWidget):
         return '%.2f%s' % (number / k ** magnitude, units[magnitude])
 
     def update_plots2(self, channel_index, time_ns, curve):
-        intensity_line = self.intensity_lines[channel_index] if channel_index < len(self.intensity_lines) else None
-        if intensity_line is not None:
-            x, y = intensity_line.getData()
-            if x is None or (len(x) == 1 and x[0] == 0):
-                x = np.array([time_ns / 1_000_000_000])
-                y = np.array([np.sum(curve)])
-            else:
-                x = np.append(x, time_ns / 1_000_000_000)
-                y = np.append(y, np.sum(curve))
-
-            # trim the data based on self.cached_time_span_seconds
-
-            if len(x) > 2:
-                while x[-1] - x[0] > self.cached_time_span_seconds:
-                    x = x[1:]
-                    y = y[1:]
-
-            intensity_line.setData(x, y)
-
-        decay_curve = self.decay_curves[channel_index] if channel_index < len(self.decay_curves) else None
+        if channel_index in self.intensity_lines:
+            intensity_line = self.intensity_lines[channel_index]
+            if intensity_line is not None:
+                x, y = intensity_line.getData()
+                if x is None or (len(x) == 1 and x[0] == 0):
+                    x = np.array([time_ns / 1_000_000_000])
+                    y = np.array([np.sum(curve)])
+                else:
+                    x = np.append(x, time_ns / 1_000_000_000)
+                    y = np.append(y, np.sum(curve))
+                # trim the data based on self.cached_time_span_seconds
+                if len(x) > 2:
+                    while x[-1] - x[0] > self.cached_time_span_seconds:
+                        x = x[1:]
+                        y = y[1:]
+                intensity_line.setData(x, y)
+        decay_curve = self.decay_curves[channel_index]
         if decay_curve is not None:
             x, y = decay_curve.getData()
             decay_curve.setData(x, curve + y)
@@ -1365,7 +1247,6 @@ class SpectroscopyWindow(QWidget):
             print("Error: " + str(e))
             return
         x, y = self.intensity_lines[channel_index].getData()
-
         if x is None or (len(x) == 1 and x[0] == 0):
             x = np.array([time_ns / 1_000_000_000])
             y = np.array([np.sum(curve)])
@@ -1396,7 +1277,27 @@ class SpectroscopyWindow(QWidget):
         # self.timer_update.stop()
         # self.update_plots_enabled = False
         self.top_bar_set_enabled(True)
-
+        
+    def open_plots_config_popup(self): 
+        self.popup = PlotsConfigPopup(self, start_acquisition=False)
+        self.popup.show()  
+            
+    def closeEvent(self, event):    
+        self.settings.setValue("size", self.size())
+        self.settings.setValue("pos", self.pos()) 
+        if PLOTS_CONFIG_POPUP in self.widgets:
+            self.widgets[PLOTS_CONFIG_POPUP].close()    
+        event.accept()
+    
+    def eventFilter(self, source, event):  
+        try:
+            if event.type() in (
+                    QEvent.Type.Resize, QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
+                self.overlay.raise_()
+                self.overlay.resize(self.size())
+            return super().eventFilter(source, event)
+        except:
+            pass
 
 class SyncInDialog(QDialog):
     def __init__(self):
@@ -1407,24 +1308,18 @@ class SyncInDialog(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
-
         self.label = QLabel("Do you want to start to measure frequency?")
         self.layout.addWidget(self.label)
         self.label.setWordWrap(True)
-
         self.button_layout = QHBoxLayout()
         self.layout.addLayout(self.button_layout)
-
         self.no_button = QPushButton("No")
         self.no_button.clicked.connect(self.on_no_button_click)
         self.button_layout.addWidget(self.no_button)
-
         self.yes_button = QPushButton("Do it")
         self.yes_button.clicked.connect(self.on_yes_button_click)
         self.button_layout.addWidget(self.yes_button)
-
         self.frequency_mhz = 0.0
-
         GUIStyles.customize_theme(self)
         GUIStyles.set_fonts()
 
@@ -1463,6 +1358,7 @@ if __name__ == "__main__":
         os.remove(".pid")
     app = QApplication(sys.argv)
     window = SpectroscopyWindow()
+    window.showMaximized()
     window.show()
     app.exec()
     window.pull_from_queue_timer.stop()

@@ -12,6 +12,8 @@ def draw_layout_separator(line_width=1, color="#282828", vertical_space=10):
     separator.setStyleSheet(f"QFrame{{color: {color};}}")
 
     layout = QVBoxLayout()
+    layout.setSpacing(0)
+    layout.setContentsMargins(0,0,0,0)
     layout.addWidget(spacer_widget)
     layout.addWidget(separator)
 

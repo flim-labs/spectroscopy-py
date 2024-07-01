@@ -5,15 +5,15 @@ from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QVBoxLayout, QButtonGr
 SELECTED_COLOR = "#8d4ef2"
 SELECTED_HOVER_COLOR = "#0053a4"
 DISABLED_SELECTED_COLOR = "#2E2E2E"
-UNSELECTED_COLOR = "#000000"
-DISABLED_COLOR = "lightgrey"
+UNSELECTED_COLOR = "transparent"
+DISABLED_COLOR = "#3c3c3c"
 TEXT_COLOR = "#FFFFFF"
 
 
-CHECKED_COLOR = "#8d4ef2"
+CHECKED_COLOR = "#FF4242"
 UNCHECKED_COLOR = "lightgrey"
 
-SELECTED_COLOR_BUTTON = "#0078D7"
+SELECTED_COLOR_BUTTON = "#11468F"
 
 
 
@@ -123,20 +123,21 @@ class FancyButton(QPushButton):
 
     def updateStyleSheet(self):
         bg_color = SELECTED_COLOR_BUTTON if self.selected else UNSELECTED_COLOR
-        color = SELECTED_COLOR_BUTTON
+        color = "#3b3b3b" if not self.selected else "transparent"
         if not self.isEnabled():
-            bg_color = "#3c3c3c" if self.selected else "#000000"
-            color = "lightgrey"
+            bg_color = "#3c3c3c" if self.selected else "transparent"
+            color = "#3b3b3b"
         hover_color = SELECTED_HOVER_COLOR
         pressed_color = "#003d7a"
 
         self.setStyleSheet(f"""
             QPushButton {{
                 font-family: "Montserrat";
-                font-size: 14px;
+                font-size: 12px;
                 font-weight: thin;
                 border: 1px solid {color};
                 border-radius: 0px;
+                height: 20px;
                 color: white;
                 padding: 5px;
                 background-color: {bg_color};

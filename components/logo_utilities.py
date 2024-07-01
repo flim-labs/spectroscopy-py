@@ -12,19 +12,22 @@ class OverlayWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-            
-        self.imagePath = resource_path("assets/flimlabs-logo.png")
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        
+        self.imagePath = "assets/flimlabs-logo.png"  
         self.pixmap = QPixmap(self.imagePath).scaledToWidth(100)
         self.opacity = 0.3
+        self.adjustSize()
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setOpacity(self.opacity)  # Set the painter opacity for translucent drawing
-        x = self.width() - self.pixmap.width() - 20  # 10 pixels padding from the right edge
-        y = self.height() - self.pixmap.height() - 60  # 10 pixels padding from the bottom edge
+        x = self.width() - self.pixmap.width() - 10  # 10 pixels padding from the right edge
+        y = self.height() - self.pixmap.height() - 20  # 20 pixels padding from the bottom edge
         painter.drawPixmap(x, y, self.pixmap)
-
+        
 
 class TitlebarIcon():
     @staticmethod
