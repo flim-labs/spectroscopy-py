@@ -9,13 +9,14 @@ import flim_labs
 import numpy as np
 from components.box_message import BoxMessage
 from components.buttons import CollapseButton
+from components.file_utils import save_spectroscopy_bin_file
 from components.layout_utilities import draw_layout_separator
 from components.plots_config import PlotsConfigPopup
 import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
 from PyQt6.QtGui import QPixmap, QFont, QIcon
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout, QLayout, QLabel, \
-    QSizePolicy, QPushButton, QDialog, QMessageBox, QFileDialog
+    QSizePolicy, QPushButton, QDialog, QMessageBox, QFileDialog, QLineEdit
 
 from components.fancy_checkbox import FancyButton
 from components.gradient_text import GradientText
@@ -225,6 +226,7 @@ class SpectroscopyWindow(QWidget):
         return row
 
     def create_export_data_input(self):
+        export_data_active = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA) == 'true'
         # Link to export data documentation
         info_link_widget = LinkWidget(
             icon_filename=resource_path("assets/info-icon.png"),
@@ -236,12 +238,14 @@ class SpectroscopyWindow(QWidget):
         export_data_control = QHBoxLayout()
         export_data_label = QLabel("Export data:")
         inp = SwitchControl(
-            active_color=PALETTE_BLUE_1, width=70, height=30, checked=self.write_data
+            active_color=PALETTE_BLUE_1, width=70, height=30, checked=export_data_active
         )
         inp.toggled.connect(self.on_export_data_changed)
+        
         export_data_control.addWidget(export_data_label)
         export_data_control.addSpacing(8)
         export_data_control.addWidget(inp)
+        export_data_control.addSpacing(8)
         return info_link_widget, export_data_control
 
     def create_file_size_info_row(self):
@@ -266,7 +270,7 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs["channel_type"] = inp
         _, inp = InputNumberControl.setup(
             "Bin width (µs):",
-            100,
+            1000,
             1000000,
             int(self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)),
             controls_row,
@@ -476,6 +480,7 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
             self.control_inputs[LOAD_REF_BTN].show()
             self.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
+            self.control_inputs["save"].setHidden(True)
             channels_grid = self.widgets[CHANNELS_GRID]
             plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
             if plot_config_btn is not None:
@@ -541,6 +546,9 @@ class SpectroscopyWindow(QWidget):
                             f2.write(f.read())
                 except:
                     BoxMessage.setup("Error", "Error saving reference file", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+                    
+
+                              
 
     def get_free_running_state(self):
         return self.control_inputs[SETTINGS_FREE_RUNNING].isChecked()
@@ -940,6 +948,8 @@ class SpectroscopyWindow(QWidget):
                 BoxMessage.setup("Error", "Error exporting data: " + str(e), QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
 
     def begin_spectroscopy_experiment(self):
+        bin_width_micros = int(self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH))
+
         if self.selected_sync == "sync_in":
             frequency_mhz = self.sync_in_frequency_mhz
         else:
@@ -949,6 +959,9 @@ class SpectroscopyWindow(QWidget):
             return
         if len(self.selected_channels) == 0:
             BoxMessage.setup("Error", "No channels selected", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+            return
+        if bin_width_micros < 1000:
+            BoxMessage.setup("Error", "Bin width value cannot be less than 1000μs", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
             return
         if self.tab_selected != "tab_data":
             open_config_plots_popup = len(self.plots_to_show) == 0   
@@ -961,7 +974,6 @@ class SpectroscopyWindow(QWidget):
         self.hide_harmonic_selector()
         acquisition_time_millis = None if self.get_free_running_state() else int(
             self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)) * 1000
-        bin_width_micros = int(self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH))
         connection_type = self.control_inputs["channel_type"].currentText()
         if str(connection_type) == "USB":
             connection_type = "USB"
@@ -1043,6 +1055,8 @@ class SpectroscopyWindow(QWidget):
         # self.pull_from_queue()
 
     def pull_from_queue(self):
+        export_data = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA) 
+        is_export_data_active = export_data == True or export_data == "true"
         val = flim_labs.pull_from_queue()
         if len(val) > 0:
             for v in val:
@@ -1050,8 +1064,9 @@ class SpectroscopyWindow(QWidget):
                     print("Got end of acquisition, stopping")
                     self.stop_spectroscopy_experiment()
                     self.style_start_button()
-                    self.control_inputs["save"].setHidden(True)
                     QApplication.processEvents()
+                    if is_export_data_active:
+                        save_spectroscopy_bin_file(self)
                     if self.is_reference_phasors():
                         # read reference file from .pid file
                         with open(".pid", "r") as f:
@@ -1061,7 +1076,10 @@ class SpectroscopyWindow(QWidget):
                         self.control_inputs["save"].setHidden(False)
                         print(f"Last reference file: {reference_file}")
                         break
+                    if not(self.is_phasors()):
+                        self.control_inputs["save"].setHidden(False)
                     if self.is_phasors():
+                        self.control_inputs["save"].setHidden(True)
                         self.quantize_phasors(1)
                         self.show_harmonic_selector(self.harmonic_selector_value)
                         break
@@ -1080,7 +1098,7 @@ class SpectroscopyWindow(QWidget):
                 try:
                     ((channel,), (time_ns,), intensities) = v
                 except:
-                    print(v)
+                    print(v)  
                 ((channel,), (time_ns,), intensities) = v
                 channel_index = next((item for item in self.plots_to_show if item == channel), None)
                 if channel_index is not None:
@@ -1261,6 +1279,7 @@ class SpectroscopyWindow(QWidget):
         self.decay_curves[channel_index].setData(x, curve + y)
         QApplication.processEvents()
         time.sleep(0.01)
+        
 
     def stop_spectroscopy_experiment(self):
         print("Stopping spectroscopy")

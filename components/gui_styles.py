@@ -224,6 +224,26 @@ class GUIStyles:
             border-color: #3c3c3c;
             }        
         """
+    
+    @staticmethod    
+    def set_input_text_style():
+        return """
+           QLineEdit  {
+                color: #f8f8f8;
+                font-family: "Montserrat";
+                font-size: 14px;
+                padding: 8px;
+                min-width: 100px;
+                border: 1px solid #11468F;
+                border-radius: 5px;
+                background-color: transparent;
+            }
+            QLineEdit:disabled, QLineEdit:disabled {
+            color: #404040;  
+            border-color: #3c3c3c;
+            }        
+        """    
+        
 
     @staticmethod
     def set_input_select_style():
