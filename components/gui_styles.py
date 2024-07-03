@@ -7,26 +7,27 @@ class GUIStyles:
     @staticmethod
     def set_default_theme(theme):
         QApplication.setStyle(QStyleFactory.create(theme))
-
-    @staticmethod
-    def customize_theme(window):
+        
+    @staticmethod        
+    def customize_theme(window, bg = QColor(28, 28, 28, 128), fg = QColor(255, 255, 255)):
         palette = QPalette()
-        background_color = QColor(28, 28, 28, 128)
+        background_color = bg
         palette.setColor(QPalette.ColorRole.Window, background_color)
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
-        window.setPalette(palette)
-        window.setStyleSheet("""
+        palette.setColor(QPalette.ColorRole.WindowText, fg)
+        window.setPalette(palette)  
+        window.setStyleSheet(
+            """
         QLabel {
             color: #f8f8f8;
             font-family: "Montserrat";
         }
-        """)
+        """
+        )  
 
     @staticmethod
     def set_fonts(font_name="Montserrat", font_size=10):
         general_font = QFont("Montserrat", 10)
         QApplication.setFont(general_font)
-
 
     @staticmethod
     def set_fonts_deep(root):
@@ -64,7 +65,9 @@ class GUIStyles:
         """
 
     @staticmethod
-    def button_style(color_base, color_border, color_hover, color_pressed, min_width, override=""):
+    def button_style(
+        color_base, color_border, color_hover, color_pressed, min_width, override=""
+    ):
         return f"""
             QPushButton {{
                 background-color: {color_base};
@@ -88,7 +91,7 @@ class GUIStyles:
                 border: 2px solid {color_pressed};
             }}
             
-            QPushButton:disabled {{
+            QPushButton#btn:disabled {{
                 background-color: #cecece;
                 border: 2px solid #cecece;
                 color: #8c8b8b;
@@ -114,22 +117,22 @@ class GUIStyles:
     @staticmethod
     def set_start_btn_style(button):
         color_dict = {
-            "base": "#13B6B4",
-            "border": "#13B6B4",
-            "hover": "#1EC99F",
-            "pressed": "#1AAE88",
+            "base": "#11468F",
+            "border": "#11468F",
+            "hover": "#0053a4",
+            "pressed": "#0D3A73",
         }
-        GUIStyles._set_button_style(button, color_dict, min_width="200px")
+        GUIStyles._set_button_style(button, color_dict, min_width="150px")
 
     @staticmethod
     def set_stop_btn_style(button):
         color_dict = {
-            "base": "#FFA726",
-            "border": "#FFA726",
-            "hover": "#FB8C00",
-            "pressed": "#E65100",
+            "base": "#DA1212",
+            "border": "#DA1212",
+            "hover": "#E23B3B",
+            "pressed": "#B01010",
         }
-        GUIStyles._set_button_style(button, color_dict, min_width="200px")
+        GUIStyles._set_button_style(button, color_dict, min_width="150px")
 
     @staticmethod
     def set_reset_btn_style(button):
@@ -139,19 +142,41 @@ class GUIStyles:
             "hover": "#a179ff",
             "pressed": "#6b3da5",
         }
-        GUIStyles._set_button_style(button, color_dict, min_width="100px")
+        GUIStyles._set_button_style(button, color_dict, min_width="150px")
 
     @staticmethod
     def set_config_btn_style(button):
         color_dict = {
-            "base": "black",
-            "border": "#FFA726",
-            "hover": "#FB8C00",
-            "pressed": "#E65100",
+            "base": "transparent",
+            "border": "transparent",
+            "hover": "#E23B3B",
+            "pressed": "#B01010",
         }
         GUIStyles._set_button_style(button, color_dict, min_width="100px")
         # set no rounded corners
-        button.setStyleSheet(button.styleSheet() + "QPushButton {border-radius: 0px; padding-left: 10px; padding-right: 10px;}  QPushButton:checked {background-color: #FFA726;}")
+        button.setStyleSheet(
+            button.styleSheet()
+            + "QPushButton {border-radius: 0px; border-bottom: 1px solid #D01B1B; padding-left: 10px; padding-right: 10px;}  QPushButton:checked {background-color: #D01B1B; border: 1px solid transparent;}"
+        )
+        
+    @staticmethod            
+    def checkbox_wrapper_style():
+        return """
+            QWidget#ch_checkbox_wrapper, QWidget#simple_checkbox_wrapper {
+                border: 1px solid #3b3b3b;
+                background-color: transparent;
+                padding: 0;
+            } 
+            QWidget#simple_checkbox_wrapper {
+                border-radius: 5px;
+            } 
+            QWidget{
+                color: #f8f8f8;
+                font-family: "Montserrat";
+                font-size: 12px;
+                padding: 0;
+            }        
+        """ 
 
     @staticmethod
     def set_checkbox_style():
@@ -187,18 +212,38 @@ class GUIStyles:
             QDoubleSpinBox, QSpinBox {
                 color: #f8f8f8;
                 font-family: "Montserrat";
-                font-size: 16px;
+                font-size: 14px;
                 padding: 8px;
                 min-width: 100px;
-                border: 1px solid #8d4ef2;
+                border: 1px solid #3b3b3b;
                 border-radius: 5px;
                 background-color: transparent;
             }
             QDoubleSpinBox:disabled, QSpinBox:disabled {
             color: #404040;  
-            border-color: #404040;
+            border-color: #3c3c3c;
             }        
         """
+    
+    @staticmethod    
+    def set_input_text_style():
+        return """
+           QLineEdit  {
+                color: #f8f8f8;
+                font-family: "Montserrat";
+                font-size: 14px;
+                padding: 8px;
+                min-width: 100px;
+                border: 1px solid #11468F;
+                border-radius: 5px;
+                background-color: transparent;
+            }
+            QLineEdit:disabled, QLineEdit:disabled {
+            color: #404040;  
+            border-color: #3c3c3c;
+            }        
+        """    
+        
 
     @staticmethod
     def set_input_select_style():
@@ -206,16 +251,16 @@ class GUIStyles:
             QComboBox {
                 color: #f8f8f8;
                 font-family: "Montserrat";
-                font-size: 16px;
+                font-size: 14px;
                 padding: 8px;
                 min-width: 100px;
-                border: 1px solid #8d4ef2;
+                border: 1px solid #3b3b3b;
                 border-radius: 5px;
                 background-color: transparent;
             }
             QComboBox:disabled {
                 color: darkgrey;  
-                border-color: darkgrey;
+                border-color: #3c3c3c;
             } 
             QComboBox:on { 
                 border-bottom-left-radius: 0;
@@ -224,7 +269,7 @@ class GUIStyles:
 
            QComboBox QAbstractItemView {
             font-family: "Montserrat";
-            border: 1px solid #8d4ef2;
+            border: 1px solid #3b3b3b;
             border-bottom-left-radius: 5px;
             border-bottom-right-radius: 5px;
             background-color: #181818;
@@ -269,3 +314,66 @@ class GUIStyles:
                 font-size: 26px;
             }
         """
+        
+    @staticmethod            
+    def toggle_collapse_button():
+        return """
+            QPushButton{
+                background-color: transparent;
+                border-radius: 15px;
+                qproperty-iconSize: 15px;
+                border: 1px solid #808080;
+            } 
+        """   
+        
+   
+    @staticmethod               
+    def chart_wrapper_style():
+        return """
+            QWidget#chart_wrapper {
+                border: 1px solid #3b3b3b;
+                background-color: #141414;
+                padding: 0;
+            }       
+        """      
+        
+    @staticmethod       
+    def plots_config_popup_style():
+        return """
+            QWidget {
+                background-color: #141414;
+                color: #6e6b6b;
+                font-family: Montserrat;
+                font-size: 14px;
+            }
+            QLabel#prompt_text {
+                color: white;
+                font-size: 18px;
+            } 
+        """    
+            
+    @staticmethod            
+    def set_simple_checkbox_style(color):
+        return f"""
+            QCheckBox {{
+                spacing: 5px;
+                color: #f8f8f8;
+                font-family: "Montserrat";
+                font-size: 14px;
+                letter-spacing: 0.1em;
+                border-radius: 5px;
+            }}
+            QCheckBox::indicator {{
+                width: 14px;
+                height: 14px;
+                border-radius: 7px;  
+            }}
+
+            QCheckBox::indicator:unchecked {{
+                background-color: #6b6a6a;
+            }}
+
+            QCheckBox::indicator:checked {{
+                background-color: {color};
+            }}
+        """          
