@@ -46,3 +46,9 @@ SETTINGS_PLOTS_TO_SHOW = "plots_to_show"
 DEFAULT_PLOTS_TO_SHOW = "[]"
 
 CHANNELS_GRID = "channels_grid"
+
+DOWNLOAD_BUTTON = "download_button"
+DOWNLOAD_MENU = "download_menu"
+
+SPECTROSCOPY_SCRIPT_ACTION = "spectroscopy_script_action"
+PHASORS_SCRIPT_ACTION = "phasors_script_action"

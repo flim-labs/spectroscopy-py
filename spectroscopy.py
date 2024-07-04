@@ -1,3 +1,4 @@
+from functools import partial
 import json
 import os
 import queue
@@ -8,7 +9,7 @@ from math import floor, log
 import flim_labs
 import numpy as np
 from components.box_message import BoxMessage
-from components.buttons import CollapseButton
+from components.buttons import CollapseButton, DownloadButton
 from components.file_utils import save_spectroscopy_bin_file
 from components.layout_utilities import draw_layout_separator
 from components.plots_config import PlotsConfigPopup
@@ -50,6 +51,8 @@ class SpectroscopyWindow(QWidget):
         self.tab_selected = "tab_spectroscopy"
         self.reference_file = None
         self.overlay2 = None
+        
+        self.acquisition_stopped = False
      
         self.intensity_lines = {}
         self.phasors_charts = {}
@@ -179,8 +182,10 @@ class SpectroscopyWindow(QWidget):
         tabs_layout.addWidget(self.control_inputs["tab_deconv"])
         top_bar_header.addLayout(tabs_layout)
         top_bar_header.addStretch(1)
+        download_button = DownloadButton(self)
         info_link_widget, export_data_control = self.create_export_data_input()
         file_size_info_layout = self.create_file_size_info_row()
+        top_bar_header.addWidget(download_button)
         top_bar_header.addWidget(info_link_widget)
         top_bar_header.addLayout(export_data_control)
         export_data_control.addSpacing(10)
@@ -249,11 +254,13 @@ class SpectroscopyWindow(QWidget):
         return info_link_widget, export_data_control
 
     def create_file_size_info_row(self):
+        export_data = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA)
+        export_data_active = export_data == True or export_data == "true"
         file_size_info_layout = QHBoxLayout()
         self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
         self.bin_file_size_label.setStyleSheet("QLabel { color : #f8f8f8; }")
         file_size_info_layout.addWidget(self.bin_file_size_label)
-        self.bin_file_size_label.show() if self.write_data is True else self.bin_file_size_label.hide()
+        self.bin_file_size_label.show() if export_data_active else self.bin_file_size_label.hide()
         return file_size_info_layout
 
     def create_control_inputs(self):
@@ -431,14 +438,27 @@ class SpectroscopyWindow(QWidget):
         else:
             self.control_inputs["start_button"].setText("STOP")
             GUIStyles.set_stop_btn_style(self.control_inputs["start_button"])
+            
+    
+    def change_download_script_options(self):  
+        if self.tab_selected == 'tab_spectroscopy':
+            self.control_inputs[PHASORS_SCRIPT_ACTION].setVisible(False)
+            self.control_inputs[SPECTROSCOPY_SCRIPT_ACTION].setVisible(True)
+        if self.tab_selected == 'tab_data':
+            self.control_inputs[PHASORS_SCRIPT_ACTION].setVisible(True)
+            self.control_inputs[SPECTROSCOPY_SCRIPT_ACTION].setVisible(False)
+                    
 
     def on_tab_selected(self, tab_name):
+        export_data = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA)
+        export_data_active = export_data == True or export_data == "true"
         self.control_inputs[self.tab_selected].setChecked(False)
         self.tab_selected = tab_name
         self.control_inputs[self.tab_selected].setChecked(True)
         self.hide_harmonic_selector()
         if tab_name == "tab_spectroscopy":
             # hide tau input
+            self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
             self.control_inputs[SETTINGS_HARMONIC].hide()
@@ -459,6 +479,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == "tab_deconv":
+            self.control_inputs[DOWNLOAD_BUTTON].setVisible(False)
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
             self.control_inputs["calibration"].hide()
@@ -472,6 +493,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == "tab_data":
+            self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
             self.control_inputs["calibration"].hide()
@@ -492,9 +514,12 @@ class SpectroscopyWindow(QWidget):
 
     def on_start_button_click(self):
         if self.mode == MODE_STOPPED:
+            self.acquisition_stopped = False
             self.begin_spectroscopy_experiment()
         elif self.mode == MODE_RUNNING:
+            self.acquisition_stopped = True
             self.stop_spectroscopy_experiment()
+            self.change_download_script_options()
 
     def on_tau_change(self, value):
         self.settings.setValue(SETTINGS_TAU_NS, value)
@@ -586,13 +611,14 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
 
     def on_export_data_changed(self, state):
+        self.control_inputs[DOWNLOAD_BUTTON].setVisible(state)
         self.settings.setValue(SETTINGS_WRITE_DATA, state)
         self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
         self.calc_exported_file_size() if state else None
 
     def create_channel_selector(self):
         grid = QHBoxLayout()
-        plots_config_btn = QPushButton("PLOTS CONFIG")
+        plots_config_btn = QPushButton(" PLOTS CONFIG")
         plots_config_btn.setIcon(QIcon(resource_path("assets/chart-icon.png")))
         GUIStyles.set_stop_btn_style(plots_config_btn)
         plots_config_btn.setFixedWidth(150)
@@ -1064,9 +1090,9 @@ class SpectroscopyWindow(QWidget):
                     print("Got end of acquisition, stopping")
                     self.stop_spectroscopy_experiment()
                     self.style_start_button()
+                    self.acquisition_stopped = True
+                    self.change_download_script_options()
                     QApplication.processEvents()
-                    if is_export_data_active:
-                        save_spectroscopy_bin_file(self)
                     if self.is_reference_phasors():
                         # read reference file from .pid file
                         with open(".pid", "r") as f:
@@ -1295,6 +1321,10 @@ class SpectroscopyWindow(QWidget):
         # time.sleep(0.5)
         # self.timer_update.stop()
         # self.update_plots_enabled = False
+        export_data = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA) 
+        is_export_data_active = export_data == True or export_data == "true"
+        if is_export_data_active:
+            save_spectroscopy_bin_file(self)
         self.top_bar_set_enabled(True)
         
     def open_plots_config_popup(self): 

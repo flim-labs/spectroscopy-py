@@ -96,6 +96,11 @@ class GUIStyles:
                 border: 2px solid #cecece;
                 color: #8c8b8b;
             }}
+            QPushButton#download_btn:disabled {{
+                background-color: #cecece;
+                border: 2px solid #cecece;
+                color: white;
+            }}
             
             {override}
         """
@@ -376,4 +381,37 @@ class GUIStyles:
             QCheckBox::indicator:checked {{
                 background-color: {color};
             }}
-        """          
+        """ 
+        
+    @staticmethod    
+    def set_context_menu_style(base, selected, pressed):
+        return f"""
+        QWidget {{
+            background-color: #181818;  
+        }}
+        QMenu {{
+            margin: 0;   
+            border-radius: 4px;
+            background: #181818;     
+            padding: 5px 0;  
+        }}
+        QMenu::item {{
+            background-color: {base}; 
+            color: white; 
+            height: 20px;
+            margin: 2px 0px 2px 0px;
+            border-radius: 4px;   
+            font-family: "Montserrat";
+            font-size: 12px;
+            font-weight: bold;
+            padding:10px 13px 10px 10px;
+            width: 150px;
+            min-width: 120px;
+        }}
+        QMenu::item:selected {{
+            background-color: {selected};  
+         }}
+        QMenu::item:pressed {{
+            background-color: {pressed};  
+         }}
+        """             
