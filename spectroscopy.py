@@ -1380,7 +1380,7 @@ class SpectroscopyWindow(QWidget):
     def set_decay_log_mode(self, values):
         values = np.where(values == 0, values + 0.000000001, values)
         log_values = np.log10(values)
-        log_values = np.where(log_values < 0, 0, log_values)
+        log_values = np.where(log_values < 0, -0.1, log_values)
         exponents = np.floor(log_values)
         exponents_int = exponents.astype(int)
         exponents_lin_space = np.linspace(0, max(exponents_int))
@@ -1388,7 +1388,7 @@ class SpectroscopyWindow(QWidget):
         return log_values, exponents_lin_space_int
         
     def format_power_of_ten(self, i):
-            if i == 0:
+            if i < 0:
                 return "0"
             else:
                 return "10" + "".join([UNICODE_SUP[c] for c in str(i)])   
