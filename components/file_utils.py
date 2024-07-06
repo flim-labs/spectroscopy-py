@@ -25,6 +25,7 @@ def save_spectroscopy_bin_file(window):
     source_file = get_recent_spectroscopy_tracing_file()
     if not source_file:
         return
+    window.exported_source_spectroscopy_bin = source_file
     dialog = QFileDialog()
     dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
     dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
@@ -41,6 +42,7 @@ def save_spectroscopy_bin_file(window):
             dest_file_name = f"{new_file_name}_{base_name}{file_extension}"
             dest_file_path = os.path.join(os.path.dirname(file_name), dest_file_name)
             shutil.copyfile(source_file, dest_file_path)
+            window.renamed_exported_spectroscopy_bin = dest_file_path
             BoxMessage.setup(
                 "File saved",
                 f"File saved successfully to: {dest_file_path} path",

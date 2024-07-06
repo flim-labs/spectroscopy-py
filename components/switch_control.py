@@ -65,6 +65,7 @@ class SwitchCircle(QWidget):
 
 class SwitchControl(QCheckBox):
     def __init__(self, parent=None, bg_color="#777777", circle_color="#DDD", active_color="#aa00ff",
+                 unchecked_color="darkgrey",
                  animation_curve=QEasingCurve.Type.OutBounce, animation_duration=300, checked: bool = False,
                  change_cursor=True, width=80, height=28):
         super().__init__(parent)
@@ -79,12 +80,13 @@ class SwitchControl(QCheckBox):
                                      self.animation_duration)
         self.__circle_position = 3
         self.active_color = active_color
+        self.unchecked_color = unchecked_color
         self.auto = False
         self.pos_on_press = None
         if checked:
             self.__circle.move(self.width() - 26, 3)
             self.setChecked(True)
-        elif not checked:
+        else:
             self.__circle.move(3, 3)
             self.setChecked(False)
         self.animation = QPropertyAnimation(self.__circle, b"pos")
@@ -98,19 +100,19 @@ class SwitchControl(QCheckBox):
         enabled = self.isEnabled()
         if not self.isChecked():
             if enabled:
-                painter.setBrush(QColor(self.bg_color))
+                painter.setBrush(QColor(self.unchecked_color))
             else:
                 painter.setPen(Qt.PenStyle.SolidLine)
                 painter.setPen(QColor("white"))
                 painter.setBrush(QColor("black"))
             painter.drawRoundedRect(0, 0, self.width(), self.height(), self.height() / 2, self.height() / 2)
-        elif self.isChecked():
+        else:
             if enabled:
                 painter.setBrush(QColor(self.active_color))
             else:
                 painter.setPen(Qt.PenStyle.SolidLine)
                 painter.setPen(QColor("white"))
-                painter.setBrush(QColor("darkgrey"))
+                painter.setBrush(QColor("black"))
             painter.drawRoundedRect(0, 0, self.width(), self.height(), self.height() / 2, self.height() / 2)
 
     def hitButton(self, pos):
@@ -137,7 +139,7 @@ class SwitchControl(QCheckBox):
         if checked:
             self.animation.setEndValue(QPoint(self.width() - 26, self.__circle.y()))
             self.setChecked(True)
-        if not checked:
+        else:
             self.animation.setEndValue(QPoint(3, self.__circle.y()))
             self.setChecked(False)
         self.animation.start()

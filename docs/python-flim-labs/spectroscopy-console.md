@@ -32,7 +32,7 @@
 [![Spectroscopy console mode](../assets/images/screenshots/spectroscopy_console_thumbnail.png)](https://www.youtube.com/watch?v=CnHMp9E3iBQ)
 
 The [Spectroscopy](https://github.com/flim-labs/spectroscopy-py) Console mode provides live-streaming data representation directly in the console, without an interface intermediary and charts data visualization processes.
-The data displayed on the console screen indicates **the cannel** (number), **the moment of acquisition** (in seconds) and the corresponding **decay curve values** of 256 chart points detected during that time.
+The data displayed on the console screen indicates **the channel** (number), **the moment of acquisition** (in seconds) and the corresponding **decay curve values** of 256 chart points detected during that time.
 
 Here a table summary of the configurable parameters:
 

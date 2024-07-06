@@ -414,4 +414,18 @@ class GUIStyles:
         QMenu::item:pressed {{
             background-color: {pressed};  
          }}
-        """             
+        """ 
+        
+    @staticmethod
+    def set_lin_log_widget_style():
+        return """
+            QWidget {
+                background-color: transparent;
+            }
+            QLabel {
+                color: "#cecece";
+                font-family: Montserrat;
+                font-size: 14px;
+            }
+        """     
+                       

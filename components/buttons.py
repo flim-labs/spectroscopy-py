@@ -6,6 +6,7 @@ from PyQt6.QtCore import QPropertyAnimation, QPoint, Qt, QSize
 from PyQt6.QtGui import QIcon, QAction
 from components.resource_path import resource_path
 from components.gui_styles import GUIStyles
+from export_data_scripts.script_files_utils import PythonScriptUtils
 from settings import *
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
@@ -92,13 +93,15 @@ class DownloadButton(QWidget):
 
     @staticmethod
     def download_spectroscopy_script(app):
-        #PythonScriptUtils.download_python(self)
+        bin_file_path = app.renamed_exported_spectroscopy_bin if app.renamed_exported_spectroscopy_bin is not None else app.exported_source_spectroscopy_bin
+        PythonScriptUtils.download_spectroscopy(app, bin_file_path)
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(False)
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(True) 
     
     @staticmethod    
     def download_phasors_script(app):
-        #MatlabScriptUtils.download_matlab(self)
+        bin_file_path = app.renamed_exported_spectroscopy_bin if app.renamed_exported_spectroscopy_bin is not None else app.exported_source_spectroscopy_bin
+        PythonScriptUtils.download_phasors(app, bin_file_path)
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(False)
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(True)    
         
