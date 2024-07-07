@@ -15,7 +15,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
 from PyQt6.QtGui import QPixmap, QFont, QIcon, QTransform, QBrush, QColor
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout, QLayout, QLabel, \
-    QSizePolicy, QPushButton, QDialog, QMessageBox, QFileDialog, QGraphicsView, QGraphicsScene, QGraphicsProxyWidget
+    QSizePolicy, QPushButton, QDialog, QMessageBox, QFileDialog, QGraphicsView, QGraphicsScene, QGraphicsProxyWidget, QSlider
 from components.fancy_checkbox import FancyButton
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
@@ -62,6 +62,7 @@ class SpectroscopyWindow(QWidget):
         self.decay_widgets = {}
         self.cached_decay_values = {}
         self.lin_log_switches = {}
+        self.decay_sliders = {}
         
         default_lin_log_mode = self.settings.value(SETTINGS_LIN_LOG_MODE, DEFAULT_LIN_LOG_MODE)
         self.lin_log_mode = {int(key): value for key, value in json.loads(default_lin_log_mode).items()} if default_lin_log_mode is not None else {}
@@ -208,7 +209,7 @@ class SpectroscopyWindow(QWidget):
         top_bar.addWidget(top_collapsible_widget)
         top_bar.addLayout(self.create_control_inputs())
         top_bar.addWidget(draw_layout_separator())
-        top_bar.addSpacing(20)
+        top_bar.addSpacing(5)
         # # add a label to use as status
         # self.control_inputs["status"] = QLabel("Status: Ready")
         # self.control_inputs["status"].setStyleSheet("QLabel { color : #FFA726; }")
@@ -463,8 +464,7 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(True)
         self.hide_harmonic_selector()
         if tab_name == "tab_spectroscopy":
-            #self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
-            self.control_inputs[DOWNLOAD_BUTTON].setVisible(False)
+            self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             # hide tau input
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -500,7 +500,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == "tab_data":
-            #self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
+            self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(False)
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -754,7 +754,7 @@ class SpectroscopyWindow(QWidget):
                 self.cps_widgets[channel] =label
                 self.cps_counts[channel] = {"last_time_ns": 0, "last_count": 0, "current_count": 0}
                 intensity_widget = pg.PlotWidget()
-                intensity_widget.setLabel('left', 'AVG. Photon counts', units='')
+                intensity_widget.setLabel('left', 'AVG. Photon counts' if len(self.plots_to_show) < 4 else 'AVG. Photons', units='')
                 intensity_widget.setLabel('bottom', 'Time', units='s')
                 intensity_widget.setTitle(f'Channel {channel + 1} intensity')
                 intensity_widget.setBackground("#141414")
@@ -774,9 +774,14 @@ class SpectroscopyWindow(QWidget):
                 else:
                     intensity_plot_stretch = 4         
                 h_layout.addWidget(intensity_widget, stretch=intensity_plot_stretch)
+                h_layout_slider = QHBoxLayout()
+                h_layout_slider.addSpacing(68 if len(self.plots_to_show) > 1 else 130)
+                decay_slider = QSlider(Qt.Orientation.Horizontal)
+                decay_slider.setStyleSheet(GUIStyles.set_slider_style())
+                self.decay_sliders[channel] = decay_slider
+                h_layout_slider.addWidget(decay_slider)
                 v_layout.addLayout(h_layout, 2)
-                
-                ##TODO
+                v_layout.addLayout(h_layout_slider)
                 h_decay_layout = QHBoxLayout()
                 lin_log_widget = self.generate_lin_log_widget(channel)
                 curve_widget = pg.PlotWidget()
@@ -807,8 +812,7 @@ class SpectroscopyWindow(QWidget):
                 h_decay_layout.addWidget(lin_log_widget, 1)
                 h_decay_layout.addWidget(curve_widget, 11)
                 v_layout.addLayout(h_decay_layout, 3)
-                v_widget.setLayout(v_layout)
-                
+                v_widget.setLayout(v_layout)   
             else:
                 h_layout = QHBoxLayout()
                 label = QLabel("No CPS")
@@ -950,6 +954,7 @@ class SpectroscopyWindow(QWidget):
         self.cps_counts.clear()
         self.intensity_lines.clear()
         self.decay_curves.clear()
+        self.decay_sliders.clear()
         for i in reversed(range(self.grid_layout.count())):
             widget = self.grid_layout.itemAt(i).widget()
             if widget is not None:
@@ -1305,9 +1310,7 @@ class SpectroscopyWindow(QWidget):
                     while x[-1] - x[0] > self.cached_time_span_seconds:
                         x = x[1:]
                         y = y[1:]
-                intensity_line.setData(x, y)
-         
-        ##TODO         
+                intensity_line.setData(x, y)      
         decay_curve = self.decay_curves[channel_index]
         if decay_curve is not None:
             x, y = decay_curve.getData()
@@ -1321,8 +1324,7 @@ class SpectroscopyWindow(QWidget):
                 ticks = [(i, self.format_power_of_ten(i)) for i in exponents_lin_space_int]
                 decay_curve.setData(x, log_values)
                 axis = self.decay_widgets[channel_index].getAxis("left")
-                axis.setTicks([ticks]) 
-                   
+                axis.setTicks([ticks])         
         QApplication.processEvents()
         time.sleep(0.01)
 
@@ -1432,26 +1434,22 @@ class SpectroscopyWindow(QWidget):
             switch.setEnabled(enabled)
     
     def on_lin_log_changed(self, state, channel):
-        self.lin_log_mode[channel] = "LIN" if state is True else "LOG"
+        self.lin_log_mode[channel] = "LIN" if state else "LOG"
         self.settings.setValue(SETTINGS_LIN_LOG_MODE, json.dumps(self.lin_log_mode))
         decay_curve = self.decay_curves[channel]
         x, _ = decay_curve.getData()
+        axis = self.decay_widgets[channel].getAxis("left")
+        cached_decay_values = self.cached_decay_values[channel]
         if state:
-            decay_curve.setData(x, self.cached_decay_values[channel])
-            axis = self.decay_widgets[channel].getAxis("left")
-            cached_decay_values = self.cached_decay_values[channel].tolist()
-            max_value = max(cached_decay_values)
-            max_ticks = 10
-            yticks_values = self.calculate_lin_ticks(max_value, max_ticks)
+            decay_curve.setData(x, cached_decay_values)
+            max_value = max(cached_decay_values.tolist())
+            yticks_values = self.calculate_lin_ticks(max_value, 10)
             ticks = [(value, str(int(value))) for value in yticks_values]
-            axis.setTicks([ticks])
         else:
-            sum_decay = self.cached_decay_values[channel]
-            log_values, exponents_lin_space_int = self.set_decay_log_mode(sum_decay)
+            log_values, exponents_lin_space_int = self.set_decay_log_mode(cached_decay_values)
             ticks = [(i, self.format_power_of_ten(i)) for i in exponents_lin_space_int]
-            decay_curve.setData(x, log_values)
-            axis = self.decay_widgets[channel].getAxis("left")
-            axis.setTicks([ticks]) 
+            decay_curve.setData(x, log_values)    
+        axis.setTicks([ticks])
                 
     def calculate_lin_ticks(self, max_value, max_ticks):
         if max_value <= 0:
@@ -1462,7 +1460,6 @@ class SpectroscopyWindow(QWidget):
             step *= 2
             ticks = np.arange(0, max_value + step, step)
         return ticks            
-   
       
     def open_plots_config_popup(self): 
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
