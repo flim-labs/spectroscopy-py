@@ -1289,7 +1289,7 @@ class SpectroscopyWindow(QWidget):
         magnitude = int(floor(log(number, k)))
         return '%.2f%s' % (number / k ** magnitude, units[magnitude])
 
-    def update_plots2(self, channel_index, time_ns, curve):
+    def update_plots2(self, channel_index, time_ns, curve):    
         if channel_index in self.intensity_lines:
             intensity_line = self.intensity_lines[channel_index]
             if intensity_line is not None:
@@ -1305,24 +1305,24 @@ class SpectroscopyWindow(QWidget):
                     while x[-1] - x[0] > self.cached_time_span_seconds:
                         x = x[1:]
                         y = y[1:]
-                intensity_line.setData(x, y)
-         
-        ##TODO         
+                intensity_line.setData(x, y)      
         decay_curve = self.decay_curves[channel_index]
+        decay_widget = self.decay_widgets[channel_index]
         if decay_curve is not None:
             x, y = decay_curve.getData()
             last_cached_decay_value = self.cached_decay_values[channel_index]
             self.cached_decay_values[channel_index] = np.array(curve) + last_cached_decay_value
             if self.lin_log_mode[channel_index] == 'LIN':
+                decay_widget.showGrid(x = False, y = False, alpha = 0.3)
                 decay_curve.setData(x, curve + y)
             else:
+                decay_widget.showGrid(x = False, y = True, alpha = 0.3)
                 sum_decay = self.cached_decay_values[channel_index]
                 log_values, exponents_lin_space_int = self.set_decay_log_mode(sum_decay)
                 ticks = [(i, self.format_power_of_ten(i)) for i in exponents_lin_space_int]
                 decay_curve.setData(x, log_values)
                 axis = self.decay_widgets[channel_index].getAxis("left")
-                axis.setTicks([ticks]) 
-                   
+                axis.setTicks([ticks])         
         QApplication.processEvents()
         time.sleep(0.01)
 
@@ -1431,27 +1431,26 @@ class SpectroscopyWindow(QWidget):
         for _, switch in self.lin_log_switches.items():
             switch.setEnabled(enabled)
     
-    def on_lin_log_changed(self, state, channel):
-        self.lin_log_mode[channel] = "LIN" if state is True else "LOG"
+    def on_lin_log_changed(self, state, channel):    
+        self.lin_log_mode[channel] = "LIN" if state else "LOG"
         self.settings.setValue(SETTINGS_LIN_LOG_MODE, json.dumps(self.lin_log_mode))
         decay_curve = self.decay_curves[channel]
+        decay_widget = self.decay_widgets[channel]
         x, _ = decay_curve.getData()
+        axis = self.decay_widgets[channel].getAxis("left")
+        cached_decay_values = self.cached_decay_values[channel]
         if state:
-            decay_curve.setData(x, self.cached_decay_values[channel])
-            axis = self.decay_widgets[channel].getAxis("left")
-            cached_decay_values = self.cached_decay_values[channel].tolist()
-            max_value = max(cached_decay_values)
-            max_ticks = 10
-            yticks_values = self.calculate_lin_ticks(max_value, max_ticks)
+            decay_curve.setData(x, cached_decay_values)
+            decay_widget.showGrid(x = False, y = False)
+            max_value = max(cached_decay_values.tolist())
+            yticks_values = self.calculate_lin_ticks(max_value, 10)
             ticks = [(value, str(int(value))) for value in yticks_values]
-            axis.setTicks([ticks])
         else:
-            sum_decay = self.cached_decay_values[channel]
-            log_values, exponents_lin_space_int = self.set_decay_log_mode(sum_decay)
+            log_values, exponents_lin_space_int = self.set_decay_log_mode(cached_decay_values)
             ticks = [(i, self.format_power_of_ten(i)) for i in exponents_lin_space_int]
-            decay_curve.setData(x, log_values)
-            axis = self.decay_widgets[channel].getAxis("left")
-            axis.setTicks([ticks]) 
+            decay_widget.showGrid(x = False, y = True, alpha = 0.3)
+            decay_curve.setData(x, log_values)    
+        axis.setTicks([ticks]) 
                 
     def calculate_lin_ticks(self, max_value, max_ticks):
         if max_value <= 0:
