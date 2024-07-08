@@ -1289,7 +1289,7 @@ class SpectroscopyWindow(QWidget):
         magnitude = int(floor(log(number, k)))
         return '%.2f%s' % (number / k ** magnitude, units[magnitude])
 
-    def update_plots2(self, channel_index, time_ns, curve):    
+    def update_plots2(self, channel_index, time_ns, curve):
         if channel_index in self.intensity_lines:
             intensity_line = self.intensity_lines[channel_index]
             if intensity_line is not None:
@@ -1307,22 +1307,25 @@ class SpectroscopyWindow(QWidget):
                         y = y[1:]
                 intensity_line.setData(x, y)      
         decay_curve = self.decay_curves[channel_index]
-        decay_widget = self.decay_widgets[channel_index]
         if decay_curve is not None:
             x, y = decay_curve.getData()
-            last_cached_decay_value = self.cached_decay_values[channel_index]
-            self.cached_decay_values[channel_index] = np.array(curve) + last_cached_decay_value
-            if self.lin_log_mode[channel_index] == 'LIN':
-                decay_widget.showGrid(x = False, y = False, alpha = 0.3)
+            if self.tab_selected != 'tab_spectroscopy':
                 decay_curve.setData(x, curve + y)
-            else:
-                decay_widget.showGrid(x = False, y = True, alpha = 0.3)
-                sum_decay = self.cached_decay_values[channel_index]
-                log_values, exponents_lin_space_int = self.set_decay_log_mode(sum_decay)
-                ticks = [(i, self.format_power_of_ten(i)) for i in exponents_lin_space_int]
-                decay_curve.setData(x, log_values)
-                axis = self.decay_widgets[channel_index].getAxis("left")
-                axis.setTicks([ticks])         
+            else:    
+                decay_widget = self.decay_widgets[channel_index]
+                last_cached_decay_value = self.cached_decay_values[channel_index]
+                self.cached_decay_values[channel_index] = np.array(curve) + last_cached_decay_value
+                if self.lin_log_mode[channel_index] == 'LIN':
+                    decay_widget.showGrid(x = False, y = False, alpha = 0.3)
+                    decay_curve.setData(x, curve + y)
+                else:    
+                    decay_widget.showGrid(x = False, y = True, alpha = 0.3)
+                    sum_decay = self.cached_decay_values[channel_index]
+                    log_values, exponents_lin_space_int = self.set_decay_log_mode(sum_decay)
+                    ticks = [(i, self.format_power_of_ten(i)) for i in exponents_lin_space_int]
+                    decay_curve.setData(x, log_values)
+                    axis = self.decay_widgets[channel_index].getAxis("left")
+                    axis.setTicks([ticks])         
         QApplication.processEvents()
         time.sleep(0.01)
 
