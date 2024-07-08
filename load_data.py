@@ -27,9 +27,11 @@ def load_data(file_path, selected_channels):
                 print('End of file data')
                 break
             for channel in selected_channels:
-                data[channel] = data.get(channel, []) + [
+                current_curve = [
                     int.from_bytes(f.read(4), byteorder='little') for _ in range(256)
                 ]
+                data[channel] = data.get(channel, [0 for _ in range(256)])
+                data[channel] = [sum(x) for x in zip(data[channel], current_curve)]
     return data
 
 
@@ -105,11 +107,11 @@ def plot_phasors(data):
 def plot_data(data):
     plt.figure()
     for channel, curve in data.items():
-        plt.plot(curve, label=channel)
+        plt.plot(curve, label='Channel ' + str(channel))
     plt.legend()
-    plt.title('Data Plot')
-    plt.xlabel('Sample Index')
-    plt.ylabel('Value')
+    plt.title('Decay curves')
+    plt.xlabel('Bin')
+    plt.ylabel('Counts')
     plt.grid(True)
     plt.show()
 
