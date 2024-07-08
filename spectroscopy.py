@@ -493,7 +493,6 @@ class SpectroscopyWindow(QWidget):
                 plot_config_btn.setVisible(True)
         elif tab_name == "tab_data":
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
-            self.control_inputs[DOWNLOAD_BUTTON].setVisible(False)
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
             self.control_inputs["calibration"].hide()
@@ -518,6 +517,7 @@ class SpectroscopyWindow(QWidget):
             self.acquisition_stopped = False
             self.renamed_exported_spectroscopy_bin = None
             self.exported_source_spectroscopy_bin = None
+            self.control_inputs["save"].setHidden(True)
             self.begin_spectroscopy_experiment()
         elif self.mode == MODE_RUNNING:
             self.acquisition_stopped = True
@@ -1115,27 +1115,9 @@ class SpectroscopyWindow(QWidget):
             for v in val:
                 if v == ('end',):  # End of acquisition
                     print("Got end of acquisition, stopping")
-                    self.stop_spectroscopy_experiment()
                     self.style_start_button()
                     self.acquisition_stopped = True
-                    self.change_download_script_options()
-                    QApplication.processEvents()
-                    if self.is_reference_phasors():
-                        # read reference file from .pid file
-                        with open(".pid", "r") as f:
-                            lines = f.readlines()
-                            reference_file = lines[0].split("=")[1]
-                        self.reference_file = reference_file
-                        self.control_inputs["save"].setHidden(False)
-                        print(f"Last reference file: {reference_file}")
-                        break
-                    if not(self.is_phasors()):
-                        self.control_inputs["save"].setHidden(False)
-                    if self.is_phasors():
-                        self.control_inputs["save"].setHidden(True)
-                        self.quantize_phasors(1)
-                        self.show_harmonic_selector(self.harmonic_selector_value)
-                        break
+                    self.stop_spectroscopy_experiment()
                     break
                 if 'sp_phasors' in v[0]:
                     channel = v[1][0]
@@ -1369,6 +1351,23 @@ class SpectroscopyWindow(QWidget):
             save_spectroscopy_bin_file(self)
         self.set_lin_log_switches_enable_mode(True)    
         self.top_bar_set_enabled(True)
+        self.change_download_script_options()
+        QApplication.processEvents()
+        if self.is_reference_phasors():
+            # read reference file from .pid file
+            with open(".pid", "r") as f:
+                lines = f.readlines()
+                reference_file = lines[0].split("=")[1]
+                self.reference_file = reference_file
+                self.control_inputs["save"].setHidden(False)
+                print(f"Last reference file: {reference_file}")        
+            if not(self.is_phasors()):        
+                self.control_inputs["save"].setHidden(False)
+                if self.is_phasors():
+                    self.control_inputs["save"].setHidden(True)
+                    self.quantize_phasors(1)
+                    self.show_harmonic_selector(self.harmonic_selector_value)
+                    
     
     def set_decay_log_mode(self, values):
         values = np.where(values == 0, values + 0.000000001, values)

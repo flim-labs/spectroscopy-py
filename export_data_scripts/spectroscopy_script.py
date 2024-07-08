@@ -9,7 +9,7 @@ def get_recent_spectroscopy_file():
     files = [
         f
         for f in os.listdir(data_folder)
-        if f.startswith("spectroscopy") and not ("calibration" in f)
+        if f.startswith("spectroscopy") and not ("calibration" in f) and not ("phasors" in f)
     ]
     files.sort(
         key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
