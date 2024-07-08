@@ -5,4 +5,4 @@ pip install pyinstaller
 pip install -r .\requirements.txt
 pip install PyQt6 --force-reinstall
 pyinstaller --noconsole --onefile --icon .\assets\spectroscopy-logo.ico --add-data "assets/*:assets"  .\spectroscopy.py
-deactivate
+deactivat
