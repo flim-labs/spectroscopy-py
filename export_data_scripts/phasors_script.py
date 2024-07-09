@@ -4,106 +4,119 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-# Get most recent spectroscopy bin file saved
-def get_recent_spectroscopy_file():
+def get_recent_phasors_file():
     data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
     files = [
         f
         for f in os.listdir(data_folder)
-        if f.startswith("spectroscopy") and not ("calibration" in f)
+        if f.startswith("spectroscopy-phasors") and not ("calibration" in f)
     ]
     files.sort(
         key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
     )
+    if not files:
+        raise FileNotFoundError("No suitable phasors file found.")
     return os.path.join(data_folder, files[0])
 
-
-file_path = get_recent_spectroscopy_file()
+file_path = get_recent_phasors_file()
 print("Using data file: " + file_path)
 
 
-with open(file_path, "rb") as f:
-    # first 4 bytes must be SP01
-    # 'SP01' is an identifier for spectroscopy bin files
-    if f.read(4) != b"SP01":
+with open(file_path, 'rb') as f:
+    # First 4 bytes must be SPF1
+    if f.read(4) != b"SPF1":
         print("Invalid data file")
         exit(0)
 
-    # read metadata from file
+    # Read metadata from file
     (json_length,) = struct.unpack("I", f.read(4))
     null = None
     metadata = eval(f.read(json_length).decode("utf-8"))
-    print(metadata)
 
+    # Enabled channels
+    channels = metadata.get("channels", [])
+    num_channels = len(channels)
+    if num_channels == 0:
+        print("No enabled channels found.")
+        exit(0)
     
-    # ENABLED CHANNELS
-    if "channels" in metadata and metadata["channels"] is not None:
-        print(
-            "Enabled channels: "
-            + (
-                ", ".join(
-                    ["Channel " + str(ch + 1) for ch in metadata["channels"]]
-                )
-            )
-        )   
-    # BIN WIDTH (us)    
-    if "bin_width_micros" in metadata and metadata["bin_width_micros"] is not None:
-        print("Bin width: " + str(metadata["bin_width_micros"]) + "\u00B5s")    
-    # ACQUISITION TIME (duration of the acquisition)
-    if "acquisition_time_millis" in metadata and metadata["acquisition_time_millis"] is not None:
-        print("Acquisition time: " + str(metadata["acquisition_time_millis"] / 1000) + "s")
-    # LASER PERIOD (ns)
-    if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None:
-        print("Laser period: " + str(metadata["laser_period_ns"]) + "ns") 
-    # TAU (ns)
-    if "tau_ns" in metadata and metadata["tau_ns"] is not None:
-        print("Tau: " + str(metadata["tau_ns"]) + "ns")   
+    print(
+        "Enabled channels: "
+        + ", ".join(["Channel " + str(ch + 1) for ch in channels])
+    )
+
+    # Bin width (us)
+    bin_width_micros = metadata.get("bin_width_micros")
+    if bin_width_micros is not None:
+        print("Bin width: " + str(bin_width_micros) + "us")
+    
+    # Acquisition time (duration of the acquisition)
+    acquisition_time_millis = metadata.get("acquisition_time_millis")
+    if acquisition_time_millis is not None:
+        print("Acquisition time: " + str(acquisition_time_millis / 1000) + "s")
+    
+    # Laser period (ns)
+    laser_period_ns = metadata.get("laser_period_ns")
+    if laser_period_ns is not None:
+        print("Laser period: " + str(laser_period_ns) + "ns")
         
-              
-    channel_lines = [[] for _ in range(len(metadata["channels"]))]
-    number_of_channels = len(metadata["channels"])
-    channel_values_unpack_string = 'I' * number_of_channels
+    # Harmonics
+    harmonics = metadata.get("harmonics")
+    if harmonics is not None:
+        print("Harmonics: " + str(harmonics))    
     
-    
-    
-    while True:
-        data = f.read(4 * number_of_channels + 8)  
-        if not data:
-            break
+    # Tau (ns)
+    tau_ns = metadata.get("tau_ns")
+    if tau_ns is not None:
+        print("Tau: " + str(tau_ns) + "ns")
 
-        channel_values = struct.unpack(channel_values_unpack_string, data[:4 * number_of_channels])
+    data = {}
+    try:
+        while True:
+            for channel in metadata["channels"]:
+                if channel not in data:
+                    data[channel] = {}
+                for harmonic in range(1, metadata['harmonics'] + 1):    
+                    if harmonic not in data[channel]:
+                        data[channel][harmonic] = []
+                    bytes_read = f.read(32)
+                    if not bytes_read:
+                        raise StopIteration 
+                    try:
+                        time_ns, channel_name, harmonic_name, g, s = struct.unpack('QIIdd', bytes_read)
+                    except struct.error as e:    
+                        print(f"Error unpacking data: {e}")
+                        raise StopIteration  
+                    data[channel][harmonic].append((g, s))
+    except StopIteration:
+        pass  
 
-    
-        harmonic = struct.unpack('d', data[4 * number_of_channels:4 * number_of_channels + 8])
-        print(harmonic)
-                
+# PLOTTING
+fig, ax = plt.subplots()
+harmonic_colors = plt.cm.viridis(np.linspace(0, 1, max(h for ch in data.values() for h in ch.keys())))
+harmonic_colors_dict = {harmonic: color for harmonic, color in enumerate(harmonic_colors, 1)}
+for channel, harmonics in data.items():
+    theta = np.linspace(0, np.pi, 100)
+    x = np.cos(theta)
+    y = np.sin(theta)
+    ax.plot(x, y, label=f'Channel: {channel + 1}')
+    for harmonic, values in harmonics.items():
+        if values:
+            g_values, s_values = zip(*values)
+            g_values = np.array(g_values)
+            s_values = np.array(s_values)
+            mask = (np.abs(g_values) < 1e9) & (np.abs(s_values) < 1e9)
+            g_values = g_values[mask]
+            s_values = s_values[mask]
+            ax.scatter(g_values, s_values, label=f'Channel: {channel + 1} Harmonic: {harmonic}',
+                       color=harmonic_colors_dict[harmonic])
+
+ax.set_aspect('equal')    
+ax.legend()
+plt.title('Phasors Plot')
+plt.xlabel('G')
+plt.ylabel('S')
+plt.grid(True)
+plt.show()            
             
-     
-
     
-            
-            
-
-    # PLOTTING    
-    """
-     This example script samples and plots all acquired photons counts. 
-     To avoid graphical overload, given the very high number of points, 
-     it is recommended to use reduced sampling for analysis.
-    """
- 
-   
-    num_plots = number_of_channels
-    num_plots_per_row = 1
-    if num_plots < 2:
-        num_plots_per_row = 1
-    if num_plots > 1 and num_plots < 4:
-        num_plots_per_row = 2
-    if num_plots >= 4:
-        num_plots_per_row = 4
-
-    num_rows = (num_plots + num_plots_per_row - 1) // num_plots_per_row
-    fig, axs = plt.subplots(num_rows, num_plots_per_row, figsize=(12, 3*num_rows), constrained_layout=True)
-    fig.suptitle("Phasors")
-
-        
-        

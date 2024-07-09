@@ -4,13 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-# Get most recent spectroscopy bin file saved
 def get_recent_spectroscopy_file():
     data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
     files = [
         f
         for f in os.listdir(data_folder)
-        if f.startswith("spectroscopy") and not ("calibration" in f)
+        if f.startswith("spectroscopy") and not ("calibration" in f) and not ("phasors" in f)
     ]
     files.sort(
         key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
@@ -19,10 +18,11 @@ def get_recent_spectroscopy_file():
 
 
 file_path = get_recent_spectroscopy_file()
+# file_path = "INSERT DATA FILE PATH HERE" # You can also manually insert the path to the data file here
 print("Using data file: " + file_path)
 
 
-with open(file_path, "rb") as f:
+with open(file_path, 'rb') as f:
     # first 4 bytes must be SP01
     # 'SP01' is an identifier for spectroscopy bin files
     if f.read(4) != b"SP01":
@@ -47,7 +47,7 @@ with open(file_path, "rb") as f:
         )   
     # BIN WIDTH (us)    
     if "bin_width_micros" in metadata and metadata["bin_width_micros"] is not None:
-        print("Bin width: " + str(metadata["bin_width_micros"]) + "\u00B5s")    
+        print("Bin width: " + str(metadata["bin_width_micros"]) + "us")    
     # ACQUISITION TIME (duration of the acquisition)
     if "acquisition_time_millis" in metadata and metadata["acquisition_time_millis"] is not None:
         print("Acquisition time: " + str(metadata["acquisition_time_millis"] / 1000) + "s")
@@ -59,64 +59,48 @@ with open(file_path, "rb") as f:
         print("Tau: " + str(metadata["tau_ns"]) + "ns")   
         
               
-    channel_lines = [[] for _ in range(len(metadata["channels"]))]
+    channel_curves = [[] for _ in range(len(metadata["channels"]))]
+    times = []
     number_of_channels = len(metadata["channels"])
-    channel_values_unpack_string = 'I' * number_of_channels
+    channel_values_unpack_string = 'I' * 256 
     
-    
-    while True:
-        data = f.read(4 * number_of_channels + 8)
+    while True:        
+        data = f.read(8)
         if not data:
             break
-        channel_values = struct.unpack(channel_values_unpack_string, data[:8])
-        for i in range(len(channel_lines)):
-            channel_lines[i].append(channel_values[i])
-            
-  
+        (time,) = struct.unpack('d', data)    
+        for i in range(number_of_channels):
+            data = f.read(4 * 256)  
+            if len(data) < 4 * 256:
+                break
+            curve = struct.unpack(channel_values_unpack_string, data)    
+            channel_curves[i].append(np.array(curve))
+        times.append(time / 1_000_000_000)    
     
     # PLOTTING
-    """
-     This example script samples and plots all acquired photons counts. 
-     To avoid graphical overload, given the very high number of points, 
-     it is recommended to use reduced sampling for analysis.
-    """
- 
-   
-    num_plots = number_of_channels
-    num_plots_per_row = 1
-    if num_plots < 2:
-        num_plots_per_row = 1
-    if num_plots > 1 and num_plots < 4:
-        num_plots_per_row = 2
-    if num_plots >= 4:
-        num_plots_per_row = 4
-
-    num_rows = (num_plots + num_plots_per_row - 1) // num_plots_per_row
-    fig, axs = plt.subplots(num_rows, num_plots_per_row, figsize=(12, 3*num_rows), constrained_layout=True)
-    fig.suptitle("Spectroscopy")
-
-    for i, ax in enumerate(axs.flat):
-        if i < num_plots:
-            x_values = np.linspace(0, metadata["laser_period_ns"], len(channel_lines[i]))
-            cumulative_sum = np.cumsum(channel_lines[i])
-            ax.plot(x_values, cumulative_sum, label=f"Decay")
-            ax.set_xlabel("Time (ns)")
-            ax.set_ylabel("Photon counts")
-            ax.set_title(f"Channel {metadata['channels'][i] + 1}")
-            ax.set_yscale("log")
-            ax.grid(True)
-            ax.legend()
-
+    plt.xlabel("Bin")
+    plt.ylabel("Intensity")
+    plt.yscale('log')
+    plt.title("Spectroscopy (time: " + str(round(times[-1])) + "s, curves stored: " + str(len(times)) + ")")
+    # plot all channels summed up    
+    total_max = 0
+    total_min = 9999999999999
+    for i in range(len(channel_curves)):
+        sum_curve = np.sum(channel_curves[i], axis=0)
+        max = np.max(sum_curve)
+        min = np.min(sum_curve)
+        if max > total_max:
+            total_max = max
+        if min < total_min:    
+            total_min = min
+        plt.plot(sum_curve, label=f"Channel {metadata['channels'][i] + 1}")  
+        plt.legend()  
+    plt.ylim(min * 0.99, max * 1.01) 
+    plt.tight_layout()   
     plt.show()
-
-        
-        
-        
-        
-        
-        
-
-        
-        
     
-    
+        
+   
+        
+        
+        

@@ -1,8 +1,8 @@
 
 from functools import partial
 import os
-from PyQt6.QtWidgets import  QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QMenu
 from PyQt6.QtCore import QPropertyAnimation, QPoint, Qt, QSize
+from PyQt6.QtWidgets import  QWidget, QHBoxLayout, QPushButton, QVBoxLayout, QMenu
 from PyQt6.QtGui import QIcon, QAction
 from components.resource_path import resource_path
 from components.gui_styles import GUIStyles

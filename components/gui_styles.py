@@ -427,5 +427,10 @@ class GUIStyles:
                 font-family: Montserrat;
                 font-size: 14px;
             }
-        """     
+        """
+        
+    @staticmethod
+    def set_slider_style():
+        return """
+            """           
                        
