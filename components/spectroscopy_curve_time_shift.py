@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QSlider, QWidget
 from PyQt6.QtCore import Qt
 from components.gui_styles import GUIStyles
 from components.input_number_control import InputNumberControl
+from components.lin_log_control import SpectroscopyLinLogControl
 from settings import *
 
 
@@ -33,7 +34,7 @@ class SpectroscopyTimeShift(QWidget):
             255,
             int(time_shift),
             h_layout,
-            partial(self.on_value_change, inp_type="input"),
+            partial(self.on_value_change, inp_type="input", channel=self.channel),
             control_layout="horizontal",
             spacing=0
         )
@@ -46,11 +47,12 @@ class SpectroscopyTimeShift(QWidget):
         slider = QSlider(Qt.Orientation.Horizontal)
         slider.setRange(0, 255)
         slider.setValue(time_shift)
-        slider.valueChanged.connect(partial(self.on_value_change, inp_type="slider"))
+        slider.valueChanged.connect(partial(self.on_value_change, inp_type="slider", channel=self.channel))
         return slider
 
-    def on_value_change(self, value, inp_type):
+    def on_value_change(self, value, inp_type, channel):
         self.app.time_shifts[self.channel] = value
+        lin_log_mode = self.app.lin_log_mode[self.channel]
         if inp_type == "slider":
             self.app.control_inputs["time_shift_inputs"][self.channel].setValue(value)
         else:
@@ -59,6 +61,15 @@ class SpectroscopyTimeShift(QWidget):
             decay_curve = self.app.decay_curves[self.channel]
             x, y = decay_curve.getData()
             if x is not None and y is not None:
-                x = self.app.cached_decay_x_values if not value else np.roll(self.app.cached_decay_x_values, value)
+                cached_decay_curve = self.app.cached_decay_values[channel]
+                decay_widget = self.app.decay_widgets[channel]
+                if lin_log_mode == 'LIN':
+                    ticks, y_data = SpectroscopyLinLogControl.calculate_lin_mode(cached_decay_curve)
+                    decay_widget.showGrid(x=False, y=False)
+                else:
+                    ticks, y_data = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_curve)
+                    decay_widget.showGrid(x=False, y=True, alpha=0.3)       
+                decay_widget.getAxis("left").setTicks([ticks])    
+                y = np.roll(y_data, value)
                 decay_curve.setData(x, y)
         self.app.settings.setValue(SETTINGS_TIME_SHIFTS, json.dumps(self.app.time_shifts))

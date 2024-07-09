@@ -899,7 +899,7 @@ class SpectroscopyWindow(QWidget):
                 else:
                     x = np.arange(1)
                 y = x * 0
-                if self.lin_log_mode[channel] == "LIN":
+                if channel not in self.lin_log_mode or self.lin_log_mode[channel] == "LIN":
                     static_curve = curve_widget.plot(x, y, pen="#f72828", pen_width=2)
                 else:
                     y = (
@@ -907,14 +907,10 @@ class SpectroscopyWindow(QWidget):
                         if frequency_mhz != 0.0
                         else np.array([0])
                     )
-                    log_values, exponents_lin_space_int = SpectroscopyLinLogControl.set_decay_log_mode(y)
+                    log_values, ticks = SpectroscopyLinLogControl.calculate_log_ticks(y)
                     static_curve = curve_widget.plot(
                         x, log_values, pen="#f72828", pen_width=2
                     )
-                    ticks = [
-                        (i, SpectroscopyLinLogControl.format_power_of_ten(i))
-                        for i in exponents_lin_space_int
-                    ]
                     axis = curve_widget.getAxis("left")
                     axis.setTicks([ticks])
                 curve_widget.plotItem.getAxis("left").enableAutoSIPrefix(False)
@@ -1537,56 +1533,44 @@ class SpectroscopyWindow(QWidget):
             intensity_line = self.intensity_lines[channel_index]
             if intensity_line is not None:
                 x, y = intensity_line.getData()
+                # Initialize or append data
                 if x is None or (len(x) == 1 and x[0] == 0):
                     x = np.array([time_ns / 1_000_000_000])
                     y = np.array([np.sum(curve)])
                 else:
                     x = np.append(x, time_ns / 1_000_000_000)
                     y = np.append(y, np.sum(curve))
-                # trim the data based on self.cached_time_span_seconds
+                # Trim data based on time span
                 if len(x) > 2:
                     while x[-1] - x[0] > self.cached_time_span_seconds:
                         x = x[1:]
                         y = y[1:]
                 intensity_line.setData(x, y)
+        # Update decay plot
         decay_curve = self.decay_curves[channel_index]
+        time_shift = 0 if channel_index not in self.time_shifts else self.time_shifts[channel_index]
         if decay_curve is not None:
             x, y = decay_curve.getData()
-            if self.cached_decay_x_values.size == 0:
-                self.cached_decay_x_values = np.array(x)
-            x = (
-                x
-                if not self.time_shifts[channel_index]
-                or self.time_shifts[channel_index] == 0
-                else np.roll(self.cached_decay_x_values, self.time_shifts[channel_index])
-                )
             if self.tab_selected != "tab_spectroscopy":
                 decay_curve.setData(x, curve + y)
             else:
-                decay_widget = self.decay_widgets[channel_index]
                 last_cached_decay_value = self.cached_decay_values[channel_index]
-                self.cached_decay_values[channel_index] = (
-                    np.array(curve) + last_cached_decay_value
-                )
-                if self.lin_log_mode[channel_index] == "LIN":
+                self.cached_decay_values[channel_index] = np.array(curve) + last_cached_decay_value
+                # Handle linear/logarithmic mode
+                decay_widget = self.decay_widgets[channel_index]
+                if channel_index not in self.lin_log_mode or self.lin_log_mode[channel_index] == "LIN":
                     decay_widget.showGrid(x=False, y=False, alpha=0.3)
-                    decay_curve.setData(x, curve + y)
+                    decay_curve.setData(x, np.roll(self.cached_decay_values[channel_index], time_shift))
                 else:
                     decay_widget.showGrid(x=False, y=True, alpha=0.3)
                     sum_decay = self.cached_decay_values[channel_index]
-                    log_values, exponents_lin_space_int = SpectroscopyLinLogControl.set_decay_log_mode(
-                        sum_decay
-                    )
-                    ticks = [
-                        (i, SpectroscopyLinLogControl.format_power_of_ten(i))
-                        for i in exponents_lin_space_int
-                    ]
-                    decay_curve.setData(x, log_values)
-                    axis = self.decay_widgets[channel_index].getAxis("left")
+                    log_values, ticks = SpectroscopyLinLogControl.calculate_log_ticks(sum_decay)
+                    decay_curve.setData(x, np.roll(log_values, time_shift))
+                    axis = decay_widget.getAxis("left")
                     axis.setTicks([ticks])
         QApplication.processEvents()
         time.sleep(0.01)
-
+        
     def on_harmonic_selector_change(self, value):
         self.harmonic_selector_value = int(value) + 1
         if self.harmonic_selector_value >= 1:

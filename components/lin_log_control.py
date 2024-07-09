@@ -20,6 +20,7 @@ class SpectroscopyLinLogControl(QWidget):
     def create_controls(self):
         v_box = QVBoxLayout()
         v_box.setContentsMargins(0, 0, 0, 0)
+        v_box.addSpacing(60)
         v_box.addWidget(QLabel("LOG"), alignment=Qt.AlignmentFlag.AlignCenter)
         view = self.create_switch_view()
         v_box.addWidget(view, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -31,7 +32,7 @@ class SpectroscopyLinLogControl(QWidget):
         scene = QGraphicsScene()
         proxy = QGraphicsProxyWidget()
         switch_checked = self.app.lin_log_mode.get(self.channel, "LIN") == "LIN"
-        switch_width = 60 if len(self.app.plots_to_show) > 3 else 100
+        switch_width = 50 if len(self.app.plots_to_show) > 3 else 100
         switch = SwitchControl(
             active_color="#f72828",
             unchecked_color="#f72828",
@@ -55,23 +56,25 @@ class SpectroscopyLinLogControl(QWidget):
         x, _ = decay_curve.getData()
         cached_decay_values = self.app.cached_decay_values[self.channel]
         if state:
-            ticks, y_data = self.calculate_lin_mode(cached_decay_values)
+            ticks, y_data = SpectroscopyLinLogControl.calculate_lin_mode(cached_decay_values)
             decay_widget.showGrid(x=False, y=False)
         else:
-            ticks, y_data = self.calculate_log_mode(cached_decay_values)
+            ticks, y_data = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_values)
             decay_widget.showGrid(x=False, y=True, alpha=0.3)
         decay_curve.setData(x, y_data)
         decay_widget.getAxis("left").setTicks([ticks])
 
-    def calculate_lin_mode(self, cached_decay_values):
+    @staticmethod
+    def calculate_lin_mode(cached_decay_values):
         max_value = max(cached_decay_values)
-        yticks_values = self.calculate_lin_ticks(max_value, 10)
+        yticks_values = SpectroscopyLinLogControl.calculate_lin_ticks(max_value, 10)
         ticks = [(value, str(int(value))) for value in yticks_values]
         return ticks, cached_decay_values
 
-    def calculate_log_mode(self, cached_decay_values):
-        log_values, exponents_lin_space_int = self.set_decay_log_mode(cached_decay_values)
-        ticks = [(i, self.format_power_of_ten(i)) for i in exponents_lin_space_int]
+    @staticmethod
+    def calculate_log_mode(cached_decay_values):
+        log_values, exponents_lin_space_int = SpectroscopyLinLogControl.set_decay_log_mode(cached_decay_values)
+        ticks = [(i, SpectroscopyLinLogControl.format_power_of_ten(i)) for i in exponents_lin_space_int]
         return ticks, log_values
 
     @staticmethod
@@ -84,6 +87,12 @@ class SpectroscopyLinLogControl(QWidget):
             step *= 2
             ticks = np.arange(0, max_value + step, step)
         return ticks
+    
+    @staticmethod
+    def calculate_log_ticks(data):
+        log_values, exponents_lin_space_int = SpectroscopyLinLogControl.set_decay_log_mode(data)
+        ticks = [(i, SpectroscopyLinLogControl.format_power_of_ten(i)) for i in exponents_lin_space_int]
+        return log_values, ticks
 
     @staticmethod
     def set_decay_log_mode(values):
