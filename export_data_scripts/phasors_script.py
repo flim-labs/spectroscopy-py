@@ -19,6 +19,7 @@ def get_recent_phasors_file():
     return os.path.join(data_folder, files[0])
 
 file_path = get_recent_phasors_file()
+# file_path = "INSERT DATA FILE PATH HERE" # You can also manually insert the path to the data file here
 print("Using data file: " + file_path)
 
 
@@ -90,6 +91,7 @@ with open(file_path, 'rb') as f:
                     data[channel][harmonic].append((g, s))
     except StopIteration:
         pass  
+
 
 # PLOTTING
 fig, ax = plt.subplots()
