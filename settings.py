@@ -45,4 +45,27 @@ PLOTS_CONFIG_POPUP = "plots_config_popup"
 SETTINGS_PLOTS_TO_SHOW = "plots_to_show"
 DEFAULT_PLOTS_TO_SHOW = "[]"
 
+SETTINGS_LIN_LOG_MODE = "lin_log_mode"
+DEFAULT_LIN_LOG_MODE = "{}"
+
 CHANNELS_GRID = "channels_grid"
+
+DOWNLOAD_BUTTON = "download_button"
+DOWNLOAD_MENU = "download_menu"
+
+SPECTROSCOPY_SCRIPT_ACTION = "spectroscopy_script_action"
+PHASORS_SCRIPT_ACTION = "phasors_script_action"
+
+
+UNICODE_SUP = {
+    "0": "\u2070",
+    "1": "\u00B9",
+    "2": "\u00B2",
+    "3": "\u00B3",
+    "4": "\u2074",
+    "5": "\u2075",
+    "6": "\u2076",
+    "7": "\u2077",
+    "8": "\u2078",
+    "9": "\u2079",
+}

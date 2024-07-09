@@ -147,6 +147,7 @@ class PlotsConfigPopup(QWidget):
             start_btn_enabled = len(self.app.plots_to_show) > 0
             self.start_btn.setEnabled(start_btn_enabled)
         self.app.clear_plots()   
+        self.app.cached_decay_values.clear()
         self.app.generate_plots() 
 
 
