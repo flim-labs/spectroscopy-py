@@ -29,8 +29,8 @@ SETTINGS_SYNC_IN_FREQUENCY_MHZ = "sync_in_frequency_mhz"
 DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
 SETTINGS_WRITE_DATA = "write_data"
 DEFAULT_WRITE_DATA = True
-SETTINGS_TIME_SHIFT = "time_shift"
-DEFAULT_TIME_SHIFT = "{}"
+SETTINGS_TIME_SHIFTS = "time_shift"
+DEFAULT_TIME_SHIFTS = "{}"
 CURSOR_TEXT = "⨁"
 
 LOAD_REF_BTN = "load_reference_btn"
