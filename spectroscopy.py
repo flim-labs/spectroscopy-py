@@ -1227,6 +1227,7 @@ class SpectroscopyWindow(QWidget):
             sync="in" if self.selected_sync == "sync_in" else "out",
             frequency_mhz=frequency_mhz,
             channel=connection_type.lower(),
+            channels=self.selected_channels,
             sync_connection="sma",
         )
         self.harmonic_selector_value = self.control_inputs[SETTINGS_HARMONIC].value()
@@ -1570,7 +1571,7 @@ class SpectroscopyWindow(QWidget):
                     axis.setTicks([ticks])
         QApplication.processEvents()
         time.sleep(0.01)
-        
+
     def on_harmonic_selector_change(self, value):
         self.harmonic_selector_value = int(value) + 1
         if self.harmonic_selector_value >= 1:
@@ -1639,7 +1640,7 @@ class SpectroscopyWindow(QWidget):
                     self.control_inputs["save"].setHidden(True)
                     self.quantize_phasors(1)
                     self.show_harmonic_selector(self.harmonic_selector_value)
-                    
+
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
         self.popup.show()
