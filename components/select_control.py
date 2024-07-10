@@ -9,7 +9,7 @@ class SelectControl:
         input = QComboBox()
         for value in options:
             input.addItem(value)
-        input.setCurrentIndex(0)
+        input.setCurrentIndex(selectedValue)
         input.currentIndexChanged.connect(event_callback)
         control.addWidget(q_label)
         control.addWidget(input)

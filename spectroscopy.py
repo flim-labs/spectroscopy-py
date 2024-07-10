@@ -332,7 +332,7 @@ class SpectroscopyWindow(QWidget):
         controls_row.addSpacing(10)
         _, inp, __ = SelectControl.setup(
             "Channel type:",
-            self.settings.value(SETTINGS_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE),
+            int(self.settings.value(SETTINGS_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)),
             controls_row,
             ["USB", "SMA"],
             self.on_connection_type_value_change,
