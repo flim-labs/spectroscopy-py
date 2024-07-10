@@ -50,6 +50,7 @@ class SpectroscopyLinLogControl(QWidget):
 
     def on_lin_log_changed(self, state):
         self.app.lin_log_mode[self.channel] = "LIN" if state else "LOG"
+        time_shift = self.app.time_shifts[self.channel]
         self.app.settings.setValue(SETTINGS_LIN_LOG_MODE, json.dumps(self.app.lin_log_mode))
         decay_curve = self.app.decay_curves[self.channel]
         decay_widget = self.app.decay_widgets[self.channel]
@@ -61,7 +62,8 @@ class SpectroscopyLinLogControl(QWidget):
         else:
             ticks, y_data = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_values)
             decay_widget.showGrid(x=False, y=True, alpha=0.3)
-        decay_curve.setData(x, y_data)
+        y = np.roll(y_data, time_shift)    
+        decay_curve.setData(x, y)
         decay_widget.getAxis("left").setTicks([ticks])
 
     @staticmethod
