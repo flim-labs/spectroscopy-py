@@ -52,7 +52,7 @@ class SpectroscopyTimeShift(QWidget):
 
     def on_value_change(self, value, inp_type, channel):
         self.app.time_shifts[self.channel] = value
-        lin_log_mode = self.app.lin_log_mode[self.channel]
+        lin_log_mode = self.app.lin_log_mode[self.channel] if self.channel in self.app.lin_log_mode else 'LIN'
         if inp_type == "slider":
             self.app.control_inputs["time_shift_inputs"][self.channel].setValue(value)
         else:
