@@ -56,16 +56,15 @@ class DownloadButton(QWidget):
 
     def create_download_files_menu(self):
         # download button
-        export_data = self.app.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA)
-        export_data_active = export_data == True or export_data == "true"
+        export_data = self.app.write_data_gui
         download_button = QPushButton(" DOWNLOAD")
         download_button.setFixedHeight(40)
         download_button.setObjectName("download_btn")
         download_button.setStyleSheet(GUIStyles.button_style("#1E90FF", "#1E90FF", "#1E90FF", "#1E90FF", "150px"))
         download_button.setIconSize(QSize(16, 16))
         download_button.clicked.connect(self.show_download_options)
-        download_button.setEnabled(export_data_active and self.app.acquisition_stopped)
-        download_button.setVisible(export_data_active)
+        download_button.setEnabled(export_data and self.app.acquisition_stopped)
+        download_button.setVisible(export_data)
         layout = QVBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(0,0,0,0)
