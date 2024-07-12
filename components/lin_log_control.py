@@ -98,6 +98,8 @@ class SpectroscopyLinLogControl(QWidget):
 
     @staticmethod
     def set_decay_log_mode(values):
+        print("Y VALUES:")
+        print(values)
         values = np.where(values == 0, 1e-9, values)
         log_values = np.log10(values)
         log_values = np.where(log_values < 0, -0.1, log_values)
