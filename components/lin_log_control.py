@@ -59,9 +59,11 @@ class SpectroscopyLinLogControl(QWidget):
         if state:
             ticks, y_data = SpectroscopyLinLogControl.calculate_lin_mode(cached_decay_values)
             decay_widget.showGrid(x=False, y=False)
+            #decay_widget.setYRange(0, max(y_data))
         else:
-            ticks, y_data = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_values)
+            ticks, y_data , max_value = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_values)
             decay_widget.showGrid(x=False, y=True, alpha=0.3)
+            #decay_widget.setYRange(1, max_value if max_value else 1)
         y = np.roll(y_data, time_shift)    
         decay_curve.setData(x, y)
         decay_widget.getAxis("left").setTicks([ticks])
@@ -75,9 +77,9 @@ class SpectroscopyLinLogControl(QWidget):
 
     @staticmethod
     def calculate_log_mode(cached_decay_values):
-        log_values, exponents_lin_space_int = SpectroscopyLinLogControl.set_decay_log_mode(cached_decay_values)
+        log_values, exponents_lin_space_int, max_value = SpectroscopyLinLogControl.set_decay_log_mode(cached_decay_values)
         ticks = [(i, SpectroscopyLinLogControl.format_power_of_ten(i)) for i in exponents_lin_space_int]
-        return ticks, log_values
+        return ticks, log_values, max_value
 
     @staticmethod
     def calculate_lin_ticks(max_value, max_ticks):
@@ -92,20 +94,18 @@ class SpectroscopyLinLogControl(QWidget):
     
     @staticmethod
     def calculate_log_ticks(data):
-        log_values, exponents_lin_space_int = SpectroscopyLinLogControl.set_decay_log_mode(data)
+        log_values, exponents_lin_space_int, max_value = SpectroscopyLinLogControl.set_decay_log_mode(data)
         ticks = [(i, SpectroscopyLinLogControl.format_power_of_ten(i)) for i in exponents_lin_space_int]
-        return log_values, ticks
+        return log_values, ticks, max_value
 
     @staticmethod
     def set_decay_log_mode(values):
-        print("Y VALUES:")
-        print(values)
         values = np.where(values == 0, 1e-9, values)
         log_values = np.log10(values)
         log_values = np.where(log_values < 0, -0.1, log_values)
         exponents_int = log_values.astype(int)
         exponents_lin_space_int = np.linspace(0, max(exponents_int), len(exponents_int)).astype(int)
-        return log_values, exponents_lin_space_int
+        return log_values, exponents_lin_space_int, max(exponents_int)
 
     @staticmethod
     def format_power_of_ten(i):

@@ -14,7 +14,7 @@ from components.lin_log_control import SpectroscopyLinLogControl
 from components.plots_config import PlotsConfigPopup
 import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
-from PyQt6.QtGui import QPixmap, QFont, QIcon, QTransform
+from PyQt6.QtGui import QPixmap, QFont, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
@@ -28,9 +28,6 @@ from PyQt6.QtWidgets import (
     QDialog,
     QMessageBox,
     QFileDialog,
-    QGraphicsView,
-    QGraphicsScene,
-    QGraphicsProxyWidget,
 )
 from components.fancy_checkbox import FancyButton
 from components.gradient_text import GradientText
@@ -111,9 +108,9 @@ class SpectroscopyWindow(QWidget):
             )
         )
         self.write_data = True
-        self.show_bin_file_size_helper = (
-            self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA) == "true"
-        )
+        write_data_gui = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA)
+        self.write_data_gui = write_data_gui == 'true' or write_data_gui == True
+        self.show_bin_file_size_helper = self.write_data_gui
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
 
@@ -289,9 +286,7 @@ class SpectroscopyWindow(QWidget):
         return row
 
     def create_export_data_input(self):
-        export_data_active = (
-            self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA) == "true"
-        )
+        export_data_active = self.write_data_gui
         # Link to export data documentation
         info_link_widget = LinkWidget(
             icon_filename=resource_path("assets/info-icon.png"),
@@ -314,8 +309,7 @@ class SpectroscopyWindow(QWidget):
         return info_link_widget, export_data_control
 
     def create_file_size_info_row(self):
-        export_data = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA)
-        export_data_active = export_data == True or export_data == "true"
+        export_data_active = self.write_data_gui
         file_size_info_layout = QHBoxLayout()
         self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
         self.bin_file_size_label.setStyleSheet("QLabel { color : #f8f8f8; }")
@@ -529,8 +523,7 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SPECTROSCOPY_SCRIPT_ACTION].setVisible(False)
 
     def on_tab_selected(self, tab_name):
-        export_data = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA)
-        export_data_active = export_data == True or export_data == "true"
+        export_data_active = self.write_data_gui
         self.control_inputs[self.tab_selected].setChecked(False)
         self.tab_selected = tab_name
         self.control_inputs[self.tab_selected].setChecked(True)
@@ -700,6 +693,7 @@ class SpectroscopyWindow(QWidget):
     def on_export_data_changed(self, state):
         self.control_inputs[DOWNLOAD_BUTTON].setVisible(state)
         self.settings.setValue(SETTINGS_WRITE_DATA, state)
+        self.write_data_gui = state
         self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
         self.calc_exported_file_size() if state else None
 
@@ -907,12 +901,13 @@ class SpectroscopyWindow(QWidget):
                         if frequency_mhz != 0.0
                         else np.array([0])
                     )
-                    log_values, ticks = SpectroscopyLinLogControl.calculate_log_ticks(y)
+                    log_values, ticks, max_value = SpectroscopyLinLogControl.calculate_log_ticks(y)
                     static_curve = curve_widget.plot(
                         x, log_values, pen="#f72828", pen_width=2
                     )
                     axis = curve_widget.getAxis("left")
                     axis.setTicks([ticks])
+                    #curve_widget.setYRange(1, max_value if max_value else 1)
                 curve_widget.plotItem.getAxis("left").enableAutoSIPrefix(False)
                 curve_widget.plotItem.getAxis("bottom").enableAutoSIPrefix(False)
                 self.cached_decay_values[channel] = np.array([0])
@@ -1561,12 +1556,14 @@ class SpectroscopyWindow(QWidget):
                 decay_widget = self.decay_widgets[channel_index]
                 if channel_index not in self.lin_log_mode or self.lin_log_mode[channel_index] == "LIN":
                     decay_widget.showGrid(x=False, y=False, alpha=0.3)
+                    #decay_widget.setYRange(0, max(y))
                     decay_curve.setData(x, np.roll(self.cached_decay_values[channel_index], time_shift))
                 else:
                     decay_widget.showGrid(x=False, y=True, alpha=0.3)
                     sum_decay = self.cached_decay_values[channel_index]
-                    log_values, ticks = SpectroscopyLinLogControl.calculate_log_ticks(sum_decay)
+                    log_values, ticks, max_value = SpectroscopyLinLogControl.calculate_log_ticks(sum_decay)
                     decay_curve.setData(x, np.roll(log_values, time_shift))
+                    #decay_widget.setYRange(1, max_value if max_value else 1)
                     axis = decay_widget.getAxis("left")
                     axis.setTicks([ticks])
         QApplication.processEvents()
@@ -1618,8 +1615,7 @@ class SpectroscopyWindow(QWidget):
         # time.sleep(0.5)
         # self.timer_update.stop()
         # self.update_plots_enabled = False
-        export_data = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA)
-        is_export_data_active = export_data == True or export_data == "true"
+        is_export_data_active = self.write_data_gui
         if is_export_data_active:
             save_spectroscopy_bin_file(self)
         SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, True)

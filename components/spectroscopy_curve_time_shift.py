@@ -66,9 +66,11 @@ class SpectroscopyTimeShift(QWidget):
                 if lin_log_mode == 'LIN':
                     ticks, y_data = SpectroscopyLinLogControl.calculate_lin_mode(cached_decay_curve)
                     decay_widget.showGrid(x=False, y=False)
+                    #decay_widget.setYRange(0, max(y_data))
                 else:
-                    ticks, y_data = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_curve)
-                    decay_widget.showGrid(x=False, y=True, alpha=0.3)       
+                    ticks, y_data, max_value = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_curve)
+                    decay_widget.showGrid(x=False, y=True, alpha=0.3)  
+                    #decay_widget.setYRange(1, max_value if max_value else 1)     
                 decay_widget.getAxis("left").setTicks([ticks])    
                 y = np.roll(y_data, value)
                 decay_curve.setData(x, y)
