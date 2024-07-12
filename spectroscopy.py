@@ -1561,7 +1561,7 @@ class SpectroscopyWindow(QWidget):
                 if channel_index not in self.lin_log_mode or self.lin_log_mode[channel_index] == "LIN":
                     decay_widget.showGrid(x=False, y=False, alpha=0.3)
                     decay_curve.setData(x, np.roll(self.cached_decay_values[channel_index], time_shift))
-                    self.set_plot_y_range(decay_widget, self.lin_log_mode[channel_index])
+                    self.set_plot_y_range(decay_widget, "LIN")
                 else:
                     decay_widget.showGrid(x=False, y=True, alpha=0.3)
                     sum_decay = self.cached_decay_values[channel_index]
@@ -1569,7 +1569,7 @@ class SpectroscopyWindow(QWidget):
                     decay_curve.setData(x, np.roll(log_values, time_shift))
                     axis = decay_widget.getAxis("left")
                     axis.setTicks([ticks])
-                    self.set_plot_y_range(decay_widget, self.lin_log_mode[channel_index] )
+                    self.set_plot_y_range(decay_widget, self.lin_log_mode[channel_index])
         QApplication.processEvents()
         time.sleep(0.01)
     
