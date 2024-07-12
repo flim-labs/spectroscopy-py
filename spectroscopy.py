@@ -901,15 +901,16 @@ class SpectroscopyWindow(QWidget):
                         if frequency_mhz != 0.0
                         else np.array([0])
                     )
-                    log_values, ticks, max_value = SpectroscopyLinLogControl.calculate_log_ticks(y)
+                    log_values, ticks, _ = SpectroscopyLinLogControl.calculate_log_ticks(y)
                     static_curve = curve_widget.plot(
                         x, log_values, pen="#f72828", pen_width=2
                     )
                     axis = curve_widget.getAxis("left")
+                    curve_widget.showGrid(x=False, y=True, alpha=0.3)
                     axis.setTicks([ticks])
-                    #curve_widget.setYRange(1, max_value if max_value else 1)
-                curve_widget.plotItem.getAxis("left").enableAutoSIPrefix(False)
-                curve_widget.plotItem.getAxis("bottom").enableAutoSIPrefix(False)
+                    self.set_plot_y_range(curve_widget, self.lin_log_mode[channel])
+                curve_widget.plotItem.getAxis("left").enableAutoSIPrefix(False)          
+                curve_widget.plotItem.getAxis("bottom").enableAutoSIPrefix(False)    
                 self.cached_decay_values[channel] = np.array([0])
                 self.decay_curves[channel] = static_curve
                 self.decay_widgets[channel] = curve_widget
@@ -1525,6 +1526,9 @@ class SpectroscopyWindow(QWidget):
         return "%.2f%s" % (number / k**magnitude, units[magnitude])
 
     def update_plots2(self, channel_index, time_ns, curve):
+        bin_width_micros = int(self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH))
+        adjustment = REALTIME_ADJUSTMENT / bin_width_micros
+        curve = tuple(x / adjustment for x in curve)
         if channel_index in self.intensity_lines:
             intensity_line = self.intensity_lines[channel_index]
             if intensity_line is not None:
@@ -1540,7 +1544,7 @@ class SpectroscopyWindow(QWidget):
                 if len(x) > 2:
                     while x[-1] - x[0] > self.cached_time_span_seconds:
                         x = x[1:]
-                        y = y[1:]
+                        y = y[1:]     
                 intensity_line.setData(x, y)
         # Update decay plot
         decay_curve = self.decay_curves[channel_index]
@@ -1556,18 +1560,25 @@ class SpectroscopyWindow(QWidget):
                 decay_widget = self.decay_widgets[channel_index]
                 if channel_index not in self.lin_log_mode or self.lin_log_mode[channel_index] == "LIN":
                     decay_widget.showGrid(x=False, y=False, alpha=0.3)
-                    #decay_widget.setYRange(0, max(y))
                     decay_curve.setData(x, np.roll(self.cached_decay_values[channel_index], time_shift))
+                    self.set_plot_y_range(decay_widget, self.lin_log_mode[channel_index])
                 else:
                     decay_widget.showGrid(x=False, y=True, alpha=0.3)
                     sum_decay = self.cached_decay_values[channel_index]
-                    log_values, ticks, max_value = SpectroscopyLinLogControl.calculate_log_ticks(sum_decay)
+                    log_values, ticks, _ = SpectroscopyLinLogControl.calculate_log_ticks(sum_decay)
                     decay_curve.setData(x, np.roll(log_values, time_shift))
-                    #decay_widget.setYRange(1, max_value if max_value else 1)
                     axis = decay_widget.getAxis("left")
                     axis.setTicks([ticks])
+                    self.set_plot_y_range(decay_widget, self.lin_log_mode[channel_index] )
         QApplication.processEvents()
         time.sleep(0.01)
+    
+    def set_plot_y_range(self, plot, lin_log_mode):
+        plot.plotItem.autoRange()
+        view_range = plot.viewRange()
+        _, y_max = view_range[1]
+        plot.setYRange(-1, y_max, padding=0)
+         
 
     def on_harmonic_selector_change(self, value):
         self.harmonic_selector_value = int(value) + 1

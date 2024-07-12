@@ -58,19 +58,20 @@ class SpectroscopyLinLogControl(QWidget):
         cached_decay_values = self.app.cached_decay_values[self.channel]
         if state:
             ticks, y_data = SpectroscopyLinLogControl.calculate_lin_mode(cached_decay_values)
+            
             decay_widget.showGrid(x=False, y=False)
-            #decay_widget.setYRange(0, max(y_data))
         else:
-            ticks, y_data , max_value = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_values)
-            decay_widget.showGrid(x=False, y=True, alpha=0.3)
-            #decay_widget.setYRange(1, max_value if max_value else 1)
+            ticks, y_data , _ = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_values)
+            decay_widget.showGrid(x=False, y=True, alpha=0.3)    
         y = np.roll(y_data, time_shift)    
         decay_curve.setData(x, y)
         decay_widget.getAxis("left").setTicks([ticks])
+        self.app.set_plot_y_range(decay_widget,self.app.lin_log_mode[self.channel])
+        
 
     @staticmethod
     def calculate_lin_mode(cached_decay_values):
-        max_value = max(cached_decay_values)
+        max_value = max(cached_decay_values) 
         yticks_values = SpectroscopyLinLogControl.calculate_lin_ticks(max_value, 10)
         ticks = [(value, str(int(value))) for value in yticks_values]
         return ticks, cached_decay_values
