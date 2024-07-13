@@ -517,14 +517,6 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["start_button"].setText("STOP")
             GUIStyles.set_stop_btn_style(self.control_inputs["start_button"])
 
-    def change_download_script_options(self):
-        if self.tab_selected == "tab_spectroscopy":
-            self.control_inputs[PHASORS_SCRIPT_ACTION].setVisible(False)
-            self.control_inputs[SPECTROSCOPY_SCRIPT_ACTION].setVisible(True)
-        if self.tab_selected == "tab_data":
-            self.control_inputs[PHASORS_SCRIPT_ACTION].setVisible(True)
-            self.control_inputs[SPECTROSCOPY_SCRIPT_ACTION].setVisible(False)
-
     def on_tab_selected(self, tab_name):
         export_data_active = self.write_data_gui
         self.control_inputs[self.tab_selected].setChecked(False)
@@ -605,7 +597,7 @@ class SpectroscopyWindow(QWidget):
         elif self.mode == MODE_RUNNING:
             self.acquisition_stopped = True
             self.stop_spectroscopy_experiment()
-            self.change_download_script_options()
+            DownloadButton.change_download_script_options(self)
 
     def on_tau_change(self, value):
         self.settings.setValue(SETTINGS_TAU_NS, value)
@@ -1638,7 +1630,7 @@ class SpectroscopyWindow(QWidget):
             save_spectroscopy_bin_file(self)
         SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, True)
         self.top_bar_set_enabled(True)
-        self.change_download_script_options()
+        DownloadButton.change_download_script_options(self)
         QApplication.processEvents()
         if self.is_reference_phasors():
             # read reference file from .pid file

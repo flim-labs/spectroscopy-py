@@ -55,8 +55,10 @@ CHANNELS_GRID = "channels_grid"
 DOWNLOAD_BUTTON = "download_button"
 DOWNLOAD_MENU = "download_menu"
 
-SPECTROSCOPY_SCRIPT_ACTION = "spectroscopy_script_action"
-PHASORS_SCRIPT_ACTION = "phasors_script_action"
+SPECTROSCOPY_SCRIPT_ACTION_PY = "spectroscopy_script_action_py"
+PHASORS_SCRIPT_ACTION_PY = "phasors_script_action_py"
+SPECTROSCOPY_SCRIPT_ACTION_M = "spectroscopy_script_action_m"
+PHASORS_SCRIPT_ACTION_M = "phasors_script_action_m"
 
 
 UNICODE_SUP = {

@@ -1,7 +1,7 @@
+% Get the recent spectroscopy file
 userprofile = getenv('USERPROFILE');
 data_folder = fullfile(userprofile, '.flim-labs', 'data');
 
-% Get the recent spectroscopy file
 files = dir(fullfile(data_folder, 'spectroscopy*'));
 file_names = {files.name};
 is_spectroscopy = cellfun(@(x) isempty(strfind(x, 'calibration')) && isempty(strfind(x, 'phasors')), file_names);

@@ -13,9 +13,7 @@ project_root = os.path.abspath(os.path.join(current_path, ".."))
 
 class ScriptFileUtils:
     @classmethod
-    def export_script_file(
-        cls, bin_file_path, file_extension, content_modifier
-    ):
+    def export_script_file(cls, bin_file_path, file_extension, content_modifier):
         file_name, _ = QFileDialog.getSaveFileName(
             None, "Save File", "", f"All Files (*.{file_extension})"
         )
@@ -96,7 +94,6 @@ class ScriptFileUtils:
 
 class PythonScriptUtils(ScriptFileUtils):
 
-        
     @staticmethod
     def download_spectroscopy(window, bin_file_path):
         content_modifier = {
@@ -187,13 +184,9 @@ with open(file_path, 'rb') as f:
             "replace_pattern": "with open(file_path, 'rb') as f:",
             "requirements": ["matplotlib", "numpy"],
         }
-        ScriptFileUtils.export_script_file(
-            bin_file_path, "py", content_modifier
-        )
-        
-        
-        
-    @staticmethod    
+        ScriptFileUtils.export_script_file(bin_file_path, "py", content_modifier)
+
+    @staticmethod
     def download_phasors(window, bin_file_path):
         content_modifier = {
             "source_file": """import os
@@ -304,6 +297,229 @@ plt.show()
             "replace_pattern": "with open(file_path, 'rb') as f:",
             "requirements": ["matplotlib", "numpy"],
         }
-        ScriptFileUtils.export_script_file(
-            bin_file_path, "py", content_modifier
-        )    
+        ScriptFileUtils.export_script_file(bin_file_path, "py", content_modifier)
+
+
+class MatlabScriptUtils(ScriptFileUtils):
+    @staticmethod
+    def download_spectroscopy(window, bin_file_path):
+        content_modifier = {
+            "source_file": """file_path = '<FILE-PATH>';
+% Open the file            
+fid = fopen(file_path, 'rb');
+if fid == -1
+    error('Could not open file');
+end
+
+% Check for 'SP01' identifier
+sp01 = fread(fid, 4, 'char');
+if ~isequal(char(sp01'), 'SP01')
+    fprintf('Invalid data file');
+    fclose(fid);
+    return;
+end
+
+% Read metadata
+json_length = fread(fid, 1, 'uint32');
+metadata_json = fread(fid, json_length, 'char');
+metadata = jsondecode(char(metadata_json'));
+
+% Print metadata information
+if isfield(metadata, 'channels') && ~isempty(metadata.channels)
+    disp(['Enabled channels: ' strjoin(arrayfun(@(ch) ['Channel ' num2str(ch + 1)], metadata.channels, 'UniformOutput', false), ', ')]);
+end
+if isfield(metadata, 'bin_width_micros') && ~isempty(metadata.bin_width_micros)
+    disp(['Bin width: ' num2str(metadata.bin_width_micros) ' us']);
+end
+if isfield(metadata, 'acquisition_time_millis') && ~isempty(metadata.acquisition_time_millis)
+    disp(['Acquisition time: ' num2str(metadata.acquisition_time_millis / 1000) 's']);
+end
+if isfield(metadata, 'laser_period_ns') && ~isempty(metadata.laser_period_ns)
+    disp(['Laser period: ' num2str(metadata.laser_period_ns) 'ns']);
+end
+if isfield(metadata, 'tau_ns') && ~isempty(metadata.tau_ns)
+    disp(['Tau: ' num2str(metadata.tau_ns) 'ns']);
+end
+
+num_channels = length(metadata.channels);
+channel_curves = cell(1, num_channels);
+for i = 1:num_channels
+    channel_curves{i} = [];
+end
+times = [];
+
+% Read data
+while ~feof(fid)
+    time_data = fread(fid, 1, 'double');
+    if isempty(time_data)
+        break;
+    end
+    times = [times; time_data / 1e9];
+    
+    for i = 1:num_channels
+        curve_data = fread(fid, 256, 'uint32');
+        if length(curve_data) < 256
+            break;
+        end
+        channel_curves{i} = [channel_curves{i}; curve_data'];
+    end
+end
+fclose(fid);
+
+% Plotting
+figure;
+hold on;
+xlabel('Bin');
+ylabel('Intensity');
+set(gca, 'YScale', 'log');
+title(sprintf('Spectroscopy (time: %.2fs, curves stored: %d)', round(times(end)), length(times)));
+
+total_max = -inf;
+total_min = inf;
+for i = 1:num_channels
+    sum_curve = sum(channel_curves{i}, 1);
+    total_max = max(total_max, max(sum_curve));
+    total_min = min(total_min, min(sum_curve));
+    plot(sum_curve, 'DisplayName', sprintf('Channel %d', metadata.channels(i) + 1));
+end
+
+ylim([total_min * 0.99, total_max * 1.01]);
+legend show;
+hold off;      
+            """,
+            "skip_pattern": "% Get the recent spectroscopy file",
+            "end_pattern": "% Open the file",
+            "replace_pattern": "% Open the file",
+            "requirements": [],
+        }
+        ScriptFileUtils.export_script_file(bin_file_path, "m", content_modifier)
+
+    @staticmethod
+    def download_phasors(window, bin_file_path):
+        content_modifier = {
+            "source_file": """file_path = '<FILE-PATH>';
+% Open the file            
+fid = fopen(file_path, 'rb');
+if fid == -1
+    error('Could not open file');
+end
+
+% Check for 'SPF1' identifier
+header = fread(fid, 4, 'char=>char')';
+if ~strcmp(header, 'SPF1')
+    disp('Invalid data file');
+    fclose(fid);
+    return;
+end
+
+% Read metadata
+json_length = fread(fid, 1, 'uint32');
+metadata_json = fread(fid, json_length, 'char');
+metadata = jsondecode(char(metadata_json'));
+
+% Print metadata information
+if isfield(metadata, 'channels') && ~isempty(metadata.channels)
+     disp(['Enabled channels: ' strjoin(arrayfun(@(ch) ['Channel ' num2str(ch + 1)], metadata.channels, 'UniformOutput', false), ', ')]);   
+end
+if isfield(metadata, 'bin_width_micros') && ~isempty(metadata.bin_width_micros)
+    disp(['Bin width: ' num2str(metadata.bin_width_micros) ' us']);
+end
+if isfield(metadata, 'acquisition_time_millis') && ~isempty(metadata.acquisition_time_millis)
+    disp(['Acquisition time: ' num2str(metadata.acquisition_time_millis / 1000) 's']);
+end
+if isfield(metadata, 'laser_period_ns') && ~isempty(metadata.laser_period_ns)
+    disp(['Laser period: ' num2str(metadata.laser_period_ns) 'ns']);
+end
+if isfield(metadata, 'tau_ns') && ~isempty(metadata.tau_ns)
+    disp(['Tau: ' num2str(metadata.tau_ns) 'ns']);
+end
+if isfield(metadata, 'harmonics') && ~isempty(metadata.harmonics)
+    disp(['Harmonics: ' num2str(metadata.harmonics)]);
+end
+
+data = struct();
+
+% Read data
+try
+    while true
+        for i = 1:length(metadata.channels)
+            channel = metadata.channels(i);
+            if ~isfield(data, num2str(channel))
+                data.(num2str(channel)) = struct();
+            end
+            for harmonic = 1:metadata.harmonics
+                if ~isfield(data.(num2str(channel)), num2str(harmonic))
+                    data.(num2str(channel)).(num2str(harmonic)) = [];
+                end
+                bytes_read = fread(fid, 32, 'uint8');
+                if isempty(bytes_read) || numel(bytes_read) < 32
+                    error('StopIteration');
+                end
+                try
+                    time_ns = typecast(uint8(bytes_read(1:8)), 'uint64');
+                    channel_name = typecast(uint8(bytes_read(9:12)), 'uint32');
+                    harmonic_name = typecast(uint8(bytes_read(13:16)), 'uint32');
+                    g = typecast(uint8(bytes_read(17:24)), 'double');
+                    s = typecast(uint8(bytes_read(25:32)), 'double');
+                catch
+                    disp('Error unpacking data');
+                    error('StopIteration');
+                end
+                data.(num2str(channel)).(num2str(harmonic)) = [data.(num2str(channel)).(num2str(harmonic)); g, s];
+            end
+        end
+    end
+catch
+end
+fclose(fid);
+
+% PLOTTING
+figure;
+hold on;
+
+harmonics_colors = jet(max(cellfun(@(ch) length(fieldnames(data.(ch))), fieldnames(data))));
+unit_circle_colors = lines(length(fieldnames(data)));
+
+channels = fieldnames(data);
+
+for i = 1:length(channels)
+    channel = channels{i};
+    harmonics = fieldnames(data.(channel));
+    for j = 1:length(harmonics)
+        harmonic = harmonics{j};
+        values = data.(channel).(harmonic);
+        if ~isempty(values)
+            g_values = values(:, 1);
+            s_values = values(:, 2);
+            mask = (abs(g_values) < 1e9) & (abs(s_values) < 1e9);
+            g_values = g_values(mask);
+            s_values = s_values(mask);
+            scatter(g_values, s_values, [], harmonics_colors(str2double(harmonic), :), 'filled', ...
+                    'DisplayName', sprintf('Channel: %d Harmonic: %d', str2double(channel) + 1, str2double(harmonic)));
+        end
+    end
+end
+
+for i = 1:length(channels)
+    channel = channels{i};
+    theta = linspace(0, pi, 100);
+    x = cos(theta);
+    y = sin(theta);
+    plot(x, y, 'Color', unit_circle_colors(i, :), 'LineWidth', 1, 'DisplayName', sprintf('Channel: %d', str2double(channel) + 1));
+end
+
+axis equal;
+xlabel('G');
+ylabel('S');
+title('Phasors Plot');
+legend('Location', 'southwest');
+grid on;
+hold off;
+                                     
+            """,
+            "skip_pattern": "% Get the recent phasors file",
+            "end_pattern": "% Open the file",
+            "replace_pattern": "% Open the file",
+            "requirements": [],
+        }
+        ScriptFileUtils.export_script_file(bin_file_path, "m", content_modifier)
