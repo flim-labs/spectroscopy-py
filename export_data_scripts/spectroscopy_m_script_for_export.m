@@ -1,16 +1,5 @@
-% Get the recent spectroscopy file
-userprofile = getenv('USERPROFILE');
-data_folder = fullfile(userprofile, '.flim-labs', 'data');
-
-files = dir(fullfile(data_folder, 'spectroscopy*'));
-file_names = {files.name};
-is_spectroscopy = cellfun(@(x) isempty(strfind(x, 'calibration')) && isempty(strfind(x, 'phasors')), file_names);
-spectroscopy_files = files(is_spectroscopy);
-[~, idx] = sort([spectroscopy_files.datenum], 'descend');
-file_path = fullfile(data_folder, spectroscopy_files(idx(1)).name);
-fprintf('Using data file: %s\n', file_path);
-
-% Open the file
+file_path = '<FILE-PATH>';
+% Open the file            
 fid = fopen(file_path, 'rb');
 if fid == -1
     error('Could not open file');
@@ -19,7 +8,7 @@ end
 % Check for 'SP01' identifier
 sp01 = fread(fid, 4, 'char');
 if ~isequal(char(sp01'), 'SP01')
-    fprintf('Invalid data file\n');
+    fprintf('Invalid data file');
     fclose(fid);
     return;
 end
@@ -31,20 +20,19 @@ metadata = jsondecode(char(metadata_json'));
 
 % Print metadata information
 if isfield(metadata, 'channels') && ~isempty(metadata.channels)
-    enabled_channels = sprintf('Channel %d, ', metadata.channels + 1);
-    fprintf('Enabled channels: %s\n', enabled_channels(1:end-2));
+    disp(['Enabled channels: ' strjoin(arrayfun(@(ch) ['Channel ' num2str(ch + 1)], metadata.channels, 'UniformOutput', false), ', ')]);
 end
 if isfield(metadata, 'bin_width_micros') && ~isempty(metadata.bin_width_micros)
-    fprintf('Bin width: %dus\n', metadata.bin_width_micros);
+    disp(['Bin width: ' num2str(metadata.bin_width_micros) ' us']);
 end
 if isfield(metadata, 'acquisition_time_millis') && ~isempty(metadata.acquisition_time_millis)
-    fprintf('Acquisition time: %.2fs\n', metadata.acquisition_time_millis / 1000);
+    disp(['Acquisition time: ' num2str(metadata.acquisition_time_millis / 1000) 's']);
 end
 if isfield(metadata, 'laser_period_ns') && ~isempty(metadata.laser_period_ns)
-    fprintf('Laser period: %dns\n', metadata.laser_period_ns);
+    disp(['Laser period: ' num2str(metadata.laser_period_ns) 'ns']);
 end
 if isfield(metadata, 'tau_ns') && ~isempty(metadata.tau_ns)
-    fprintf('Tau: %dns\n', metadata.tau_ns);
+    disp(['Tau: ' num2str(metadata.tau_ns) 'ns']);
 end
 
 num_channels = length(metadata.channels);
@@ -90,4 +78,4 @@ end
 
 ylim([total_min * 0.99, total_max * 1.01]);
 legend show;
-hold off;
+hold off;      

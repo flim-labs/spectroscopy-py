@@ -3,40 +3,9 @@ import struct
 import matplotlib.pyplot as plt
 import numpy as np
 
-
-def get_recent_spectroscopy_file():
-    data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
-    files = [
-        f
-        for f in os.listdir(data_folder)
-        if f.startswith("spectroscopy") and not ("calibration" in f) and not ("phasors" in f)
-    ]
-    files.sort(
-        key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
-    )
-    return os.path.join(data_folder, files[0])
-
-def get_recent_phasors_file():
-    data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
-    files = [
-        f
-        for f in os.listdir(data_folder)
-        if f.startswith("spectroscopy-phasors") and not ("calibration" in f)
-    ]
-    files.sort(
-        key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
-    )
-    if not files:
-        raise FileNotFoundError("No suitable phasors file found.")
-    return os.path.join(data_folder, files[0])
-
-
-spectroscopy_file_path = get_recent_spectroscopy_file()
-# spectroscopy_file_path = "INSERT DATA FILE PATH HERE" # You can also manually insert the path to the spectroscopy_data file here
-phasors_file_path = get_recent_phasors_file()
-# phasors_file_path = "INSERT DATA FILE PATH HERE" # You can also manually insert the path to the phasors_data file here
+spectroscopy_file_path = "<SPECTROSCOPY-FILE-PATH>"
+phasors_file_path = "<PHASORS-FILE-PATH>"
 print("Using phasors_data file: " + phasors_file_path)
-
 
 def ns_to_mhz(laser_period_ns):
     period_s = laser_period_ns * 1e-9

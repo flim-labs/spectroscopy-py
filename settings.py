@@ -55,8 +55,13 @@ CHANNELS_GRID = "channels_grid"
 DOWNLOAD_BUTTON = "download_button"
 DOWNLOAD_MENU = "download_menu"
 
-SPECTROSCOPY_SCRIPT_ACTION = "spectroscopy_script_action"
-PHASORS_SCRIPT_ACTION = "phasors_script_action"
+SPECTROSCOPY_SCRIPT_ACTION_PY = "spectroscopy_script_action_py"
+PHASORS_SCRIPT_ACTION_PY = "phasors_script_action_py"
+SPECTROSCOPY_SCRIPT_ACTION_M = "spectroscopy_script_action_m"
+PHASORS_SCRIPT_ACTION_M = "phasors_script_action_m"
+
+EXPORT_DATA_SETTINGS_BUTTON = "export_data_settings_button"
+EXPORT_DATA_SETTINGS_POPUP = "export_data_settings_popup"
 
 
 UNICODE_SUP = {
@@ -77,3 +82,13 @@ REALTIME_ADJUSTMENT = REALTIME_MS * 1000
 DEFAULT_TICKS_LOG =  [0, 1, 2, 3, 4, 5, 6]
 DEFAULT_TICKS_LIN = [0, 10, 100, 1000, 10000, 100000, 1000000]
 
+
+
+SETTINGS_EXPORTED_DATA_PATHS = "exported_data_paths"
+DEFAULT_EXPORTED_DATA_PATHS = '{"folder": "","spectroscopy_filename": "","phasors_filename": "","spectroscopy_phasors_ref_filename": ""}'
+
+EXPORTED_DATA_FILE_PATHS = {
+    "spectroscopy": "",
+    "phasors": "",
+    "spectroscopy_phasors_ref": ""
+}
