@@ -193,10 +193,10 @@ for i, (channel, harmonics) in enumerate(phasors_data.items(), start=1):
     row = i // max_channels_per_row
     col = i % max_channels_per_row
     ax = axs[row, col]
-    theta = np.linspace(0, np.pi, 100)
-    x = np.cos(theta)
-    y = np.sin(theta)
+    x = np.linspace(0, 1, 1000)
+    y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
     ax.plot(x, y)
+    
 
     for harmonic, values in harmonics.items():
         if values:
