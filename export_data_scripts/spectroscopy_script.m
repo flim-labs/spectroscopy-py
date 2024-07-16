@@ -77,7 +77,6 @@ figure;
 hold on;
 xlabel('Bin');
 ylabel('Intensity');
-set(gca, 'YScale', 'log');
 title(sprintf('Spectroscopy (time: %.2fs, curves stored: %d)', round(times(end)), length(times)));
 
 total_max = -inf;
