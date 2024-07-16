@@ -195,7 +195,6 @@ for i, (channel, harmonics) in enumerate(phasors_data.items(), start=1):
     x = np.linspace(0, 1, 1000)
     y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
     ax.plot(x, y)
-    
  
     for harmonic, values in harmonics.items():
         if values:

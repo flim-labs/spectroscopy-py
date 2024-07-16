@@ -62,32 +62,28 @@ disp(['Harmonics: ' num2str(phasors_metadata.harmonics)]);
 phasors_data = struct();
 try
     while true
-        for i = 1:length(phasors_metadata.channels)
-            channel = phasors_metadata.channels(i);
-            if ~isfield(phasors_data, num2str(channel))
-                phasors_data.(num2str(channel)) = struct();
-            end
-            for harmonic = 1:phasors_metadata.harmonics
-                if ~isfield(phasors_data.(num2str(channel)), num2str(harmonic))
-                    phasors_data.(num2str(channel)).(num2str(harmonic)) = [];
-                end
-                bytes_read = fread(phasors_fid, 32, 'uint8');
-                if isempty(bytes_read) || numel(bytes_read) < 32
-                    error('StopIteration');
-                end
-                try
-                    time_ns = typecast(uint8(bytes_read(1:8)), 'uint64');
-                    channel_name = typecast(uint8(bytes_read(9:12)), 'uint32');
-                    harmonic_name = typecast(uint8(bytes_read(13:16)), 'uint32');
-                    g = typecast(uint8(bytes_read(17:24)), 'double');
-                    s = typecast(uint8(bytes_read(25:32)), 'double');
-                catch
-                    disp('Error unpacking data');
-                    error('StopIteration');
-                end
-                phasors_data.(num2str(channel)).(num2str(harmonic)) = [phasors_data.(num2str(channel)).(num2str(harmonic)); g, s];
-            end
+        bytes_read = fread(phasors_fid, 32, 'uint8');
+        if isempty(bytes_read) || numel(bytes_read) < 32
+            error('StopIteration');
         end
+        try
+            time_ns = typecast(uint8(bytes_read(1:8)), 'uint64');
+            channel_name = typecast(uint8(bytes_read(9:12)), 'uint32');
+            harmonic_name = typecast(uint8(bytes_read(13:16)), 'uint32');
+            g = typecast(uint8(bytes_read(17:24)), 'double');
+            s = typecast(uint8(bytes_read(25:32)), 'double');
+        catch
+            disp('Error unpacking data');
+            error('StopIteration');
+        end
+        if ~isfield(phasors_data, num2str(channel_name))
+            phasors_data.(num2str(channel_name)) = struct();
+        end
+        if ~isfield(phasors_data.(num2str(channel_name)), num2str(harmonic_name))
+            phasors_data.(num2str(channel_name)).(num2str(harmonic_name)) = [];
+        end
+        phasors_data.(num2str(channel_name)).(num2str(harmonic_name)) = ...
+            [phasors_data.(num2str(channel_name)).(num2str(harmonic_name)); g, s];
     end
 catch
 end
@@ -139,9 +135,8 @@ for i = 1:length(channels)
     harmonics = fieldnames(phasors_data.(channel));
     subplot(num_rows, max_plots_per_row, plot_index);
     hold on;
-    theta = linspace(0, pi, 100);
-    x = cos(theta);
-    y = sin(theta);
+    x = linspace(0, 1, 1000);
+    y = sqrt(0.5^2 - (x - 0.5).^2);
     plot(x, y, 'k-', 'HandleVisibility', 'off');
 
     for j = 1:length(harmonics)
