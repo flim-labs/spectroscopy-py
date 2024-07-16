@@ -127,7 +127,7 @@ class GUIStyles:
             "hover": "#0053a4",
             "pressed": "#0D3A73",
         }
-        GUIStyles._set_button_style(button, color_dict, min_width="150px")
+        GUIStyles._set_button_style(button, color_dict, min_width="90px")
 
     @staticmethod
     def set_stop_btn_style(button):
@@ -137,7 +137,7 @@ class GUIStyles:
             "hover": "#E23B3B",
             "pressed": "#B01010",
         }
-        GUIStyles._set_button_style(button, color_dict, min_width="150px")
+        GUIStyles._set_button_style(button, color_dict, min_width="90px")
 
     @staticmethod
     def set_reset_btn_style(button):
@@ -147,7 +147,7 @@ class GUIStyles:
             "hover": "#a179ff",
             "pressed": "#6b3da5",
         }
-        GUIStyles._set_button_style(button, color_dict, min_width="150px")
+        GUIStyles._set_button_style(button, color_dict, min_width="90px")
 
     @staticmethod
     def set_config_btn_style(button):
@@ -157,7 +157,7 @@ class GUIStyles:
             "hover": "#E23B3B",
             "pressed": "#B01010",
         }
-        GUIStyles._set_button_style(button, color_dict, min_width="100px")
+        GUIStyles._set_button_style(button, color_dict, min_width="90px")
         # set no rounded corners
         button.setStyleSheet(
             button.styleSheet()
@@ -259,7 +259,6 @@ class GUIStyles:
                 font-family: "Montserrat";
                 font-size: 14px;
                 padding: 8px;
-                min-width: 100px;
                 border: 1px solid #3b3b3b;
                 border-radius: 5px;
                 background-color: transparent;

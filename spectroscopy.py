@@ -122,6 +122,9 @@ class SpectroscopyWindow(QWidget):
         self.exported_data_file_paths = EXPORTED_DATA_FILE_PATHS
    
         self.harmonic_selector_shown = False
+        quantized_phasors = self.settings.value(SETTINGS_QUANTIZE_PHASORS, DEFAULT_QUANTIZE_PHASORS)
+        self.quantized_phasors = quantized_phasors == 'true' or quantized_phasors == True
+        self.phasors_resolution = int(self.settings.value(SETTINGS_PHASORS_RESOLUTION, DEFAULT_PHASORS_RESOLUTION))
 
         self.get_selected_channels_from_settings()
 
@@ -398,6 +401,36 @@ class SpectroscopyWindow(QWidget):
         self.on_free_running_changed(
             self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING) == "true"
         )
+        
+        # QUANTIZE PHASORS
+        quantize_phasors_switch_control = QVBoxLayout()
+        inp_quantize = SwitchControl(
+            active_color="#11468F",
+            checked=self.quantized_phasors,
+        )
+        inp_quantize.toggled.connect(self.on_quantize_phasors_changed)
+        self.control_inputs[SETTINGS_QUANTIZE_PHASORS] = inp_quantize
+        quantize_phasors_switch_control.addWidget(QLabel("Quantize Phasors:"))
+        quantize_phasors_switch_control.addSpacing(8)
+        quantize_phasors_switch_control.addWidget(inp_quantize)
+        self.control_inputs["quantize_phasors_container"] = quantize_phasors_switch_control
+        self.show_layout(quantize_phasors_switch_control) if self.tab_selected == 'tab_data' else self.hide_layout(quantize_phasors_switch_control)
+        controls_row.addLayout(quantize_phasors_switch_control)
+        controls_row.addSpacing(20)
+        # PHASORS RESOLUTION
+        phasors_resolution_container, inp, __ = SelectControl.setup(
+            "Squares:",
+            self.phasors_resolution,
+            controls_row,
+            PHASORS_RESOLUTIONS,
+            self.on_phasors_resolution_changed,
+            width=70
+        )
+        inp.setStyleSheet(GUIStyles.set_input_select_style())
+        self.show_layout(phasors_resolution_container) if (self.tab_selected == 'tab_data' and self.quantized_phasors) else self.hide_layout(phasors_resolution_container)
+        self.control_inputs[SETTINGS_PHASORS_RESOLUTION] = inp
+        self.control_inputs["phasors_resolution_container"] = phasors_resolution_container
+        
         _, inp, label = SelectControl.setup(
             "Calibration:",
             int(
@@ -510,6 +543,7 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs["export_button"] = export_button
         controls_row.addWidget(export_button)
         start_button = QPushButton("START")
+        start_button.setFixedWidth(150)
         start_button.setObjectName("btn")
         start_button.setFlat(True)
         start_button.setFixedHeight(55)
@@ -539,6 +573,8 @@ class SpectroscopyWindow(QWidget):
         self.hide_harmonic_selector()
         if tab_name == "tab_spectroscopy":
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
+            self.hide_layout(self.control_inputs["phasors_resolution_container"]) 
+            self.hide_layout(self.control_inputs["quantize_phasors_container"]) 
             # hide tau input
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -562,6 +598,8 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == "tab_deconv":
+            self.hide_layout(self.control_inputs["phasors_resolution_container"]) 
+            self.hide_layout(self.control_inputs["quantize_phasors_container"]) 
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(False)
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -576,6 +614,8 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == "tab_data":
+            self.show_layout(self.control_inputs["phasors_resolution_container"]) if self.quantized_phasors else self.hide_layout(self.control_inputs["phasors_resolution_container"])
+            self.show_layout(self.control_inputs["quantize_phasors_container"]) 
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -588,7 +628,8 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["save"].setHidden(True)
             channels_grid = self.widgets[CHANNELS_GRID]
             if self.harmonic_selector_shown:
-                self.quantize_phasors(1)
+                if self.quantized_phasors:
+                    self.quantize_phasors(1, bins = int(PHASORS_RESOLUTIONS[self.phasors_resolution]))
                 self.show_harmonic_selector(self.harmonic_selector_value) 
             plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
             if plot_config_btn is not None:
@@ -689,7 +730,16 @@ class SpectroscopyWindow(QWidget):
 
     def on_connection_type_value_change(self, value):
         self.settings.setValue(SETTINGS_CONNECTION_TYPE, value)
-
+        
+    def on_quantize_phasors_changed(self, value):
+        self.quantized_phasors = value
+        self.settings.setValue(SETTINGS_QUANTIZE_PHASORS, value)
+        self.show_layout(self.control_inputs["phasors_resolution_container"]) if value else self.hide_layout(self.control_inputs["phasors_resolution_container"])
+            
+    def on_phasors_resolution_changed(self, value):
+        self.phasors_resolution = int(value)
+        self.settings.setValue(SETTINGS_PHASORS_RESOLUTION, value)
+    
     def on_calibration_change(self, value):
         self.settings.setValue(SETTINGS_CALIBRATION_TYPE, value)
         if value == 1:
@@ -1606,8 +1656,8 @@ class SpectroscopyWindow(QWidget):
 
     def on_harmonic_selector_change(self, value):
         self.harmonic_selector_value = int(value) + 1
-        if self.harmonic_selector_value >= 1:
-            self.quantize_phasors(self.harmonic_selector_value)
+        if self.harmonic_selector_value >= 1 and self.quantized_phasors:
+            self.quantize_phasors(self.harmonic_selector_value, bins = int(PHASORS_RESOLUTIONS[self.phasors_resolution]))
 
     def update_plots(self):
         try:
@@ -1665,7 +1715,11 @@ class SpectroscopyWindow(QWidget):
             print(f"Last reference file: {reference_file}")
         harmonic_selected = int(self.settings.value(
             SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT
-            ))    
+            ))   
+        if self.is_phasors():
+            if self.quantized_phasors:
+                self.quantize_phasors(1, bins = int(PHASORS_RESOLUTIONS[self.phasors_resolution]))
+            self.show_harmonic_selector(self.harmonic_selector_value) 
         if harmonic_selected > 1:    
             self.harmonic_selector_shown = True 
         if is_export_data_active:
@@ -1690,6 +1744,18 @@ class SpectroscopyWindow(QWidget):
     def open_export_data_settings_popup(self):
         self.popup = ExportDataSettingsPopup(self, start_acquisition=False)   
         self.popup.show()
+        
+    def hide_layout(self, layout):
+        for i in range(layout.count()):
+            widget = layout.itemAt(i).widget()
+            if widget:
+                widget.hide()
+
+    def show_layout(self, layout):
+        for i in range(layout.count()):
+            widget = layout.itemAt(i).widget()
+            if widget:
+                widget.show()    
 
     def closeEvent(self, event):
         self.settings.setValue("size", self.size())
