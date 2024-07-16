@@ -118,13 +118,12 @@ def plot_data(data):
 
 def main():
     # File paths
-    data_file = 'spectroscopy_2024-07-08_17-13-11.bin'
-    phasors_file = 'spectroscopy-phasors_2024-07-08_17-13-11.bin'
+    data_file = 'C:\\Users\\OMI\\.flim-labs\\data\\spectroscopy_2024-07-16_14-27-13.bin'
+    phasors_file = 'C:\\Users\\OMI\\.flim-labs\\data\\spectroscopy-phasors_2024-07-16_14-27-13.bin'
 
     # Extract metadata
     metadata = extract_metadata(data_file, b'SP01')
     selected_channels = metadata['channels']
-
     # Load and plot data
     data = load_data(data_file, selected_channels)
     plot_data(data)

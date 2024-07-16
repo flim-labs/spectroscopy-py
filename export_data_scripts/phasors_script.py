@@ -95,25 +95,24 @@ with open(phasors_file_path, "rb") as f:
         print("Tau: " + str(tau_ns) + "ns")
     try:
         while True:
-            for channel in metadata["channels"]:
-                if channel not in phasors_data:
-                    phasors_data[channel] = {}
-                for harmonic in range(1, metadata["harmonics"] + 1):
-                    if harmonic not in phasors_data[channel]:
-                        phasors_data[channel][harmonic] = []
-                    bytes_read = f.read(32)
-                    if not bytes_read:
-                        raise StopIteration
-                    try:
-                        time_ns, channel_name, harmonic_name, g, s = struct.unpack(
-                            "QIIdd", bytes_read
-                        )
-                    except struct.error as e:
-                        print(f"Error unpacking phasors_data: {e}")
-                        raise StopIteration
-                    phasors_data[channel][harmonic].append((g, s))
+            bytes_read = f.read(32)
+            if not bytes_read:
+                raise StopIteration
+            try:
+                time_ns, channel_name, harmonic_name, g, s = struct.unpack(
+                    "QIIdd", bytes_read
+                )
+            except struct.error as e:
+                print(f"Error unpacking phasors_data: {e}")
+                raise StopIteration
+            if channel_name not in phasors_data:                
+                phasors_data[channel_name] = {}
+            if harmonic_name not in phasors_data[channel_name]:                    
+                phasors_data[channel_name][harmonic_name] = []        
+            phasors_data[channel_name][harmonic_name].append((g, s))    
     except StopIteration:
         pass
+
 
 # READ SPECTROSCOPY FILE
 spectroscopy_channels_curves = []
@@ -197,7 +196,7 @@ for i, (channel, harmonics) in enumerate(phasors_data.items(), start=1):
     y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
     ax.plot(x, y)
     
-
+ 
     for harmonic, values in harmonics.items():
         if values:
             g_values, s_values = zip(*values)
