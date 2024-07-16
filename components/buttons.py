@@ -127,11 +127,7 @@ class DownloadButton(QWidget):
 
     @staticmethod
     def download_spectroscopy_script(app, script_type):
-        bin_file_path = (
-            app.renamed_exported_spectroscopy_bin
-            if app.renamed_exported_spectroscopy_bin is not None
-            else app.exported_source_spectroscopy_bin
-        )
+        bin_file_path = app.exported_data_file_paths["spectroscopy"]
         (
             PythonScriptUtils.download_spectroscopy(app, bin_file_path)
             if script_type == "py"
@@ -142,15 +138,12 @@ class DownloadButton(QWidget):
 
     @staticmethod
     def download_phasors_script(app, script_type):
-        bin_file_path = (
-            app.renamed_exported_spectroscopy_bin
-            if app.renamed_exported_spectroscopy_bin is not None
-            else app.exported_source_spectroscopy_bin
-        )
+        spectroscopy_ref_bin_file_path = app.exported_data_file_paths["spectroscopy_phasors_ref"]
+        phasors_bin_file_path = app.exported_data_file_paths["phasors"]
         (
-            PythonScriptUtils.download_phasors(app, bin_file_path)
+            PythonScriptUtils.download_phasors(app, spectroscopy_ref_bin_file_path, phasors_bin_file_path)
             if script_type == "py"
-            else MatlabScriptUtils.download_phasors(app, bin_file_path)
+            else MatlabScriptUtils.download_phasors(app, spectroscopy_ref_bin_file_path, phasors_bin_file_path)
         )
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(False)
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(True)

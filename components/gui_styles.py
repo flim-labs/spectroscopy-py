@@ -242,6 +242,7 @@ class GUIStyles:
                 border: 1px solid #11468F;
                 border-radius: 5px;
                 background-color: transparent;
+                color: #1E90FF;
             }
             QLineEdit:disabled, QLineEdit:disabled {
             color: #404040;  

@@ -1,21 +1,5 @@
-userprofile = getenv('USERPROFILE');
-data_folder = fullfile(userprofile, '.flim-labs', 'data');
-
-% Get recent spectroscopy file
-spectroscopy_files = dir(fullfile(data_folder, 'spectroscopy*'));
-spectroscopy_file_names = {spectroscopy_files.name};
-is_spectroscopy = cellfun(@(x) isempty(strfind(x, 'calibration')) && isempty(strfind(x, 'phasors')), spectroscopy_file_names);
-spectroscopy_files = spectroscopy_files(is_spectroscopy);
-[~, idx] = sort([spectroscopy_files.datenum], 'descend');
-spectroscopy_file_path = fullfile(data_folder, spectroscopy_files(idx(1)).name);
-
-% Get the recent phasors file
-phasors_files = dir(fullfile(data_folder, 'spectroscopy-phasors*'));
-phasors_file_names = {phasors_files.name};
-is_phasors = cellfun(@(x) isempty(strfind(x, 'calibration')), phasors_file_names);
-phasors_files = phasors_files(is_phasors);
-[~, idx] = sort([phasors_files.datenum], 'descend');
-phasors_file_path = fullfile(data_folder, phasors_files(idx(1)).name);
+spectroscopy_file_path = '<SPECTROSCOPY-FILE-PATH>'
+phasors_file_path = '<PHASORS-FILE-PATH>'
 fprintf('Using data file: %s\n', phasors_file_path);
 
 % READ SPECTROSCOPY DATA

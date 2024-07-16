@@ -8,7 +8,8 @@ import flim_labs
 import numpy as np
 from components.box_message import BoxMessage
 from components.buttons import CollapseButton, DownloadButton
-from components.file_utils import save_spectroscopy_bin_file
+from components.export_data_settings import ExportDataSettingsPopup
+from components.file_utils import save_phasor_files, save_spectroscopy_file
 from components.layout_utilities import draw_layout_separator
 from components.lin_log_control import SpectroscopyLinLogControl
 from components.plots_config import PlotsConfigPopup
@@ -103,6 +104,7 @@ class SpectroscopyWindow(QWidget):
             if default_plots_to_show is not None
             else []
         )
+        self.plots_to_show_already_appear = False
         self.selected_sync = self.settings.value(SETTINGS_SYNC, DEFAULT_SYNC)
         self.sync_in_frequency_mhz = float(
             self.settings.value(
@@ -115,9 +117,10 @@ class SpectroscopyWindow(QWidget):
         self.show_bin_file_size_helper = self.write_data_gui
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
-
-        self.renamed_exported_spectroscopy_bin = None
-        self.exported_source_spectroscopy_bin = None
+        
+        self.exported_data_settings = json.loads(self.settings.value(SETTINGS_EXPORTED_DATA_PATHS, DEFAULT_EXPORTED_DATA_PATHS))
+        self.exported_data_file_paths = EXPORTED_DATA_FILE_PATHS
+   
         self.harmonic_selector_shown = False
 
         self.get_selected_channels_from_settings()
@@ -304,10 +307,21 @@ class SpectroscopyWindow(QWidget):
             active_color=PALETTE_BLUE_1, width=70, height=30, checked=export_data_active
         )
         inp.toggled.connect(self.on_export_data_changed)
+        export_data_settings_btn = QPushButton()
+        export_data_settings_btn.setIcon(QIcon(resource_path("assets/settings-blue.png")))
+        export_data_settings_btn.setFixedWidth(40)
+        export_data_settings_btn.setFixedHeight(40)
+        export_data_settings_btn.setStyleSheet("background-color: white")
+        export_data_settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        export_data_settings_btn.setVisible(export_data_active)
+        self.control_inputs[EXPORT_DATA_SETTINGS_BUTTON] = export_data_settings_btn
+        export_data_settings_btn.clicked.connect(self.open_export_data_settings_popup)
 
         export_data_control.addWidget(export_data_label)
         export_data_control.addSpacing(8)
         export_data_control.addWidget(inp)
+        export_data_control.addSpacing(8)
+        export_data_control.addWidget(export_data_settings_btn)
         export_data_control.addSpacing(8)
         return info_link_widget, export_data_control
 
@@ -588,8 +602,7 @@ class SpectroscopyWindow(QWidget):
     def on_start_button_click(self):
         if self.mode == MODE_STOPPED:
             self.acquisition_stopped = False
-            self.renamed_exported_spectroscopy_bin = None
-            self.exported_source_spectroscopy_bin = None
+            self.exported_data_file_paths = EXPORTED_DATA_FILE_PATHS
             self.control_inputs["save"].setHidden(True)
             if not (self.is_phasors()):
                 self.harmonic_selector_shown = False
@@ -692,6 +705,7 @@ class SpectroscopyWindow(QWidget):
 
     def on_export_data_changed(self, state):
         self.control_inputs[DOWNLOAD_BUTTON].setVisible(state)
+        self.control_inputs[EXPORT_DATA_SETTINGS_BUTTON].setVisible(state)
         self.settings.setValue(SETTINGS_WRITE_DATA, state)
         self.write_data_gui = state
         self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
@@ -759,19 +773,25 @@ class SpectroscopyWindow(QWidget):
             self.channel_checkboxes[i].setEnabled(enabled)
 
     def on_channel_selected(self, checked: bool, channel: int):
-        self.plots_to_show.clear()
+        
         self.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(self.plots_to_show))
         if checked:
             if channel not in self.selected_channels:
                 self.selected_channels.append(channel)
+            if channel not in self.plots_to_show and len(self.plots_to_show) < 4:
+                self.plots_to_show.append(channel)   
         else:
             if channel in self.selected_channels:
                 self.selected_channels.remove(channel)
+            if channel in self.plots_to_show:
+                self.plots_to_show.remove(channel)    
         self.selected_channels.sort()
+        self.plots_to_show.sort()
+        self.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(self.plots_to_show)) 
         self.set_selected_channels_to_settings()
         self.cached_decay_values.clear()
         self.clear_plots()
-        # self.generate_plots()
+        self.generate_plots()
         self.calc_exported_file_size()
 
     def on_sync_selected(self, sync: str):
@@ -1196,12 +1216,17 @@ class SpectroscopyWindow(QWidget):
                 GUIStyles.set_msg_box_style(),
             )
             return
+        if not ExportDataSettingsPopup.exported_data_settings_valid(self):
+            popup = ExportDataSettingsPopup(self, start_acquisition=True)
+            popup.show()
+            return
         if self.tab_selected != "tab_data":
-            open_config_plots_popup = len(self.plots_to_show) == 0
-            if open_config_plots_popup:
+            open_config_plots_popup = len(self.selected_channels) > 4
+            if open_config_plots_popup and not self.plots_to_show_already_appear:
                 popup = PlotsConfigPopup(self, start_acquisition=True)
                 popup.show()
-                return
+                self.plots_to_show_already_appear = True
+                return    
         self.clear_plots()
         self.cached_decay_values.clear()
         self.generate_plots(frequency_mhz)
@@ -1626,8 +1651,6 @@ class SpectroscopyWindow(QWidget):
         # self.timer_update.stop()
         # self.update_plots_enabled = False
         is_export_data_active = self.write_data_gui
-        if is_export_data_active:
-            save_spectroscopy_bin_file(self)
         SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, True)
         self.top_bar_set_enabled(True)
         DownloadButton.change_download_script_options(self)
@@ -1640,16 +1663,32 @@ class SpectroscopyWindow(QWidget):
             self.reference_file = reference_file    
             self.control_inputs["save"].setHidden(False)
             print(f"Last reference file: {reference_file}")
-
         harmonic_selected = int(self.settings.value(
             SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT
             ))    
         if harmonic_selected > 1:    
-            self.harmonic_selector_shown = True    
+            self.harmonic_selector_shown = True 
+        if is_export_data_active:
+            QTimer.singleShot(500, self.save_bin_files)
+                  
       
-
+    def save_bin_files(self):
+        if self.tab_selected == 'tab_spectroscopy':
+            save_spectroscopy_file(self.exported_data_settings["spectroscopy_filename"], self.exported_data_settings["folder"], self)
+        if self.tab_selected == 'tab_data':
+            save_phasor_files(
+                self.exported_data_settings["spectroscopy_phasors_ref_filename"],
+                self.exported_data_settings["phasors_filename"],
+                self.exported_data_settings["folder"],
+                self 
+            )
+            
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
+        self.popup.show()
+        
+    def open_export_data_settings_popup(self):
+        self.popup = ExportDataSettingsPopup(self, start_acquisition=False)   
         self.popup.show()
 
     def closeEvent(self, event):
@@ -1657,6 +1696,8 @@ class SpectroscopyWindow(QWidget):
         self.settings.setValue("pos", self.pos())
         if PLOTS_CONFIG_POPUP in self.widgets:
             self.widgets[PLOTS_CONFIG_POPUP].close()
+        if EXPORT_DATA_SETTINGS_POPUP in self.widgets:
+            self.widgets[EXPORT_DATA_SETTINGS_POPUP].close()    
         event.accept()
 
     def eventFilter(self, source, event):
