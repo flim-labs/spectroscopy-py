@@ -1266,10 +1266,11 @@ class SpectroscopyWindow(QWidget):
                 GUIStyles.set_msg_box_style(),
             )
             return
-        if not ExportDataSettingsPopup.exported_data_settings_valid(self):
-            popup = ExportDataSettingsPopup(self, start_acquisition=True)
-            popup.show()
-            return
+        if self.write_data_gui:
+            if not ExportDataSettingsPopup.exported_data_settings_valid(self):
+                popup = ExportDataSettingsPopup(self, start_acquisition=True)
+                popup.show()
+                return
         if self.tab_selected != "tab_data":
             open_config_plots_popup = len(self.selected_channels) > 4
             if open_config_plots_popup and not self.plots_to_show_already_appear:
