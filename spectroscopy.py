@@ -774,15 +774,21 @@ class SpectroscopyWindow(QWidget):
         )
         self.clear_plots()
         self.generate_plots(frequency_mhz)
-        for i, channel_index in enumerate(self.plots_to_show):
-            if len(self.plots_to_show) <= len(self.all_phasors_points):
-                for harmonic, phasors in self.all_phasors_points[channel_index].items():
-                    self.draw_points_in_phasors(channel_index, harmonic, phasors)
         if value:
             self.quantize_phasors(
                 self.harmonic_selector_value,
                 bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution]),
             )
+        else:
+            for i, channel_index in enumerate(self.plots_to_show):
+                if len(self.plots_to_show) <= len(self.all_phasors_points):
+                        self.draw_points_in_phasors(
+                            channel_index,
+                            self.harmonic_selector_value,
+                            self.all_phasors_points[channel_index][
+                                self.harmonic_selector_value
+                            ],
+                        )    
 
     def on_phasors_resolution_changed(self, value):
         self.phasors_resolution = int(value)
@@ -1739,7 +1745,7 @@ class SpectroscopyWindow(QWidget):
                 self.harmonic_selector_value,
                 bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution]),
             )
-        if not self.quantize_phasors:
+        if not self.quantized_phasors:
             self.clear_plots()
             frequency_mhz = self.get_frequency_mhz()
             self.generate_plots(frequency_mhz)
@@ -1815,7 +1821,6 @@ class SpectroscopyWindow(QWidget):
                 self.quantize_phasors(
                     1, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
                 )
-            self.show_harmonic_selector(self.harmonic_selector_value)
         if harmonic_selected > 1:
             self.harmonic_selector_shown = True
         if is_export_data_active:
