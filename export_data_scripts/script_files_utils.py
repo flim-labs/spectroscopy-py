@@ -8,10 +8,10 @@ from components.gui_styles import GUIStyles
 from components.messages_utilities import MessagesUtilities
 
 current_path = os.path.dirname(os.path.abspath(__file__))
-spectroscopy_py_script_path = os.path.join(current_path, "spectroscopy_py_script_for_export.py")
-spectroscopy_m_script_path = os.path.join(current_path, "spectroscopy_m_script_for_export.m")
-phasors_py_script_path = os.path.join(current_path, "phasors_py_script_for_export.py")
-phasors_m_script_path = os.path.join(current_path, "phasors_m_script_for_export.m")
+spectroscopy_py_script_path = os.path.relpath(os.path.join(current_path, "spectroscopy_py_script_for_export.py"))
+spectroscopy_m_script_path = os.path.relpath(os.path.join(current_path, "spectroscopy_m_script_for_export.m"))
+phasors_py_script_path = os.path.relpath(os.path.join(current_path, "phasors_py_script_for_export.py"))
+phasors_m_script_path = os.path.relpath(os.path.join(current_path, "phasors_m_script_for_export.m"))
 
 class ScriptFileUtils:
     @classmethod
