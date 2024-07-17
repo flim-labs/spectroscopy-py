@@ -93,7 +93,7 @@ EXPORTED_DATA_FILE_PATHS = {
     "spectroscopy_phasors_ref": ""
 }
 
-PHASORS_RESOLUTIONS = ["16", "32", "64", "128", "256"]
+PHASORS_RESOLUTIONS = ["16", "32", "64", "128", "256", "512"]
 SETTINGS_PHASORS_RESOLUTION = "phasors_resolution"
 DEFAULT_PHASORS_RESOLUTION = 2
 SETTINGS_QUANTIZE_PHASORS = "quantize_phasors"
