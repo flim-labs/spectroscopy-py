@@ -41,7 +41,10 @@ if isfield(metadata, 'acquisition_time_millis') && ~isempty(metadata.acquisition
     fprintf('Acquisition time: %.2fs\n', metadata.acquisition_time_millis / 1000);
 end
 if isfield(metadata, 'laser_period_ns') && ~isempty(metadata.laser_period_ns)
-    fprintf('Laser period: %dns\n', metadata.laser_period_ns);
+    laser_period_ns = metadata.laser_period_ns;
+    fprintf('Laser period: %dns\n', laser_period_ns);
+else
+    error('Laser period not found in metadata.');
 end
 if isfield(metadata, 'tau_ns') && ~isempty(metadata.tau_ns)
     fprintf('Tau: %dns\n', metadata.tau_ns);
@@ -72,10 +75,14 @@ while ~feof(fid)
 end
 fclose(fid);
 
+% Calculate the x-axis values based on the laser period
+num_bins = 256;
+x_values = linspace(0, laser_period_ns, num_bins);
+
 % Plotting
 figure;
 hold on;
-xlabel('Bin');
+xlabel(sprintf('Time (ns, Laser period = %d ns)', laser_period_ns));
 ylabel('Intensity');
 title(sprintf('Spectroscopy (time: %.2fs, curves stored: %d)', round(times(end)), length(times)));
 
@@ -85,7 +92,7 @@ for i = 1:num_channels
     sum_curve = sum(channel_curves{i}, 1);
     total_max = max(total_max, max(sum_curve));
     total_min = min(total_min, min(sum_curve));
-    plot(sum_curve, 'DisplayName', sprintf('Channel %d', metadata.channels(i) + 1));
+    plot(x_values, sum_curve, 'DisplayName', sprintf('Channel %d', metadata.channels(i) + 1));
 end
 
 ylim([total_min * 0.99, total_max * 1.01]);

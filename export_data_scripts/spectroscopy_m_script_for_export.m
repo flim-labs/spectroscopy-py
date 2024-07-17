@@ -20,19 +20,23 @@ metadata = jsondecode(char(metadata_json'));
 
 % Print metadata information
 if isfield(metadata, 'channels') && ~isempty(metadata.channels)
-    disp(['Enabled channels: ' strjoin(arrayfun(@(ch) ['Channel ' num2str(ch + 1)], metadata.channels, 'UniformOutput', false), ', ')]);
+    enabled_channels = sprintf('Channel %d, ', metadata.channels + 1);
+    fprintf('Enabled channels: %s\n', enabled_channels(1:end-2));
 end
 if isfield(metadata, 'bin_width_micros') && ~isempty(metadata.bin_width_micros)
-    disp(['Bin width: ' num2str(metadata.bin_width_micros) ' us']);
+    fprintf('Bin width: %dus\n', metadata.bin_width_micros);
 end
 if isfield(metadata, 'acquisition_time_millis') && ~isempty(metadata.acquisition_time_millis)
-    disp(['Acquisition time: ' num2str(metadata.acquisition_time_millis / 1000) 's']);
+    fprintf('Acquisition time: %.2fs\n', metadata.acquisition_time_millis / 1000);
 end
 if isfield(metadata, 'laser_period_ns') && ~isempty(metadata.laser_period_ns)
-    disp(['Laser period: ' num2str(metadata.laser_period_ns) 'ns']);
+    laser_period_ns = metadata.laser_period_ns;
+    fprintf('Laser period: %dns\n', laser_period_ns);
+else
+    error('Laser period not found in metadata.');
 end
 if isfield(metadata, 'tau_ns') && ~isempty(metadata.tau_ns)
-    disp(['Tau: ' num2str(metadata.tau_ns) 'ns']);
+    fprintf('Tau: %dns\n', metadata.tau_ns);
 end
 
 num_channels = length(metadata.channels);
@@ -60,10 +64,14 @@ while ~feof(fid)
 end
 fclose(fid);
 
+% Calculate the x-axis values based on the laser period
+num_bins = 256;
+x_values = linspace(0, laser_period_ns, num_bins);
+
 % Plotting
 figure;
 hold on;
-xlabel('Bin');
+xlabel(sprintf('Time (ns, Laser period = %d ns)', laser_period_ns));
 ylabel('Intensity');
 title(sprintf('Spectroscopy (time: %.2fs, curves stored: %d)', round(times(end)), length(times)));
 
@@ -73,9 +81,9 @@ for i = 1:num_channels
     sum_curve = sum(channel_curves{i}, 1);
     total_max = max(total_max, max(sum_curve));
     total_min = min(total_min, min(sum_curve));
-    plot(sum_curve, 'DisplayName', sprintf('Channel %d', metadata.channels(i) + 1));
+    plot(x_values, sum_curve, 'DisplayName', sprintf('Channel %d', metadata.channels(i) + 1));
 end
 
 ylim([total_min * 0.99, total_max * 1.01]);
 legend show;
-hold off;      
+hold off;
