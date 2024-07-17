@@ -1734,7 +1734,6 @@ class SpectroscopyWindow(QWidget):
 
     def on_harmonic_selector_change(self, value):
         self.harmonic_selector_value = int(value) + 1
-        print(self.harmonic_selector_value)
         if self.harmonic_selector_value >= 1 and self.quantized_phasors:
             self.quantize_phasors(
                 self.harmonic_selector_value,
