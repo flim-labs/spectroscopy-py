@@ -9,10 +9,12 @@ from components.messages_utilities import MessagesUtilities
 from components.resource_path import resource_path
 
 current_path = os.path.dirname(os.path.abspath(__file__))
-spectroscopy_py_script_path = resource_path(os.path.join(current_path, "export_data_scripts", "spectroscopy_py_script_for_export.py"))
-spectroscopy_m_script_path = resource_path(os.path.join(current_path, "export_data_scripts", "spectroscopy_m_script_for_export.m"))
-phasors_py_script_path = resource_path(os.path.join(current_path, "export_data_scripts", "phasors_py_script_for_export.py"))
-phasors_m_script_path = resource_path(os.path.join(current_path, "export_data_scripts", "phasors_m_script_for_export.m"))
+project_root = os.path.abspath(os.path.join(current_path))
+
+spectroscopy_py_script_path = resource_path("export_data_scripts/spectroscopy_py_script_for_export.py")  
+spectroscopy_m_script_path = resource_path("export_data_scripts/spectroscopy_m_script_for_export.m") 
+phasors_py_script_path = resource_path("export_data_scripts/phasors_py_script_for_export.py")  
+phasors_m_script_path = resource_path("export_data_scripts/phasors_m_script_for_export.m")  
 
 class ScriptFileUtils:
     @classmethod
@@ -65,7 +67,6 @@ class ScriptFileUtils:
 
     @classmethod
     def read_file_content(cls, file_path):
-        file_path = resource_path(file_path)
         with open(file_path, "r") as file:
             return file.readlines()
 
