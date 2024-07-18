@@ -1,6 +1,25 @@
 from PyQt6.QtCore import pyqtSignal, Qt, QPropertyAnimation, QSize
-from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QMouseEvent, QFont, QCursor, QPalette, QIcon
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QVBoxLayout, QButtonGroup, QRadioButton, QMenu, QPushButton
+from PyQt6.QtGui import (
+    QPainter,
+    QColor,
+    QPen,
+    QBrush,
+    QMouseEvent,
+    QFont,
+    QCursor,
+    QPalette,
+    QIcon,
+)
+from PyQt6.QtWidgets import (
+    QWidget,
+    QHBoxLayout,
+    QLabel,
+    QVBoxLayout,
+    QButtonGroup,
+    QRadioButton,
+    QMenu,
+    QPushButton,
+)
 
 SELECTED_COLOR = "#8d4ef2"
 SELECTED_HOVER_COLOR = "#0053a4"
@@ -16,14 +35,15 @@ UNCHECKED_COLOR = "lightgrey"
 SELECTED_COLOR_BUTTON = "#11468F"
 
 
-
 class FancyCheckbox(QWidget):
     toggled = pyqtSignal(bool)  # Signal to emit when the checkbox state changes
 
     def __init__(self, text="", parent=None):
         super().__init__(parent)
         self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)  # Remove margins around the checkbox and label
+        self.layout.setContentsMargins(
+            0, 0, 0, 0
+        )  # Remove margins around the checkbox and label
         self.layout.setSpacing(5)  # Set spacing between checkbox and label
 
         self.checkbox = Checkbox(self)
@@ -35,11 +55,15 @@ class FancyCheckbox(QWidget):
         self.layout.addWidget(self.checkbox)
         self.layout.addWidget(self.label)
 
-        self.label.mousePressEvent = self.checkbox.mousePressEvent  # Forward mousePressEvent from label to checkbox
+        self.label.mousePressEvent = (
+            self.checkbox.mousePressEvent
+        )  # Forward mousePressEvent from label to checkbox
         self.checkbox.toggled.connect(self.emit_toggled_signal)
 
     def emit_toggled_signal(self, checked):
-        self.toggled.emit(checked)  # Emit toggled signal when the checkbox state changes
+        self.toggled.emit(
+            checked
+        )  # Emit toggled signal when the checkbox state changes
 
     def is_checked(self):
         return self.checkbox.is_checked()
@@ -100,9 +124,22 @@ class Checkbox(QWidget):
 
 
 class FancyButton(QPushButton):
-    def __init__(self, text="", icon_path=None, parent=None):
+    def __init__(
+        self,
+        text="",
+        icon_path=None,
+        parent=None,
+        selected_color=SELECTED_COLOR_BUTTON,
+        unselected_color=UNSELECTED_COLOR,
+        hover_color=SELECTED_HOVER_COLOR,
+        pressed_color="#003d7a",
+    ):
         super().__init__(text, parent)
         self.selected = False  # Track the selected state
+        self.selected_color = selected_color
+        self.unselected_color = unselected_color
+        self.hover_color = hover_color
+        self.pressed_color = pressed_color
         self.initUI(icon_path)
 
     def initUI(self, icon_path):
@@ -122,15 +159,16 @@ class FancyButton(QPushButton):
         self.updateStyleSheet()
 
     def updateStyleSheet(self):
-        bg_color = SELECTED_COLOR_BUTTON if self.selected else UNSELECTED_COLOR
+        bg_color = self.selected_color if self.selected else self.unselected_color
         color = "#3b3b3b" if not self.selected else "transparent"
         if not self.isEnabled():
             bg_color = "#3c3c3c" if self.selected else "transparent"
             color = "#3b3b3b"
-        hover_color = SELECTED_HOVER_COLOR
-        pressed_color = "#003d7a"
+        hover_color = self.hover_color
+        pressed_color = self.pressed_color
 
-        self.setStyleSheet(f"""
+        self.setStyleSheet(
+            f"""
             QPushButton {{
                 font-family: "Montserrat";
                 font-size: 12px;
@@ -148,4 +186,5 @@ class FancyButton(QPushButton):
             QPushButton:pressed {{
                 background-color: {pressed_color};
             }}
-        """)
+        """
+        )

@@ -231,23 +231,23 @@ class GUIStyles:
         """
     
     @staticmethod    
-    def set_input_text_style():
-        return """
-           QLineEdit  {
+    def set_input_text_style(border_color="#11468F"):
+        return f"""
+           QLineEdit, QPlainTextEdit {{
                 color: #f8f8f8;
                 font-family: "Montserrat";
                 font-size: 14px;
                 padding: 8px;
                 min-width: 100px;
-                border: 1px solid #11468F;
+                border: 1px solid {border_color};
                 border-radius: 5px;
                 background-color: transparent;
                 color: #1E90FF;
-            }
-            QLineEdit:disabled, QLineEdit:disabled {
+            }}
+            QLineEdit:disabled,QPlainTextEdit::disabled {{
             color: #404040;  
             border-color: #3c3c3c;
-            }        
+            }}        
         """    
         
 
@@ -428,9 +428,18 @@ class GUIStyles:
                 font-size: 14px;
             }
         """
-        
+            
     @staticmethod
-    def set_slider_style():
-        return """
-            """           
+    def set_laserblood_popup_style():
+        return """   
+            QWidget {
+              background-color: black;  
+            }     
+            QLabel {
+                color: "#cecece";
+                font-family: Montserrat;
+                font-size: 14px;
+            }
+        """
+                         
                        

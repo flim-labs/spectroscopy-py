@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QSpinBox, QDoubleSpinBox
-
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QSpinBox, QDoubleSpinBox,  QSpacerItem, QSizePolicy
+from PyQt6.QtCore import Qt
 
 class InputNumberControl:
     @staticmethod
@@ -16,7 +16,10 @@ class InputNumberControl:
         q_label = QLabel(label)
         control = QVBoxLayout() if control_layout == "vertical" else QHBoxLayout()
         input = QSpinBox()
-        input.setRange(min, max)
+        if min:
+            input.setMinimum(min)
+        if max:
+            input.setMaximum(max)    
         if value:
             input.setValue(value)
         input.valueChanged.connect(event_callback)
@@ -39,17 +42,29 @@ class InputFloatControl:
             event_callback,
             spacing=20,
             control_layout="vertical",
+            action_widget=None
     ):
+        h_box = QHBoxLayout()
         q_label = QLabel(label)
+        q_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
         control = QVBoxLayout() if control_layout == "vertical" else QHBoxLayout()
         input = QDoubleSpinBox()
-        input.setRange(min, max)
-        if value:
+        if min is not None:
+            input.setMinimum(min)
+        if max is not None:
+            input.setMaximum(max)
+        if value is not None:
             input.setValue(value)
         input.valueChanged.connect(event_callback)
-        control.addWidget(q_label)
+        h_box.addWidget(q_label)
+        spacer = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        h_box.addItem(spacer)
+        if action_widget is not None:
+            action_widget.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
+            h_box.addWidget(action_widget, alignment=Qt.AlignmentFlag.AlignRight)
+        control.addLayout(h_box)
         control.addWidget(input)
         row.addLayout(control)
         if spacing:
-            row.addSpacing(20)
+            row.addSpacing(spacing)
         return q_label, input

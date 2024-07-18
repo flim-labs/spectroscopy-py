@@ -1,12 +1,15 @@
 from PyQt6.QtWidgets import QWidget, QFrame, QSizePolicy, QVBoxLayout
 
 
-def draw_layout_separator(line_width=1, color="#282828", vertical_space=10):
+def draw_layout_separator(line_width=1, color="#282828", vertical_space=10, type="horizontal"):
     spacer_widget = QWidget()
     spacer_widget.setFixedSize(1, vertical_space)
 
     separator = QFrame()
-    separator.setFrameShape(QFrame.Shape.HLine)
+    if type == 'horizontal':
+        separator.setFrameShape(QFrame.Shape.HLine)
+    else: 
+        separator.setFrameShape(QFrame.Shape.VLine)    
     separator.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
     separator.setLineWidth(line_width)
     separator.setStyleSheet(f"QFrame{{color: {color};}}")

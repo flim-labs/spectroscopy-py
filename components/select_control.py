@@ -18,4 +18,4 @@ class SelectControl:
         container.addLayout(control)
         if spacing:
             container.addSpacing(spacing)
-        return control, input, q_label
+        return control, input, q_label, container
