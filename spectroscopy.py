@@ -75,6 +75,7 @@ class SpectroscopyWindow(QWidget):
         self.phasors_crosshairs = {}
         self.cps_widgets = {}
         self.cps_counts = {}
+        self.displayed_cps = {}
         self.decay_curves = {}
         self.decay_widgets = {}
         self.cached_decay_values = {}
@@ -180,6 +181,7 @@ class SpectroscopyWindow(QWidget):
                 NEW_ADDED_LASERBLOOD_INPUTS_KEY, NEW_ADDED_LASERBLOOD_INPUTS_JSON
             )
         )
+        self.laserblood_widgets = {}
 
     @staticmethod
     def get_empty_phasors_points():
@@ -278,14 +280,15 @@ class SpectroscopyWindow(QWidget):
         top_bar_header.addStretch(1)
 
         # LASERBLOOD METADATA
-        laserblood_metadata_btn = QPushButton(" LASERBLOOD METADATA")
+        laserblood_metadata_btn = QPushButton(" METADATA")
         laserblood_metadata_btn.setIcon(
-            QIcon(resource_path("assets/microscope-icon.png"))
+            QIcon(resource_path("assets/laserblood-logo.png"))
         )
-        laserblood_metadata_btn.setFixedWidth(200)
+        laserblood_metadata_btn.setIconSize(QSize(50, 100))
+        laserblood_metadata_btn.setFixedWidth(160)
         laserblood_metadata_btn.setFixedHeight(45)
         laserblood_metadata_btn.setStyleSheet(
-            "font-family: Montserrat; font-weight: bold; background-color: white; color: #1E90FF; padding: 0 14px;"
+            "font-family: Montserrat; font-weight: bold; background-color: white; color: #014E9C; padding: 0 14px;"
         )
         laserblood_metadata_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         laserblood_metadata_btn.clicked.connect(self.open_laserblood_metadata_popup)
@@ -1255,6 +1258,7 @@ class SpectroscopyWindow(QWidget):
         self.phasors_coords.clear()
         self.cps_widgets.clear()
         self.cps_counts.clear()
+        self.displayed_cps.clear()
         self.intensity_lines.clear()
         self.decay_curves.clear()
         self.cached_decay_x_values = np.array([])
@@ -1371,20 +1375,20 @@ class SpectroscopyWindow(QWidget):
                 QMessageBox.Icon.Warning,
                 GUIStyles.set_msg_box_style(),
             )
-            return
-        if not LaserbloodMetadataPopup.laserblood_metadata_valid(self):
-            BoxMessage.setup(
-                "Error",
-                "All required Laserblood metadata must be filled before starting the acquisition. Required fields are highlighted with a red border. Fields set to 0 are highlighted with a yellow border; it's recommended to double-check them, if present.",
-                QMessageBox.Icon.Warning,
-                GUIStyles.set_msg_box_style(),
-            )
-            return            
+            return       
         if self.write_data_gui:
             if not ExportDataSettingsPopup.exported_data_settings_valid(self):
                 popup = ExportDataSettingsPopup(self, start_acquisition=True)
                 popup.show()
                 return
+            if not LaserbloodMetadataPopup.laserblood_metadata_valid(self):        
+                BoxMessage.setup(
+                    "Error",
+                    "All required Laserblood metadata must be filled before starting the acquisition. Required fields are highlighted with a red border. Fields set to 0 are highlighted with a yellow border; it's recommended to double-check them, if present. Laser type and filter type must be set",
+                    QMessageBox.Icon.Warning,
+                    GUIStyles.set_msg_box_style(),
+                )
+                return     
         if self.tab_selected != "tab_data":
             open_config_plots_popup = len(self.selected_channels) > 4
             if open_config_plots_popup and not self.plots_to_show_already_appear:
@@ -1700,6 +1704,10 @@ class SpectroscopyWindow(QWidget):
             cps_value = (cps["current_count"] - cps["last_count"]) / (
                 time_elapsed / 1_000_000_000
             )
+            if not channel_index in self.displayed_cps:
+                self.displayed_cps[channel_index] = [cps_value]
+            else:
+                self.displayed_cps[channel_index].append(cps_value)    
             self.cps_widgets[channel_index].setText(
                 f"{self.humanize_number(cps_value)} CPS"
             )
@@ -1842,11 +1850,6 @@ class SpectroscopyWindow(QWidget):
         self.mode = MODE_STOPPED
         self.style_start_button()
         QApplication.processEvents()
-        # time.sleep(0.5)
-        # self.pull_from_queue_timer.stop()
-        # time.sleep(0.5)
-        # self.timer_update.stop()
-        # self.update_plots_enabled = False
         is_export_data_active = self.write_data_gui
         SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, True)
         self.top_bar_set_enabled(True)
@@ -1872,6 +1875,7 @@ class SpectroscopyWindow(QWidget):
             self.harmonic_selector_shown = True
         if is_export_data_active:
             QTimer.singleShot(500, self.save_bin_files)
+        LaserbloodMetadataPopup.set_average_CPS(self.displayed_cps, self)    
 
     def save_bin_files(self):
         save_laserblood_metadata_json(

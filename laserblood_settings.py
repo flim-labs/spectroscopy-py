@@ -1,7 +1,7 @@
 import json
 
 SETTINGS_LASER_TYPE = "laser_type"
-DEFAULT_LASER_TYPE = "Laser Clean-up Filter ZET 375/10"
+DEFAULT_LASER_TYPE = None
 SETTINGS_FILTER_TYPE = "filter_type"
 DEFAULT_FILTER_TYPE = None
 
@@ -26,18 +26,75 @@ FILTERS_TYPES = [
     "720/13 nm",
     "740/13 nm",
     "765/22 nm",
-    "795/22 nm"
-    ]
+    "795/22 nm",
+]
+
+FILTERS_TYPES_NO_BANDPASS = ["SP", "LP"]
 
 
 LASER_TYPES = [
-    {"KEY": "375nm", "LABEL": "Laser Clean-up Filter ZET 375/10", "FILTERS": FILTERS_TYPES},
-    {"KEY": "405nm", "LABEL": "405/10 ET Bandpass", "FILTERS": FILTERS_TYPES[2:]},
-    {"KEY": "445nm", "LABEL": "Laser Clean-up Filter ZET 445/10", "FILTERS": FILTERS_TYPES[4:]},
-    {"KEY": "488nm", "LABEL": " Laser Clean-up Filter ZET 488/10", "FILTERS": FILTERS_TYPES[6:]},
-    {"KEY": "520nm", "LABEL": " 520/10 ET Bandpass", "FILTERS": FILTERS_TYPES[8:]},
+    {
+        "KEY": "375/10 nm",
+        "LABEL": "Laser Clean-up Filter ZET 375/10",
+        "BANDPASS": True,
+        "FILTERS": FILTERS_TYPES,
+    },
+    {
+        "KEY": "405/10 nm",
+        "LABEL": "405/10 ET Bandpass",
+        "BANDPASS": True,
+        "FILTERS": FILTERS_TYPES[2:],
+    },
+    {
+        "KEY": "445/10 nm",
+        "LABEL": "Laser Clean-up Filter ZET 445/10",
+        "BANDPASS": True,
+        "FILTERS": FILTERS_TYPES[4:],
+    },
+    {
+        "KEY": "488/10 nm",
+        "LABEL": " Laser Clean-up Filter ZET 488/10",
+        "BANDPASS": True,
+        "FILTERS": FILTERS_TYPES[6:],
+    },
+    {
+        "KEY": "520/10 nm",
+        "LABEL": " 520/10 ET Bandpass",
+        "BANDPASS": True,
+        "FILTERS": FILTERS_TYPES[8:],
+    },
+    
+    {
+        "KEY": "375 nm",
+        "LABEL": "375 nm",
+        "BANDPASS": False,
+        "FILTERS": FILTERS_TYPES,
+    },
+    {
+        "KEY": "405 nm",
+        "LABEL": "405 nm",
+        "BANDPASS": False,
+        "FILTERS": FILTERS_TYPES[2:],
+    },
+    {
+        "KEY": "445 nm",
+        "LABEL": "445 nm",
+        "BANDPASS": False,
+        "FILTERS": FILTERS_TYPES[4:],
+    },
+    {
+        "KEY": "488 nm",
+        "LABEL": "488 nm",
+        "BANDPASS": False,
+        "FILTERS": FILTERS_TYPES[6:],
+    },
+    {
+        "KEY": "520 nm",
+        "LABEL": " 520 nm",
+        "BANDPASS": False,
+        "FILTERS": FILTERS_TYPES[8:],
+    },
 ]
-
 
 
 SETTINGS_SAMPLE_VOL = {
@@ -47,11 +104,11 @@ SETTINGS_SAMPLE_VOL = {
     "INPUT_TYPE": "float",
     "OPTIONS": [],
     "MIN": 0,
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (0, 0, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True
+    "REQUIRED": True,
 }
 CUVETTE_TOTAL_VOL = {
     "LABEL": "Cuvette total volume",
@@ -60,11 +117,11 @@ CUVETTE_TOTAL_VOL = {
     "OPTIONS": [],
     "INPUT_TYPE": "float",
     "MIN": 0,
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (0, 1, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True    
+    "REQUIRED": True,
 }
 SOLVENT_TYPE = {
     "LABEL": "Solvent type",
@@ -77,7 +134,7 @@ SOLVENT_TYPE = {
     "POSITION": (0, 2, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True      
+    "REQUIRED": True,
 }
 SOLVENT_VOL = {
     "LABEL": "Solvent volume",
@@ -86,11 +143,11 @@ SOLVENT_VOL = {
     "INPUT_TYPE": "float",
     "MIN": 0,
     "OPTIONS": [],
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (0, 3, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True       
+    "REQUIRED": True,
 }
 NANOPARTICLE_TYPE = {
     "LABEL": "Nanoparticle type",
@@ -103,7 +160,7 @@ NANOPARTICLE_TYPE = {
     "POSITION": (1, 0, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 NANOPARTICLE_CONCENTRATION = {
     "LABEL": "Nanoparticle concentration",
@@ -112,11 +169,11 @@ NANOPARTICLE_CONCENTRATION = {
     "INPUT_TYPE": "float",
     "OPTIONS": [],
     "MIN": 0,
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (1, 1, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 PROTEIN_SOURCE = {
     "LABEL": "Protein source",
@@ -129,7 +186,7 @@ PROTEIN_SOURCE = {
     "POSITION": (1, 2, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 PROTEIN_SOURCE_VOL = {
     "LABEL": "Protein source volume",
@@ -138,11 +195,11 @@ PROTEIN_SOURCE_VOL = {
     "INPUT_TYPE": "float",
     "OPTIONS": [],
     "MIN": 0,
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (1, 3, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 DILUITION_FACTOR = {
     "LABEL": "Dilution factor after incubation",
@@ -151,11 +208,11 @@ DILUITION_FACTOR = {
     "INPUT_TYPE": "float",
     "OPTIONS": [],
     "MIN": 0,
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (2, 0, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 PROTEIN_SOURCE_INCUBATION = {
     "LABEL": "Protein Source incubation",
@@ -164,11 +221,11 @@ PROTEIN_SOURCE_INCUBATION = {
     "INPUT_TYPE": "float",
     "OPTIONS": [],
     "MIN": 0,
-    "MAX": None,
+    "MAX": 100,
     "POSITION": (2, 1, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 INCUBATION_TIME = {
     "LABEL": "Incubation time",
@@ -177,11 +234,11 @@ INCUBATION_TIME = {
     "INPUT_TYPE": "float",
     "MIN": 0,
     "OPTIONS": [],
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (2, 2, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 INCUBATION_TEMPERATURE = {
     "LABEL": "Incubation temperature",
@@ -190,11 +247,11 @@ INCUBATION_TEMPERATURE = {
     "INPUT_TYPE": "float",
     "OPTIONS": [],
     "MIN": None,
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (2, 3, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 INCUBATION_TYPE = {
     "LABEL": "Incubation type",
@@ -207,7 +264,7 @@ INCUBATION_TYPE = {
     "POSITION": (3, 0, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 NANOPARTICLES_PROTEIN_RATIO = {
     "LABEL": "Ratio Nanoparticles/Protein Source",
@@ -216,11 +273,11 @@ NANOPARTICLES_PROTEIN_RATIO = {
     "INPUT_TYPE": "int",
     "OPTIONS": [],
     "MIN": 0,
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (3, 1, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 CENTRIFUGE = {
     "LABEL": "Centrifuge",
@@ -233,7 +290,7 @@ CENTRIFUGE = {
     "POSITION": (3, 2, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 PELLET = {
     "LABEL": "Pellet",
@@ -246,7 +303,7 @@ PELLET = {
     "POSITION": (3, 3, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 SURNATANT = {
     "LABEL": "Surnatant",
@@ -259,7 +316,7 @@ SURNATANT = {
     "POSITION": (4, 0, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 WASHING = {
     "LABEL": "Washing",
@@ -272,7 +329,7 @@ WASHING = {
     "POSITION": (4, 1, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 LASER_POWER = {
     "LABEL": "Laser power",
@@ -285,7 +342,7 @@ LASER_POWER = {
     "POSITION": (4, 2, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 THAW_CYCLES = {
     "LABEL": "Number of thaw cycles",
@@ -294,11 +351,11 @@ THAW_CYCLES = {
     "INPUT_TYPE": "int",
     "OPTIONS": [],
     "MIN": 0,
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (4, 3, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 PLASMA_COLOR = {
     "LABEL": "Plasma color",
@@ -311,7 +368,7 @@ PLASMA_COLOR = {
     "POSITION": (5, 0, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 AVERAGE_CPS = {
     "LABEL": "Average CPS",
@@ -320,11 +377,11 @@ AVERAGE_CPS = {
     "INPUT_TYPE": "float",
     "OPTIONS": [],
     "MIN": 0,
-    "MAX": None,
+    "MAX": 10000000,
     "POSITION": (5, 1, 1, 1),
-    "ENABLED": False,
+    "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 CUVETTE_MATERIAL = {
     "LABEL": "Cuvette material",
@@ -337,7 +394,7 @@ CUVETTE_MATERIAL = {
     "POSITION": (5, 2, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 CUVETTE_DIMENSIONS = {
     "LABEL": "Cuvette dimensions",
@@ -350,33 +407,7 @@ CUVETTE_DIMENSIONS = {
     "POSITION": (5, 3, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
-}
-LASER_CENTRAL_WAVE_LENGTH = {
-    "LABEL": "Laser central wavelength",
-    "UNIT": "nm",
-    "VALUE": 0,
-    "INPUT_TYPE": "int",
-    "OPTIONS": [],
-    "MIN": 0,
-    "MAX": None,
-    "POSITION": (6, 0, 1, 1),
-    "ENABLED": True,
-    "REMOVABLE": False,
-    "REQUIRED": True        
-}
-EMISSION_FILTER = {
-    "LABEL": "Emission filter",
-    "UNIT": "nm",
-    "VALUE": "",
-    "INPUT_TYPE": "text",
-    "OPTIONS": [],
-    "MIN": None,
-    "MAX": None,
-    "POSITION": (6, 1, 1, 1),
-    "ENABLED": True,
-    "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 LASER_REPETITION_RATE = {
     "LABEL": "Laser repetition rate",
@@ -385,11 +416,11 @@ LASER_REPETITION_RATE = {
     "INPUT_TYPE": "int",
     "OPTIONS": [],
     "MIN": 0,
-    "MAX": None,
-    "POSITION": (6, 2, 1, 1),
+    "MAX": 10000000,
+    "POSITION": (6, 0, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
 FPGA_FIRMWARE_TYPE = {
     "LABEL": "FPGA firmware type",
@@ -399,11 +430,38 @@ FPGA_FIRMWARE_TYPE = {
     "OPTIONS": [],
     "MIN": None,
     "MAX": None,
+    "POSITION": (6, 1, 1, 1),
+    "ENABLED": True,
+    "REMOVABLE": False,
+    "REQUIRED": True,
+}
+LASER_CENTRAL_WAVE_LENGTH = {
+    "LABEL": "Laser wavelength",
+    "UNIT": "nm",
+    "VALUE": "",
+    "INPUT_TYPE": "text",
+    "OPTIONS": [],
+    "MIN": None,
+    "MAX": None,
+    "POSITION": (6, 2, 1, 1),
+    "ENABLED": True,
+    "REMOVABLE": False,
+    "REQUIRED": True,
+}
+EMISSION_FILTER = {
+    "LABEL": "Emission filter wavelength",
+    "UNIT": "nm",
+    "VALUE": "",
+    "INPUT_TYPE": "text",
+    "OPTIONS": [],
+    "MIN": None,
+    "MAX": None,
     "POSITION": (6, 3, 1, 1),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True        
+    "REQUIRED": True,
 }
+
 NOTES = {
     "LABEL": "Notes",
     "UNIT": None,
@@ -415,8 +473,9 @@ NOTES = {
     "POSITION": (7, 0, 1, 4),
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": False        
+    "REQUIRED": False,
 }
+
 
 LASERBLOOD_METADATA = [
     SETTINGS_SAMPLE_VOL,
@@ -443,10 +502,10 @@ LASERBLOOD_METADATA = [
     AVERAGE_CPS,
     CUVETTE_MATERIAL,
     CUVETTE_DIMENSIONS,
-    LASER_CENTRAL_WAVE_LENGTH,
-    EMISSION_FILTER,
     LASER_REPETITION_RATE,
     FPGA_FIRMWARE_TYPE,
+    LASER_CENTRAL_WAVE_LENGTH,
+    EMISSION_FILTER,
     NOTES,
 ]
 

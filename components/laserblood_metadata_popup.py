@@ -27,7 +27,7 @@ from components.resource_path import resource_path
 from components.gui_styles import GUIStyles
 from components.select_control import SelectControl
 from components.switch_control import SwitchControl
-from laserblood_settings import LASER_TYPES, LASERBLOOD_METADATA_POPUP, METADATA_LASERBLOOD_KEY, NEW_ADDED_LASERBLOOD_INPUTS_KEY, SETTINGS_FILTER_TYPE, SETTINGS_LASER_TYPE
+from laserblood_settings import FILTERS_TYPES, FILTERS_TYPES_NO_BANDPASS, LASER_TYPES, LASERBLOOD_METADATA_POPUP, METADATA_LASERBLOOD_KEY, NEW_ADDED_LASERBLOOD_INPUTS_KEY, SETTINGS_FILTER_TYPE, SETTINGS_LASER_TYPE
 from settings import *
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -42,6 +42,7 @@ class LaserbloodMetadataPopup(QWidget):
         TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self, bg=QColor(20, 20, 20))
         self.filters_grid = QGridLayout()
+        self.filters_no_bandpass_grid = QGridLayout()
         self.laser_buttons = []
         self.filter_buttons = []
         self.selected_laser = self.app.laserblood_laser_type
@@ -62,6 +63,8 @@ class LaserbloodMetadataPopup(QWidget):
         self.q_v_box_inputs_container.addLayout(self.inputs_grid)
         self.q_v_box_inputs_container.addLayout(self.new_added_inputs_grid)
         self.init_laser_filter_settings_layout()
+        self.no_bandpass_input = self.create_no_bandpass_filter_input()
+        self.filters_no_bandpass_grid.addLayout(self.no_bandpass_input, 1, 3)
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -86,43 +89,60 @@ class LaserbloodMetadataPopup(QWidget):
     
     def init_laser_filter_settings_layout(self):
         main_container = QVBoxLayout()
-        lasers_v_box = self.create_laser_layout()
-        self.create_filters_layout()
+        lasers_v_box = self.create_laser_layout(title="LASER WAVELENGTH (BANDPASS)", bandpass=True)
+        lasers_no_bandpass_v_box = self.create_laser_layout(title="LASER WAVELENGTH (NO BANDPASS)", bandpass=False)
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (BANDPASS)", bandpass=True, container=self.filters_grid)
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NO BANDPASS)", bandpass=False, container=self.filters_no_bandpass_grid)
         add_inputs_layout = self.create_add_new_input_layout()
         main_container.addLayout(lasers_v_box)
         main_container.addSpacing(20)
+        main_container.addLayout(lasers_no_bandpass_v_box)
+        main_container.addSpacing(20)
         main_container.addLayout(self.filters_grid)
+        main_container.addSpacing(20)
+        main_container.addLayout(self.filters_no_bandpass_grid)
         main_container.addStretch(1)
         main_container.addLayout(add_inputs_layout)
         main_container.addSpacing(20)
         self.laser_settings_container.addLayout(main_container) 
         
                     
-    def create_laser_layout(self):
-        laser_types = LASER_TYPES
-        title = QLabel("LASER TYPE")
+    def create_laser_layout(self, title, bandpass):
+        laser_types = [l for l in LASER_TYPES if l["BANDPASS"] == bandpass]
+        title = QLabel(title)
         lasers_v_box = QVBoxLayout()
         lasers_v_box.addWidget(title)
+        grid_layout = QGridLayout()
+        row, col = 0, 0
         for laser in laser_types:
             laser_button = FancyButton(laser["LABEL"])
-            lasers_v_box.addWidget(laser_button)
+            grid_layout.addWidget(laser_button, row, col)
             self.laser_buttons.append((laser_button, laser["LABEL"]))
+            col += 1
+            if col == 2:  
+                col = 0
+                row += 1
         for button, name in self.laser_buttons:
             button.set_selected(name == self.selected_laser)
             def on_toggle(toggled_name):
                 for b, n in self.laser_buttons:
                     b.set_selected(n == toggled_name)
-                    self.on_laser_selected(toggled_name) 
+                    self.on_laser_selected(toggled_name)
             button.clicked.connect(lambda _, n=name: on_toggle(n))
-            button.set_selected(self.selected_laser == name) 
+            button.set_selected(self.selected_laser == name)
+        lasers_v_box.addLayout(grid_layout)    
         return lasers_v_box
+        
     
-    
-    def create_filters_layout(self):
+    def create_filters_layout(self, title, bandpass, container):
         laser_selected = next((laser for laser in LASER_TYPES if laser["LABEL"] == self.selected_laser), None)
-        filter_types = laser_selected["FILTERS"]
-        title = QLabel("FILTER TYPE")
-        self.filters_grid.addWidget(title, 0, 0, 1, 2) 
+        if bandpass:
+            filter_types = laser_selected["FILTERS"] if laser_selected is not None else []
+        else:
+            filter_types = FILTERS_TYPES_NO_BANDPASS  if self.selected_laser else []  
+        title = QLabel(title)
+        if laser_selected is not None:
+            container.addWidget(title, 0, 0, 1, 4)
         row, col = 1, 0
         for filter in filter_types:
             filter_button = FancyButton(
@@ -130,11 +150,11 @@ class LaserbloodMetadataPopup(QWidget):
                 selected_color="#DA1212",
                 hover_color="#E23B3B",
                 pressed_color="#B01010"
-                )
-            self.filters_grid.addWidget(filter_button, row, col)
+            )
+            container.addWidget(filter_button, row, col)
             self.filter_buttons.append((filter_button, filter))
             col += 1
-            if col == 2:  
+            if col == 4:
                 col = 0
                 row += 1
         for button, name in self.filter_buttons:
@@ -144,28 +164,83 @@ class LaserbloodMetadataPopup(QWidget):
                     b.set_selected(n == toggled_name)
                 self.on_filter_selected(toggled_name)
             button.clicked.connect(lambda _, n=name: on_toggle(n))
-            button.set_selected(self.selected_filter == name)  
+            button.set_selected(self.selected_filter == name)    
+                
             
+    def create_no_bandpass_filter_input(self):
+        row = QHBoxLayout()
+        filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
+        if len(filter_wavelength_input["VALUE"].strip()) == 0:
+            value = 0
+        else:
+            number_str = ''.join(filter(str.isdigit, filter_wavelength_input["VALUE"]))
+            value = int(number_str) if number_str else 0    
+        label , inp = InputNumberControl.setup(
+            label = "Wavelength:",
+            min = 0,
+            max = 1000000,
+            value = value,
+            row = row,
+            control_layout="horizontal",
+            event_callback=lambda value: self.on_filter_no_bandpass_value_change(value),
+        )
+        self.app.laserblood_widgets["Wavelength"] = inp
+        self.app.laserblood_widgets["no_bandpass_filter_label"] = label
+        inp.setStyleSheet(GUIStyles.set_input_number_style(border_color = "#3b3b3b", disabled_border_color="#3c3c3c"))
+        is_no_bandpass = self.selected_filter is not None and ("LP" in self.selected_filter or "SP" in self.selected_filter)
+        inp.setVisible(is_no_bandpass)
+        label.setVisible(is_no_bandpass)
+        return row
+
+        
+    def on_filter_no_bandpass_value_change(self, value):
+        filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)     
+        self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(f"{value} nm")  
+                  
         
     def on_laser_selected(self, laser):
+        laser_selected = next((laser_opt for laser_opt in LASER_TYPES if laser_opt["LABEL"] == laser), None)
+        laser_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Laser wavelength"), None)
+        filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
         self.selected_laser = laser 
         self.app.laserblood_laser_type = laser
         self.app.settings.setValue(SETTINGS_LASER_TYPE, self.selected_laser)
+        self.app.laserblood_widgets[laser_wavelength_input["LABEL"]].setText(laser_selected["KEY"])
+        self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText("")
         self.selected_filter = None
-        self.app.settings.setValue(SETTINGS_FILTER_TYPE, None)
+        self.app.laserblood_filter_type = None
+        self.app.settings.remove(SETTINGS_FILTER_TYPE)
         self.app.clear_layout_tree(self.filters_grid)
+        self.app.clear_layout_tree(self.filters_no_bandpass_grid)
         self.filter_buttons.clear()
-        self.create_filters_layout()
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (BANDPASS)", bandpass=True, container=self.filters_grid)
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NO BANDPASS)", bandpass=False, container=self.filters_no_bandpass_grid)
+        self.no_bandpass_input = self.create_no_bandpass_filter_input()
+        self.filters_no_bandpass_grid.addLayout(self.no_bandpass_input, 1, 3)
         
     def on_filter_selected(self, filter):
-        self.selected_filter = filter  
-        self.app.laserblood_filter_type = filter
-        self.app.settings.setValue(SETTINGS_FILTER_TYPE, self.selected_filter)        
+        self.selected_filter = filter
+        if filter not in ['SP', 'LP']:
+            filter_selected = next(f for f in FILTERS_TYPES if f == filter)
+            filter_wavelength_input = next(input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength")
+            self.app.laserblood_filter_type = filter
+            self.app.settings.setValue(SETTINGS_FILTER_TYPE, filter)  
+            self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(filter_selected)
+            self.app.laserblood_widgets["Wavelength"].setVisible(False)
+            self.app.laserblood_widgets["no_bandpass_filter_label"].setVisible(False)
+        else:
+            self.app.laserblood_widgets["Wavelength"].setVisible(True)
+            self.app.laserblood_widgets["no_bandpass_filter_label"].setVisible(True)
+            self.selected_filter = filter   
+            self.app.laserblood_filter_type = filter
+            self.app.settings.setValue(SETTINGS_FILTER_TYPE, filter) 
+            self.app.laserblood_widgets["Emission filter wavelength"].setText("")
+      
 
     def set_add_button_enabled(self):
-        if "add_button" in self.widgets:
+        if "add_button" in self.app.laserblood_widgets:
             add_button_enabled = len(self.new_input_type.strip()) > 0 and len(self.new_input_label.strip()) > 0
-            self.widgets["add_button"].setEnabled(add_button_enabled)
+            self.app.laserblood_widgets["add_button"].setEnabled(add_button_enabled)
             
     
     def init_new_input_added_layout(self):
@@ -185,7 +260,7 @@ class LaserbloodMetadataPopup(QWidget):
             "OPTIONS": [],
             "INPUT_TYPE": "float" if is_numeric_input else "text",
             "MIN": None,
-            "MAX": None,
+            "MAX": 10000000,
             "POSITION": (),
             "ENABLED": True,
             "REMOVABLE": True,
@@ -200,8 +275,8 @@ class LaserbloodMetadataPopup(QWidget):
         self.init_new_input_added_layout()
         self.new_input_label = ""
         self.new_input_unit = ""
-        self.widgets["inp_unit"].clear()
-        self.widgets["inp_label"].clear()
+        self.app.laserblood_widgets["inp_unit"].clear()
+        self.app.laserblood_widgets["inp_label"].clear()
 
     def create_add_new_input_layout(self):
         h_box = QHBoxLayout()
@@ -211,8 +286,8 @@ class LaserbloodMetadataPopup(QWidget):
                 self.app.show_layout(self.layouts["inp_unit_control"]) if value == 0 else self.app.hide_layout(self.layouts["inp_unit_control"])
             if value == 1:
                 self.new_input_unit = ""
-                if "inp_unit" in self.widgets:
-                    self.widgets["inp_unit"].clear()
+                if "inp_unit" in self.app.laserblood_widgets:
+                    self.app.laserblood_widgets["inp_unit"].clear()
             self.set_add_button_enabled() 
                
         def on_inp_label_change(text):
@@ -233,7 +308,7 @@ class LaserbloodMetadataPopup(QWidget):
             spacing=0,
             width=100
         )
-        self.widgets["inp_type"] = inp_type
+        self.app.laserblood_widgets["inp_type"] = inp_type
         inp_type.setStyleSheet(GUIStyles.set_input_select_style())
         # LABEL
         inp_label_control = QVBoxLayout() 
@@ -243,10 +318,10 @@ class LaserbloodMetadataPopup(QWidget):
             placeholder="",
             event_callback=lambda text: on_inp_label_change(text),
         )
-        inp_label.setStyleSheet(GUIStyles.set_input_text_style(border_color="#3b3b3b")) 
+        inp_label.setStyleSheet(GUIStyles.set_input_text_style(border_color="#3b3b3b", disabled_border_color="#3c3c3c")) 
         inp_label_control.addWidget(inp_label_label)
         inp_label_control.addWidget(inp_label)
-        self.widgets["inp_label"] = inp_label
+        self.app.laserblood_widgets["inp_label"] = inp_label
         # UNIT 
         inp_unit_control = QVBoxLayout()        
         inp_unit_label, inp_unit = InputTextControl.setup(
@@ -255,8 +330,8 @@ class LaserbloodMetadataPopup(QWidget):
             placeholder="",
             event_callback=lambda text: on_inp_unit_change(text),
         )
-        inp_unit.setStyleSheet(GUIStyles.set_input_text_style(border_color="#3b3b3b"))  
-        self.widgets["inp_unit"] = inp_unit
+        inp_unit.setStyleSheet(GUIStyles.set_input_text_style(border_color="#3b3b3b", disabled_border_color="#3c3c3c"))  
+        self.app.laserblood_widgets["inp_unit"] = inp_unit
         inp_unit_control.addWidget(inp_unit_label)
         inp_unit_control.addWidget(inp_unit)
         self.layouts["inp_unit_control"] = inp_unit_control
@@ -279,7 +354,7 @@ class LaserbloodMetadataPopup(QWidget):
         add_button.setCursor(Qt.CursorShape.PointingHandCursor)
         add_button.setEnabled(False)
         add_button.clicked.connect(self.on_add_new_input_btn_clicked)
-        self.widgets["add_button"] = add_button
+        self.app.laserblood_widgets["add_button"] = add_button
         h_box.addLayout(h_box_inp_type)
         h_box.addLayout(inp_label_control)
         h_box.addLayout(inp_unit_control)
@@ -324,7 +399,7 @@ class LaserbloodMetadataPopup(QWidget):
         )
         inp.setEnabled(input["ENABLED"])
         self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
-        self.widgets[input["LABEL"]] = inp
+        self.app.laserblood_widgets[input["LABEL"]] = inp
         widget_container.setLayout(row)
         if not new_added_inp:
             widget_container.setFixedWidth(236)        
@@ -348,7 +423,7 @@ class LaserbloodMetadataPopup(QWidget):
             )
         inp.setEnabled(input["ENABLED"])
         self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
-        self.widgets[input["LABEL"]] = inp         
+        self.app.laserblood_widgets[input["LABEL"]] = inp         
         widget_container.setLayout(row)   
         if not new_added_inp:
             widget_container.setFixedWidth(236)         
@@ -370,7 +445,7 @@ class LaserbloodMetadataPopup(QWidget):
         )
         inp.setEnabled(input["ENABLED"])
         self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
-        self.widgets[input["LABEL"]] = inp        
+        self.app.laserblood_widgets[input["LABEL"]] = inp        
         h_box_header = QHBoxLayout()
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
         h_box_header.addWidget(label)
@@ -401,7 +476,7 @@ class LaserbloodMetadataPopup(QWidget):
         )
         inp.setEnabled(input["ENABLED"])
         inp.toggled.connect(lambda state, inp=input, new_input=new_added_inp: self.on_input_state_change(state, inp, new_input))
-        self.widgets[input["LABEL"]] = inp
+        self.app.laserblood_widgets[input["LABEL"]] = inp
         v_box.addWidget(label)
         v_box.addWidget(inp)
         widget_container.setLayout(v_box)
@@ -421,7 +496,7 @@ class LaserbloodMetadataPopup(QWidget):
             event_callback=self.create_textarea_event_callback(input, new_added_inp),
             )
         self.textarea.setEnabled(input["ENABLED"])
-        self.textarea.setStyleSheet(GUIStyles.set_input_text_style(border_color="#3b3b3b"))
+        self.textarea.setStyleSheet(GUIStyles.set_input_text_style(border_color="#3b3b3b", disabled_border_color="#3c3c3c"))
         control.addWidget(label)
         control.addWidget(self.textarea)
         widget_container.setLayout(control) 
@@ -448,7 +523,7 @@ class LaserbloodMetadataPopup(QWidget):
         widget_container.setLayout(container)
         inp.setEnabled(input["ENABLED"])
         self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
-        self.widgets[input["LABEL"]] = inp  
+        self.app.laserblood_widgets[input["LABEL"]] = inp  
         if not new_added_inp:
             widget_container.setFixedWidth(236)              
         if not new_added_inp:           
@@ -457,7 +532,7 @@ class LaserbloodMetadataPopup(QWidget):
         
     
     def on_input_value_change(self, value, input, new_input):
-        self.dispatch_input_warning_styles(self.widgets[input["LABEL"]], input["INPUT_TYPE"], value)
+        self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], value)
         if new_input:
             self.update_new_added_inputs_settings(value, input)
         else:    
@@ -470,7 +545,7 @@ class LaserbloodMetadataPopup(QWidget):
             self.update_settings(state, input)
     
     def on_input_text_change(self, text, input, new_input):
-        self.dispatch_input_warning_styles(self.widgets[input["LABEL"]], input["INPUT_TYPE"], text)
+        self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], text)
         if new_input:
             self.update_new_added_inputs_settings(text, input)
         else:    
@@ -497,11 +572,11 @@ class LaserbloodMetadataPopup(QWidget):
     
     def toggle_input_border_style(self, input_type, input, color):
         if input_type == 'int' or input_type == 'float':
-            input.setStyleSheet(GUIStyles.set_input_number_style(border_color = color))
+            input.setStyleSheet(GUIStyles.set_input_number_style(border_color = color, disabled_border_color=color))
         if input_type == 'select':
-            input.setStyleSheet(GUIStyles.set_input_select_style(border_color = color)) 
+            input.setStyleSheet(GUIStyles.set_input_select_style(border_color = color, disabled_border_color=color)) 
         if input_type == 'text':
-           input.setStyleSheet(GUIStyles.set_input_text_style(border_color = color))         
+           input.setStyleSheet(GUIStyles.set_input_text_style(border_color = color, disabled_border_color=color))         
     
     def create_remove_btn(self, input):
         remove_btn = QPushButton("")
@@ -535,10 +610,9 @@ class LaserbloodMetadataPopup(QWidget):
         )
         settings_valid = check_required_values(settings)
         custom_settings_valid = check_required_values(custom_settings)
-        print(settings_valid)
-        print(custom_settings_valid)
-        return settings_valid and custom_settings_valid
-
+        laser_type_valid = app.laserblood_laser_type is not None
+        filter_type_valid = app.laserblood_filter_type is not None
+        return settings_valid and custom_settings_valid and laser_type_valid and filter_type_valid
     
     def update_new_added_inputs_settings(self, value, input):
         next((setting.update({"VALUE": value}) for setting in self.app.laserblood_new_added_inputs if setting.get("LABEL") == input["LABEL"]), None)
@@ -548,6 +622,26 @@ class LaserbloodMetadataPopup(QWidget):
     def update_settings(self, value, input):
         next((setting.update({"VALUE": value}) for setting in self.app.laserblood_settings if setting.get("LABEL") == input["LABEL"]), None)
         self.app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(self.app.laserblood_settings))
+ 
+    @staticmethod
+    def set_average_CPS(cps_counts, app):
+        channel_averages = {}
+        all_cps = []
+        for ch in cps_counts:
+            channel_values = cps_counts[ch]
+            if all(value == 0 for value in channel_values):
+                continue
+            avg_channel = sum(channel_values) / len(channel_values)
+            channel_averages[ch] = round(avg_channel, 2)
+            all_cps.extend(channel_values)
+        if all_cps:
+            total_avg = sum(all_cps) / len(all_cps)
+            total_avg_rounded = round(total_avg, 2)
+        else:
+            total_avg_rounded = 0
+        next((setting.update({"VALUE": total_avg_rounded}) for setting in app.laserblood_settings if setting.get("LABEL") == "Average CPS"), None)
+        app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))
+     
         
     def center_window(self):   
         self.setMinimumWidth(700)

@@ -212,7 +212,7 @@ class GUIStyles:
         """
 
     @staticmethod
-    def set_input_number_style(border_color="#3b3b3b"):
+    def set_input_number_style(border_color="#3b3b3b", disabled_border_color="#3c3c3c"):
         return f"""
             QDoubleSpinBox, QSpinBox {{
                 color: #f8f8f8;
@@ -226,12 +226,12 @@ class GUIStyles:
             }}
             QDoubleSpinBox:disabled, QSpinBox:disabled {{
             color: #404040;  
-            border-color: #3c3c3c;
+            border-color: {disabled_border_color};
             }}        
         """
     
     @staticmethod    
-    def set_input_text_style(border_color="#11468F"):
+    def set_input_text_style(border_color="#11468F", disabled_border_color="#3c3c3c"):
         return f"""
            QLineEdit, QPlainTextEdit {{
                 color: #f8f8f8;
@@ -246,13 +246,13 @@ class GUIStyles:
             }}
             QLineEdit:disabled,QPlainTextEdit::disabled {{
             color: #404040;  
-            border-color: #3c3c3c;
+            border-color: {disabled_border_color};
             }}        
         """    
         
 
     @staticmethod
-    def set_input_select_style(border_color = "#3b3b3b"):
+    def set_input_select_style(border_color = "#3b3b3b", disabled_border_color="#3c3c3c"):
         return f"""
             QComboBox {{
                 color: #f8f8f8;
@@ -265,7 +265,7 @@ class GUIStyles:
             }}
             QComboBox:disabled {{
                 color: darkgrey;  
-                border-color: #3c3c3c;
+                border-color: {disabled_border_color};
             }} 
             QComboBox:on {{ 
                 border-bottom-left-radius: 0;
