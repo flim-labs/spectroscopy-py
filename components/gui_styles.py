@@ -212,22 +212,22 @@ class GUIStyles:
         """
 
     @staticmethod
-    def set_input_number_style():
-        return """
-            QDoubleSpinBox, QSpinBox {
+    def set_input_number_style(border_color="#3b3b3b"):
+        return f"""
+            QDoubleSpinBox, QSpinBox {{
                 color: #f8f8f8;
                 font-family: "Montserrat";
                 font-size: 14px;
                 padding: 8px;
                 min-width: 100px;
-                border: 1px solid #3b3b3b;
+                border: 1px solid {border_color};
                 border-radius: 5px;
                 background-color: transparent;
-            }
-            QDoubleSpinBox:disabled, QSpinBox:disabled {
+            }}
+            QDoubleSpinBox:disabled, QSpinBox:disabled {{
             color: #404040;  
             border-color: #3c3c3c;
-            }        
+            }}        
         """
     
     @staticmethod    
@@ -252,27 +252,27 @@ class GUIStyles:
         
 
     @staticmethod
-    def set_input_select_style():
-        return """
-            QComboBox {
+    def set_input_select_style(border_color = "#3b3b3b"):
+        return f"""
+            QComboBox {{
                 color: #f8f8f8;
                 font-family: "Montserrat";
                 font-size: 14px;
                 padding: 8px;
-                border: 1px solid #3b3b3b;
+                border: 1px solid {border_color};
                 border-radius: 5px;
                 background-color: transparent;
-            }
-            QComboBox:disabled {
+            }}
+            QComboBox:disabled {{
                 color: darkgrey;  
                 border-color: #3c3c3c;
-            } 
-            QComboBox:on { 
+            }} 
+            QComboBox:on {{ 
                 border-bottom-left-radius: 0;
                 border-bottom-right-radius: 0;
-            }
+            }}
 
-           QComboBox QAbstractItemView {
+           QComboBox QAbstractItemView {{
             font-family: "Montserrat";
             border: 1px solid #3b3b3b;
             border-bottom-left-radius: 5px;
@@ -280,7 +280,7 @@ class GUIStyles:
             background-color: #181818;
             color: #f8f8f8;
             selection-background-color: #8d4ef2;
-            }   
+            }} 
         """
 
     @staticmethod
@@ -438,7 +438,7 @@ class GUIStyles:
             QLabel {
                 color: "#cecece";
                 font-family: Montserrat;
-                font-size: 14px;
+                font-size: 13px;
             }
         """
                          

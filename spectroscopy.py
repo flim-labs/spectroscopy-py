@@ -9,7 +9,11 @@ import numpy as np
 from components.box_message import BoxMessage
 from components.buttons import CollapseButton, DownloadButton
 from components.export_data_settings import ExportDataSettingsPopup
-from components.file_utils import save_phasor_files, save_spectroscopy_file
+from components.file_utils import (
+    save_laserblood_metadata_json,
+    save_phasor_files,
+    save_spectroscopy_file,
+)
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
 from components.layout_utilities import draw_layout_separator
 from components.lin_log_control import SpectroscopyLinLogControl
@@ -98,7 +102,7 @@ class SpectroscopyWindow(QWidget):
         )
         self.cached_time_span_seconds = 3
         self.selected_channels = []
-       
+
         default_plots_to_show = self.settings.value(
             SETTINGS_PLOTS_TO_SHOW, DEFAULT_PLOTS_TO_SHOW
         )
@@ -160,13 +164,22 @@ class SpectroscopyWindow(QWidget):
         self.pull_from_queue_timer.timeout.connect(self.pull_from_queue)
 
         self.calc_exported_file_size()
-        
-         ## LASERBLOOD METADATA
-        self.laserblood_settings = json.loads(self.settings.value(METADATA_LASERBLOOD_KEY, LASERBLOOD_METADATA_JSON ))
-        self.laserblood_laser_type = self.settings.value(SETTINGS_LASER_TYPE, DEFAULT_LASER_TYPE)
-        self.laserblood_filter_type = self.settings.value(SETTINGS_FILTER_TYPE, DEFAULT_FILTER_TYPE)
-        self.laserblood_new_added_inputs = json.loads(self.settings.value(NEW_ADDED_LASERBLOOD_INPUTS_KEY, NEW_ADDED_LASERBLOOD_INPUTS_JSON ))
-        
+
+        ## LASERBLOOD METADATA
+        self.laserblood_settings = json.loads(
+            self.settings.value(METADATA_LASERBLOOD_KEY, LASERBLOOD_METADATA_JSON)
+        )
+        self.laserblood_laser_type = self.settings.value(
+            SETTINGS_LASER_TYPE, DEFAULT_LASER_TYPE
+        )
+        self.laserblood_filter_type = self.settings.value(
+            SETTINGS_FILTER_TYPE, DEFAULT_FILTER_TYPE
+        )
+        self.laserblood_new_added_inputs = json.loads(
+            self.settings.value(
+                NEW_ADDED_LASERBLOOD_INPUTS_KEY, NEW_ADDED_LASERBLOOD_INPUTS_JSON
+            )
+        )
 
     @staticmethod
     def get_empty_phasors_points():
@@ -263,17 +276,21 @@ class SpectroscopyWindow(QWidget):
         tabs_layout.addWidget(self.control_inputs["tab_deconv"])
         top_bar_header.addLayout(tabs_layout)
         top_bar_header.addStretch(1)
-        
-        #LASERBLOOD METADATA
+
+        # LASERBLOOD METADATA
         laserblood_metadata_btn = QPushButton(" LASERBLOOD METADATA")
-        laserblood_metadata_btn.setIcon(QIcon(resource_path("assets/microscope-icon.png")))
+        laserblood_metadata_btn.setIcon(
+            QIcon(resource_path("assets/microscope-icon.png"))
+        )
         laserblood_metadata_btn.setFixedWidth(200)
         laserblood_metadata_btn.setFixedHeight(45)
-        laserblood_metadata_btn.setStyleSheet("font-family: Montserrat; font-weight: bold; background-color: white; color: #1E90FF; padding: 0 14px;")
+        laserblood_metadata_btn.setStyleSheet(
+            "font-family: Montserrat; font-weight: bold; background-color: white; color: #1E90FF; padding: 0 14px;"
+        )
         laserblood_metadata_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         laserblood_metadata_btn.clicked.connect(self.open_laserblood_metadata_popup)
         top_bar_header.addWidget(laserblood_metadata_btn)
-        
+
         download_button = DownloadButton(self)
         info_link_widget, export_data_control = self.create_export_data_input()
         file_size_info_layout = self.create_file_size_info_row()
@@ -477,7 +494,7 @@ class SpectroscopyWindow(QWidget):
             phasors_resolution_container
         )
 
-        _, inp, label = SelectControl.setup(
+        _, inp, label, container = SelectControl.setup(
             "Calibration:",
             int(
                 self.settings.value(
@@ -804,13 +821,13 @@ class SpectroscopyWindow(QWidget):
         else:
             for i, channel_index in enumerate(self.plots_to_show):
                 if len(self.plots_to_show) <= len(self.all_phasors_points):
-                        self.draw_points_in_phasors(
-                            channel_index,
-                            self.harmonic_selector_value,
-                            self.all_phasors_points[channel_index][
-                                self.harmonic_selector_value
-                            ],
-                        )    
+                    self.draw_points_in_phasors(
+                        channel_index,
+                        self.harmonic_selector_value,
+                        self.all_phasors_points[channel_index][
+                            self.harmonic_selector_value
+                        ],
+                    )
 
     def on_phasors_resolution_changed(self, value):
         self.phasors_resolution = int(value)
@@ -1355,6 +1372,14 @@ class SpectroscopyWindow(QWidget):
                 GUIStyles.set_msg_box_style(),
             )
             return
+        if not LaserbloodMetadataPopup.laserblood_metadata_valid(self):
+            BoxMessage.setup(
+                "Error",
+                "All required Laserblood metadata must be filled before starting the acquisition. Required fields are highlighted with a red border. Fields set to 0 are highlighted with a yellow border; it's recommended to double-check them, if present.",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
+            return            
         if self.write_data_gui:
             if not ExportDataSettingsPopup.exported_data_settings_valid(self):
                 popup = ExportDataSettingsPopup(self, start_acquisition=True)
@@ -1849,6 +1874,11 @@ class SpectroscopyWindow(QWidget):
             QTimer.singleShot(500, self.save_bin_files)
 
     def save_bin_files(self):
+        save_laserblood_metadata_json(
+            self.exported_data_settings["laserblood_metadata_filename"],
+            self.exported_data_settings["folder"],
+            self,
+        )
         if self.tab_selected == "tab_spectroscopy":
             save_spectroscopy_file(
                 self.exported_data_settings["spectroscopy_filename"],
@@ -1870,11 +1900,11 @@ class SpectroscopyWindow(QWidget):
     def open_export_data_settings_popup(self):
         self.popup = ExportDataSettingsPopup(self, start_acquisition=False)
         self.popup.show()
-        
+
     def open_laserblood_metadata_popup(self):
-        self.popup = LaserbloodMetadataPopup(self, start_acquisition=False)   
-        self.popup.show()    
-        
+        self.popup = LaserbloodMetadataPopup(self, start_acquisition=False)
+        self.popup.show()
+
     def hide_layout(self, layout):
         for i in range(layout.count()):
             widget = layout.itemAt(i).widget()
@@ -1893,9 +1923,9 @@ class SpectroscopyWindow(QWidget):
         if PLOTS_CONFIG_POPUP in self.widgets:
             self.widgets[PLOTS_CONFIG_POPUP].close()
         if EXPORT_DATA_SETTINGS_POPUP in self.widgets:
-            self.widgets[EXPORT_DATA_SETTINGS_POPUP].close()   
+            self.widgets[EXPORT_DATA_SETTINGS_POPUP].close()
         if LASERBLOOD_METADATA_POPUP in self.widgets:
-            self.widgets[LASERBLOOD_METADATA_POPUP].close()   
+            self.widgets[LASERBLOOD_METADATA_POPUP].close()
         event.accept()
 
     def eventFilter(self, source, event):

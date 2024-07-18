@@ -50,7 +50,8 @@ SETTINGS_SAMPLE_VOL = {
     "MAX": None,
     "POSITION": (0, 0, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False
+    "REMOVABLE": False,
+    "REQUIRED": True
 }
 CUVETTE_TOTAL_VOL = {
     "LABEL": "Cuvette total volume",
@@ -62,7 +63,8 @@ CUVETTE_TOTAL_VOL = {
     "MAX": None,
     "POSITION": (0, 1, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False
+    "REMOVABLE": False,
+    "REQUIRED": True    
 }
 SOLVENT_TYPE = {
     "LABEL": "Solvent type",
@@ -74,7 +76,8 @@ SOLVENT_TYPE = {
     "MAX": None,
     "POSITION": (0, 2, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True      
 }
 SOLVENT_VOL = {
     "LABEL": "Solvent volume",
@@ -86,7 +89,8 @@ SOLVENT_VOL = {
     "MAX": None,
     "POSITION": (0, 3, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True       
 }
 NANOPARTICLE_TYPE = {
     "LABEL": "Nanoparticle type",
@@ -98,7 +102,8 @@ NANOPARTICLE_TYPE = {
     "MAX": None,
     "POSITION": (1, 0, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 NANOPARTICLE_CONCENTRATION = {
     "LABEL": "Nanoparticle concentration",
@@ -110,19 +115,21 @@ NANOPARTICLE_CONCENTRATION = {
     "MAX": None,
     "POSITION": (1, 1, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 PROTEIN_SOURCE = {
     "LABEL": "Protein source",
     "UNIT": None,
-    "OPTIONS": ["Human plasma", "Murine plasma"],
+    "OPTIONS": ["", "Human plasma", "Murine plasma"],
     "VALUE": 0,
     "INPUT_TYPE": "select",
     "MIN": None,
     "MAX": None,
     "POSITION": (1, 2, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 PROTEIN_SOURCE_VOL = {
     "LABEL": "Protein source volume",
@@ -134,7 +141,8 @@ PROTEIN_SOURCE_VOL = {
     "MAX": None,
     "POSITION": (1, 3, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 DILUITION_FACTOR = {
     "LABEL": "Dilution factor after incubation",
@@ -146,7 +154,8 @@ DILUITION_FACTOR = {
     "MAX": None,
     "POSITION": (2, 0, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 PROTEIN_SOURCE_INCUBATION = {
     "LABEL": "Protein Source incubation",
@@ -158,7 +167,8 @@ PROTEIN_SOURCE_INCUBATION = {
     "MAX": None,
     "POSITION": (2, 1, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 INCUBATION_TIME = {
     "LABEL": "Incubation time",
@@ -170,7 +180,8 @@ INCUBATION_TIME = {
     "MAX": None,
     "POSITION": (2, 2, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 INCUBATION_TEMPERATURE = {
     "LABEL": "Incubation temperature",
@@ -182,19 +193,21 @@ INCUBATION_TEMPERATURE = {
     "MAX": None,
     "POSITION": (2, 3, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 INCUBATION_TYPE = {
     "LABEL": "Incubation type",
     "UNIT": None,
-    "OPTIONS": ["Static", "Dynamic"],
+    "OPTIONS": ["", "Static", "Dynamic"],
     "VALUE": 0,
     "INPUT_TYPE": "select",
     "MIN": None,
     "MAX": None,
     "POSITION": (3, 0, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 NANOPARTICLES_PROTEIN_RATIO = {
     "LABEL": "Ratio Nanoparticles/Protein Source",
@@ -206,7 +219,8 @@ NANOPARTICLES_PROTEIN_RATIO = {
     "MAX": None,
     "POSITION": (3, 1, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 CENTRIFUGE = {
     "LABEL": "Centrifuge",
@@ -218,7 +232,8 @@ CENTRIFUGE = {
     "MAX": None,
     "POSITION": (3, 2, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 PELLET = {
     "LABEL": "Pellet",
@@ -230,7 +245,8 @@ PELLET = {
     "MAX": None,
     "POSITION": (3, 3, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 SURNATANT = {
     "LABEL": "Surnatant",
@@ -242,19 +258,21 @@ SURNATANT = {
     "MAX": None,
     "POSITION": (4, 0, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 WASHING = {
     "LABEL": "Washing",
     "UNIT": None,
     "VALUE": 0,
-    "OPTIONS": ["1", "2", "3", "NO"],
+    "OPTIONS": ["", "1", "2", "3", "NO"],
     "INPUT_TYPE": "select",
     "MIN": None,
     "MAX": None,
     "POSITION": (4, 1, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 LASER_POWER = {
     "LABEL": "Laser power",
@@ -266,7 +284,8 @@ LASER_POWER = {
     "MAX": 100,
     "POSITION": (4, 2, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 THAW_CYCLES = {
     "LABEL": "Number of thaw cycles",
@@ -278,19 +297,21 @@ THAW_CYCLES = {
     "MAX": None,
     "POSITION": (4, 3, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 PLASMA_COLOR = {
     "LABEL": "Plasma color",
     "UNIT": None,
     "VALUE": 0,
-    "OPTIONS": ["Yellow", "Red"],
+    "OPTIONS": ["", "Yellow", "Red"],
     "INPUT_TYPE": "select",
     "MIN": None,
     "MAX": None,
     "POSITION": (5, 0, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 AVERAGE_CPS = {
     "LABEL": "Average CPS",
@@ -302,19 +323,21 @@ AVERAGE_CPS = {
     "MAX": None,
     "POSITION": (5, 1, 1, 1),
     "ENABLED": False,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 CUVETTE_MATERIAL = {
     "LABEL": "Cuvette material",
     "UNIT": None,
     "VALUE": 0,
-    "OPTIONS": ["Plastic", "Glass", "Quartz"],
+    "OPTIONS": ["", "Plastic", "Glass", "Quartz"],
     "INPUT_TYPE": "select",
     "MIN": None,
     "MAX": None,
     "POSITION": (5, 2, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 CUVETTE_DIMENSIONS = {
     "LABEL": "Cuvette dimensions",
@@ -326,7 +349,8 @@ CUVETTE_DIMENSIONS = {
     "MAX": None,
     "POSITION": (5, 3, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 LASER_CENTRAL_WAVE_LENGTH = {
     "LABEL": "Laser central wavelength",
@@ -338,7 +362,8 @@ LASER_CENTRAL_WAVE_LENGTH = {
     "MAX": None,
     "POSITION": (6, 0, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 EMISSION_FILTER = {
     "LABEL": "Emission filter",
@@ -350,7 +375,8 @@ EMISSION_FILTER = {
     "MAX": None,
     "POSITION": (6, 1, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 LASER_REPETITION_RATE = {
     "LABEL": "Laser repetition rate",
@@ -362,7 +388,8 @@ LASER_REPETITION_RATE = {
     "MAX": None,
     "POSITION": (6, 2, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 FPGA_FIRMWARE_TYPE = {
     "LABEL": "FPGA firmware type",
@@ -374,7 +401,8 @@ FPGA_FIRMWARE_TYPE = {
     "MAX": None,
     "POSITION": (6, 3, 1, 1),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": True        
 }
 NOTES = {
     "LABEL": "Notes",
@@ -386,7 +414,8 @@ NOTES = {
     "MAX": None,
     "POSITION": (7, 0, 1, 4),
     "ENABLED": True,
-    "REMOVABLE": False    
+    "REMOVABLE": False,
+    "REQUIRED": False        
 }
 
 LASERBLOOD_METADATA = [

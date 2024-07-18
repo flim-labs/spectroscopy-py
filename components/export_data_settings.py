@@ -35,7 +35,7 @@ class ExportDataSettingsPopup(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        desc_text = "Choose the folder where you want to export all your .bin files (Spectroscopy, Phasors). Then, choose a filename for each exportable file. The chosen filename will be appended to the default .bin name."
+        desc_text = "Choose the folder where you want to export all your .bin files (Spectroscopy, Phasors) and Laserblood metadata JSON. Then, choose a filename for each exportable file. The chosen filename will be appended to the default .bin/JSON name."
         desc = QLabel(desc_text)
         desc.setWordWrap(True)
         desc.setStyleSheet("font-size: 14px; color: #cecece")
@@ -107,10 +107,17 @@ class ExportDataSettingsPopup(QWidget):
              text= self.app.exported_data_settings["spectroscopy_phasors_ref_filename"],
             event_callback=partial(self.on_input_change, inp_type="spectroscopy_phasors_ref_filename"),
         )
+        laserblood_metadata_inp = InputTextControl.setup(
+            label="LASERBLOOD METADATA NAME:",
+            placeholder="",
+             text= self.app.exported_data_settings["laserblood_metadata_filename"],
+            event_callback=partial(self.on_input_change, inp_type="laserblood_metadata_filename"),
+        )
         
         form_layout.addRow(*spectroscopy_inp)
         form_layout.addRow(*phasors_inp)
         form_layout.addRow(*spectro_phasors_ref_inp)
+        form_layout.addRow(*laserblood_metadata_inp)
         
         self.setLayout(main_layout)
         self.app.widgets[EXPORT_DATA_SETTINGS_POPUP] = self
@@ -120,6 +127,7 @@ class ExportDataSettingsPopup(QWidget):
             "spectroscopy_inp": spectroscopy_inp[1],
             "phasors_inp": phasors_inp[1],
             "spectro_phasors_ref_inp": spectro_phasors_ref_inp[1],
+            "laserblood_metadata_inp": laserblood_metadata_inp[1]
         }
 
         for input_widget in self.inputs.values():

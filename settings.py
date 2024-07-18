@@ -85,12 +85,13 @@ DEFAULT_TICKS_LIN = [0, 10, 100, 1000, 10000, 100000, 1000000]
 
 
 SETTINGS_EXPORTED_DATA_PATHS = "exported_data_paths"
-DEFAULT_EXPORTED_DATA_PATHS = '{"folder": "","spectroscopy_filename": "","phasors_filename": "","spectroscopy_phasors_ref_filename": ""}'
+DEFAULT_EXPORTED_DATA_PATHS = '{"folder": "","spectroscopy_filename": "","phasors_filename": "","spectroscopy_phasors_ref_filename": "", "laserblood_metadata_filename": ""}'
 
 EXPORTED_DATA_FILE_PATHS = {
     "spectroscopy": "",
     "phasors": "",
-    "spectroscopy_phasors_ref": ""
+    "spectroscopy_phasors_ref": "",
+    "laserblood_metadata": ""
 }
 
 PHASORS_RESOLUTIONS = ["16", "32", "64", "128", "256", "512"]

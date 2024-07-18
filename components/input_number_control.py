@@ -20,7 +20,7 @@ class InputNumberControl:
             input.setMinimum(min)
         if max:
             input.setMaximum(max)    
-        if value:
+        if value is not None:
             input.setValue(value)
         input.valueChanged.connect(event_callback)
         control.addWidget(q_label)

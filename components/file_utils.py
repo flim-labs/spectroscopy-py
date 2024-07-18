@@ -1,8 +1,9 @@
 import os
+import json
+from datetime import datetime
 import shutil
-from PyQt6.QtWidgets import QFileDialog, QMessageBox
-from components.box_message import BoxMessage
-from components.gui_styles import GUIStyles
+from PyQt6.QtWidgets import QFileDialog
+from laserblood_settings import LASER_TYPES
 
 
 
@@ -56,7 +57,7 @@ def save_spectroscopy_file(new_filename, dest_path, window):
         shutil.copy2(source_file, destination_file)
         window.exported_data_file_paths["spectroscopy"] = destination_file
     except Exception as e:
-        print("Error  saving spectroscopy file")
+        print("Error saving spectroscopy file")
         
         
 def save_phasor_files(spectroscopy_new_filename, phasors_new_filename, dest_path, window):
@@ -74,8 +75,44 @@ def save_phasor_files(spectroscopy_new_filename, phasors_new_filename, dest_path
         window.exported_data_file_paths["phasors"] = destination_phasors_file
         window.exported_data_file_paths["spectroscopy_phasors_ref"] = destination_spectroscopy_file    
     except Exception as e:
-        print("Error  saving spectroscopy file")        
-            
+        print("Error saving phasors file")
+        
+        
+
+def save_laserblood_metadata_json(filename, dest_path, window):
+    laser_type = window.laserblood_laser_type
+    filter_type = window.laserblood_filter_type
+    metadata_settings = window.laserblood_settings
+    custom_fields_settings = window.laserblood_new_added_inputs
+    parsed_data = {
+        "Laser type": laser_type,
+        "Filter type": filter_type,
+    }
+    def map_values(data):
+        new_data = data.copy()
+        label = f"{new_data['LABEL']} ({new_data['UNIT']})" if new_data['UNIT'] is not None else f"{new_data['LABEL']}"
+        if isinstance(new_data['VALUE'], float) and new_data['VALUE'].is_integer():
+            parsed_data[label] = int(new_data['VALUE'])
+        else:
+            parsed_data[label] = new_data['VALUE']
+    for data in metadata_settings:
+        map_values(data)
+    for data in custom_fields_settings:
+        map_values(data)
+    laser_key = next((d["KEY"] for d in LASER_TYPES if d["LABEL"].strip() == laser_type.strip()), "")
+    filter_key = filter_type.strip().replace(" ", "").replace("/", "_")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    new_filename = f"{filename}_{laser_key}_{filter_key}_{timestamp}.laserblood_metadata.json"
+    file_path = os.path.join(dest_path, new_filename)
+    try:
+        with open(file_path, 'w') as json_file:
+            json.dump(parsed_data, json_file, indent=4)
+    except Exception as e:
+        print("Error saving laserblood metadata file")
+
+
+    
+    
 
 
     

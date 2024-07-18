@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QIcon
 from components.fancy_checkbox import FancyButton
-from components.file_utils import directory_selector
+from components.file_utils import save_laserblood_metadata_json
 from components.input_number_control import InputFloatControl, InputNumberControl
 from components.input_text_control import InputTextControl, InputTextareaControl
 from components.layout_utilities import draw_layout_separator
@@ -188,7 +188,8 @@ class LaserbloodMetadataPopup(QWidget):
             "MAX": None,
             "POSITION": (),
             "ENABLED": True,
-            "REMOVABLE": True 
+            "REMOVABLE": True,
+            "REQUIRED": True 
         }
         self.app.laserblood_new_added_inputs.append(new_input)
         self.app.settings.setValue(NEW_ADDED_LASERBLOOD_INPUTS_KEY, json.dumps(self.app.laserblood_new_added_inputs))
@@ -317,17 +318,19 @@ class LaserbloodMetadataPopup(QWidget):
             label = f"{input["LABEL"]}:" if not input["UNIT"] else f"{input["LABEL"]} ({input["UNIT"]}):",
             min = input["MIN"],
             max = input["MAX"],
-            value = input["VALUE"] if input["VALUE"] != 0 else None,
+            value = input["VALUE"],
             row = row,
             event_callback=lambda value, inp=input, new_input = new_added_inp: self.on_input_value_change(value, inp, new_input),
         )
         inp.setEnabled(input["ENABLED"])
-        inp.setStyleSheet(GUIStyles.set_input_number_style())
+        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
+        self.widgets[input["LABEL"]] = inp
         widget_container.setLayout(row)
+        if not new_added_inp:
+            widget_container.setFixedWidth(236)        
         if not new_added_inp:            
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3],)
         return widget_container    
-        
     
     def create_float_input(self, input, new_added_inp = False):
         widget_container = QWidget()
@@ -338,19 +341,20 @@ class LaserbloodMetadataPopup(QWidget):
             label = f"{input["LABEL"]}:" if not input["UNIT"] else f"{input["LABEL"]} ({input["UNIT"]}):",
             min = input["MIN"],
             max = input["MAX"],
-            value = input["VALUE"] if input["VALUE"] != 0 else None,
+            value = input["VALUE"],
             row = row,
             event_callback=lambda value, inp=input, new_input=new_added_inp: self.on_input_value_change(value, inp, new_input),
             action_widget=self.create_remove_btn(input) if new_added_inp else None
             )
         inp.setEnabled(input["ENABLED"])
-        inp.setStyleSheet(GUIStyles.set_input_number_style())  
-        widget_container.setLayout(row)    
+        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
+        self.widgets[input["LABEL"]] = inp         
+        widget_container.setLayout(row)   
+        if not new_added_inp:
+            widget_container.setFixedWidth(236)         
         if not new_added_inp:         
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3],)
         return widget_container    
-
-    
 
     def create_text_input(self, input, new_added_inp=False):
         widget_container = QWidget()
@@ -360,12 +364,13 @@ class LaserbloodMetadataPopup(QWidget):
         position = input["POSITION"]
         label, inp = InputTextControl.setup(
             label=f"{input['LABEL']}:",
-            text=input['VALUE'] if input['VALUE'] is not None else "",
+            text=input['VALUE'],
             placeholder="",
             event_callback=lambda text, inp=input, new_input=new_added_inp: self.on_input_text_change(text, inp, new_input),
         )
         inp.setEnabled(input["ENABLED"])
-        inp.setStyleSheet(GUIStyles.set_input_text_style(border_color="#3b3b3b"))
+        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
+        self.widgets[input["LABEL"]] = inp        
         h_box_header = QHBoxLayout()
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
         h_box_header.addWidget(label)
@@ -374,11 +379,13 @@ class LaserbloodMetadataPopup(QWidget):
             remove_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
             spacer = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
             h_box_header.addItem(spacer)
-            h_box_header.addWidget(remove_btn)
+            h_box_header.addWidget(remove_btn)    
         control.addLayout(h_box_header)
         control.addWidget(inp)
         row.addLayout(control)
         widget_container.setLayout(row)
+        if not new_added_inp:
+            widget_container.setFixedWidth(220)
         if not new_added_inp:
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3])
         return widget_container
@@ -394,6 +401,7 @@ class LaserbloodMetadataPopup(QWidget):
         )
         inp.setEnabled(input["ENABLED"])
         inp.toggled.connect(lambda state, inp=input, new_input=new_added_inp: self.on_input_state_change(state, inp, new_input))
+        self.widgets[input["LABEL"]] = inp
         v_box.addWidget(label)
         v_box.addWidget(inp)
         widget_container.setLayout(v_box)
@@ -404,7 +412,7 @@ class LaserbloodMetadataPopup(QWidget):
     def create_textarea_input(self, input, new_added_inp = False):
         widget_container = QWidget()
         control = QVBoxLayout() 
-        control.setContentsMargins(0,10,0, 10)    
+        control.setContentsMargins(0, 10, 12, 10)    
         position = input["POSITION"]
         label, self.textarea = InputTextareaControl.setup(
             label = f"{input["LABEL"]}:",
@@ -432,19 +440,24 @@ class LaserbloodMetadataPopup(QWidget):
         control, inp, _, container = SelectControl.setup(
             label=f"{input['LABEL']}:",
             options=input["OPTIONS"],
-            selectedValue=input["VALUE"] if input["VALUE"] is not None else 0,
+            selectedValue=input["VALUE"],
             container=h_box,
+            prevent_default_value=True,
             event_callback=lambda value, inp=input, new_input=new_added_inp: self.on_input_value_change(value, inp, new_input),
         ) 
         widget_container.setLayout(container)
         inp.setEnabled(input["ENABLED"])
-        inp.setStyleSheet(GUIStyles.set_input_select_style())
+        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
+        self.widgets[input["LABEL"]] = inp  
+        if not new_added_inp:
+            widget_container.setFixedWidth(236)              
         if not new_added_inp:           
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3]) 
         return widget_container              
         
     
     def on_input_value_change(self, value, input, new_input):
+        self.dispatch_input_warning_styles(self.widgets[input["LABEL"]], input["INPUT_TYPE"], value)
         if new_input:
             self.update_new_added_inputs_settings(value, input)
         else:    
@@ -457,6 +470,7 @@ class LaserbloodMetadataPopup(QWidget):
             self.update_settings(state, input)
     
     def on_input_text_change(self, text, input, new_input):
+        self.dispatch_input_warning_styles(self.widgets[input["LABEL"]], input["INPUT_TYPE"], text)
         if new_input:
             self.update_new_added_inputs_settings(text, input)
         else:    
@@ -468,7 +482,26 @@ class LaserbloodMetadataPopup(QWidget):
             self.update_settings(text_content, input)
         else:
             self.update_new_added_inputs_settings(text_content, input)      
+    
+    
+    def dispatch_input_warning_styles(self, input, input_type, value):
+        str_value = str(value)
+        if value is not None and str_value != "0" and str_value != "0.0" and len(str_value.strip()) > 0:
+            self.toggle_input_border_style(input_type, input, "#3b3b3b")
+            return
+        if (input_type == "int" or input_type == "float") and (str_value == "0" or str_value == "0.0"):
+            self.toggle_input_border_style(input_type, input, "#EEBA56")
+            return
+        self.toggle_input_border_style(input_type, input, "#DA1212")
         
+    
+    def toggle_input_border_style(self, input_type, input, color):
+        if input_type == 'int' or input_type == 'float':
+            input.setStyleSheet(GUIStyles.set_input_number_style(border_color = color))
+        if input_type == 'select':
+            input.setStyleSheet(GUIStyles.set_input_select_style(border_color = color)) 
+        if input_type == 'text':
+           input.setStyleSheet(GUIStyles.set_input_text_style(border_color = color))         
     
     def create_remove_btn(self, input):
         remove_btn = QPushButton("")
@@ -484,6 +517,27 @@ class LaserbloodMetadataPopup(QWidget):
         self.app.settings.setValue(NEW_ADDED_LASERBLOOD_INPUTS_KEY, json.dumps(self.app.laserblood_new_added_inputs)) 
         self.app.clear_layout_tree(self.new_added_inputs_grid)   
         self.init_new_input_added_layout()    
+
+    
+    @staticmethod
+    def laserblood_metadata_valid(app):
+        settings = app.laserblood_settings
+        custom_settings = app.laserblood_new_added_inputs
+        def check_required_values(data):
+            return all(
+            d['REQUIRED'] is False or (
+                d['VALUE'] is not None and (
+                    (d['INPUT_TYPE'] == 'select' and d['VALUE'] != 0) or
+                    (d['INPUT_TYPE'] != 'select' and str(d['VALUE']).strip())
+                )
+            )
+            for d in data
+        )
+        settings_valid = check_required_values(settings)
+        custom_settings_valid = check_required_values(custom_settings)
+        print(settings_valid)
+        print(custom_settings_valid)
+        return settings_valid and custom_settings_valid
 
     
     def update_new_added_inputs_settings(self, value, input):
