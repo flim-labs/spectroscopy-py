@@ -3,10 +3,12 @@ from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QComboBox
 
 class SelectControl:
     @staticmethod
-    def setup(label, selectedValue, container, options, event_callback, spacing=20, control_layout="vertical"):
+    def setup(label, selectedValue, container, options, event_callback, spacing=20, control_layout="vertical", width= None):
         q_label = QLabel(label)
         control = QVBoxLayout() if control_layout == 'vertical' else QHBoxLayout()
         input = QComboBox()
+        if width is not None:
+            input.setFixedWidth(width)
         for value in options:
             input.addItem(value)
         input.setCurrentIndex(selectedValue)

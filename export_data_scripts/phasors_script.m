@@ -54,6 +54,16 @@ while ~feof(spectroscopy_fid)
 end
 fclose(spectroscopy_fid);
 
+% Calculate the x-axis values based on the laser period
+if isfield(spectroscopy_metadata, 'laser_period_ns') && ~isempty(spectroscopy_metadata.laser_period_ns)
+    laser_period_ns = spectroscopy_metadata.laser_period_ns;
+    fprintf('Laser period: %dns\n', laser_period_ns);
+else
+    error('Laser period not found in metadata.');
+end
+num_bins = 256;
+x_values = linspace(0, laser_period_ns, num_bins);
+
 % READ PHASORS DATA
 phasors_fid = fopen(phasors_file_path, 'rb');
 if phasors_fid == -1
@@ -72,7 +82,9 @@ fprintf('Enabled channels: %s\n', sprintf('Channel %d, ', phasors_metadata.chann
 fprintf('Bin width: %dus\n', phasors_metadata.bin_width_micros);
 fprintf('Acquisition time: %.2fs\n', phasors_metadata.acquisition_time_millis / 1000);
 fprintf('Laser period: %dns\n', phasors_metadata.laser_period_ns);
-fprintf('Tau: %dns\n', phasors_metadata.tau_ns);
+if isfield(phasors_metadata, 'tau_ns') && ~isempty(phasors_metadata.tau_ns)
+    fprintf('Tau: %dns\n', phasors_metadata.tau_ns);
+end
 disp(['Harmonics: ' num2str(phasors_metadata.harmonics)]);
 
 phasors_data = struct();
@@ -95,7 +107,7 @@ try
         if ~isfield(phasors_data, num2str(channel_name))
             phasors_data.(num2str(channel_name)) = struct();
         end
-        if ~isfield(phasors_data.(num2str(channel_name)), num2str(harmonic_name))
+        if !isfield(phasors_data.(num2str(channel_name)), num2str(harmonic_name))
             phasors_data.(num2str(channel_name)).(num2str(harmonic_name)) = [];
         end
         phasors_data.(num2str(channel_name)).(num2str(harmonic_name)) = ...
@@ -127,7 +139,7 @@ x_colors = [
 % Plot Spectroscopy Data
 subplot(num_rows, max_plots_per_row, 1);
 hold on;
-xlabel('Bin');
+xlabel(sprintf('Time (ns, Laser period = %d ns)', laser_period_ns));
 ylabel('Intensity');
 title(sprintf('Spectroscopy (time: %.2fs, curves stored: %d)', round(times(end)), length(times)));
 
@@ -137,7 +149,7 @@ for i = 1:spectro_num_channels
     sum_curve = sum(channel_curves{i}, 1);
     total_max = max(total_max, max(sum_curve));
     total_min = min(total_min, min(sum_curve));
-    plot(sum_curve, 'DisplayName', sprintf('Channel %d', spectroscopy_metadata.channels(i) + 1));
+    plot(x_values, sum_curve, 'DisplayName', sprintf('Channel %d', spectroscopy_metadata.channels(i) + 1));
 end
 ylim([total_min * 0.99, total_max * 1.01]);
 hold off;

@@ -16,7 +16,6 @@ with open(file_path, 'rb') as f:
     null = None
     metadata = eval(f.read(json_length).decode("utf-8"))
 
-    
     # ENABLED CHANNELS
     if "channels" in metadata and metadata["channels"] is not None:
         print(
@@ -35,12 +34,15 @@ with open(file_path, 'rb') as f:
         print("Acquisition time: " + str(metadata["acquisition_time_millis"] / 1000) + "s")
     # LASER PERIOD (ns)
     if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None:
-        print("Laser period: " + str(metadata["laser_period_ns"]) + "ns") 
+        laser_period_ns = metadata["laser_period_ns"]
+        print("Laser period: " + str(laser_period_ns) + "ns") 
+    else:
+        print("Laser period not found in metadata.")
+        exit(0)
     # TAU (ns)
     if "tau_ns" in metadata and metadata["tau_ns"] is not None:
         print("Tau: " + str(metadata["tau_ns"]) + "ns")   
         
-              
     channel_curves = [[] for _ in range(len(metadata["channels"]))]
     times = []
     number_of_channels = len(metadata["channels"])
@@ -58,12 +60,16 @@ with open(file_path, 'rb') as f:
             curve = struct.unpack(channel_values_unpack_string, data)    
             channel_curves[i].append(np.array(curve))
         times.append(time / 1_000_000_000)    
-    
+
     # PLOTTING
-    plt.xlabel("Bin")
+    plt.xlabel(f"Time (ns, Laser period = {laser_period_ns} ns)")
     plt.ylabel("Intensity")
     plt.yscale('log')
     plt.title("Spectroscopy (time: " + str(round(times[-1])) + "s, curves stored: " + str(len(times)) + ")")
+
+    num_bins = 256
+    x_values = np.linspace(0, laser_period_ns, num_bins)
+    
     # plot all channels summed up    
     total_max = 0
     total_min = 9999999999999
@@ -75,8 +81,8 @@ with open(file_path, 'rb') as f:
             total_max = max
         if min < total_min:    
             total_min = min
-        plt.plot(sum_curve, label=f"Channel {metadata['channels'][i] + 1}")  
+        plt.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")  
         plt.legend()  
-    plt.ylim(min * 0.99, max * 1.01) 
+    plt.ylim(total_min * 0.99, total_max * 1.01) 
     plt.tight_layout()   
-    plt.show()        
+    plt.show()

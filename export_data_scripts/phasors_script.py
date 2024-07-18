@@ -117,6 +117,7 @@ with open(phasors_file_path, "rb") as f:
 # READ SPECTROSCOPY FILE
 spectroscopy_channels_curves = []
 spectroscopy_times = []
+spectroscopy_laser_period = 0
 
 with open(spectroscopy_file_path, 'rb') as f:
     # first 4 bytes must be SP01
@@ -127,7 +128,8 @@ with open(spectroscopy_file_path, 'rb') as f:
     # read metadata from file
     (json_length,) = struct.unpack("I", f.read(4))
     null = None
-    metadata = eval(f.read(json_length).decode("utf-8"))      
+    metadata = eval(f.read(json_length).decode("utf-8"))
+    spectroscopy_laser_period = metadata["laser_period_ns"]      
     channel_curves = [[] for _ in range(len(metadata["channels"]))]
     times = []
     number_of_channels = len(metadata["channels"])
@@ -167,9 +169,11 @@ num_rows = (num_channels + max_channels_per_row - 1) // max_channels_per_row
 fig, axs = plt.subplots(num_rows + 1, max_channels_per_row, figsize=(20, (num_rows + 1) * 6))
 
 # Spectroscopy plot
+num_bins = 256
+x_values = np.linspace(0, spectroscopy_laser_period, num_bins)
 ax = axs[0, 0]
 ax.set_title("Spectroscopy (time: " + str(round(spectroscopy_times[-1])) + "s, curves stored: " + str(len(spectroscopy_times)) + ")")
-ax.set_xlabel("Bin")
+ax.set_xlabel(f"Time (ns, Laser period = {spectroscopy_laser_period} ns)")
 ax.set_ylabel("Intensity")
 ax.set_yscale("log")
 ax.grid(True)
@@ -183,7 +187,7 @@ for i in range(number_of_channels):
         total_max = max_val
     if min_val < total_min:        
         total_min = min_val
-    ax.plot(sum_curve, label=f"Channel {metadata['channels'][i] + 1}")   
+    ax.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")   
 ax.set_ylim(total_min * 0.99, total_max * 1.01)        
 ax.legend()
 
