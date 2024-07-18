@@ -32,6 +32,7 @@ DEFAULT_WRITE_DATA = True
 SETTINGS_TIME_SHIFTS = "time_shift"
 
 FIT_BTN = "fit_button"
+FIT_BTN_PLACEHOLDER = "fit_button_placeholder"
 TAB_FITTING = "tab_deconv"
 
 TAB_PHASORS = "tab_data"

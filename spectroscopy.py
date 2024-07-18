@@ -488,8 +488,11 @@ class SpectroscopyWindow(QWidget):
         inp.setStyleSheet(GUIStyles.set_input_number_style())
         self.control_inputs[SETTINGS_HARMONIC] = inp
         self.control_inputs[SETTINGS_HARMONIC_LABEL] = label
+
         spacer = QWidget()
         controls_row.addWidget(spacer, 1)
+
+
         ctl, inp, label = SelectControl.setup(
             "Harmonic displayed:",
             1,
@@ -522,6 +525,8 @@ class SpectroscopyWindow(QWidget):
         )
         self.control_inputs[LOAD_REF_BTN] = save_button
         controls_row.addWidget(save_button)
+
+
         save_button = QPushButton("SAVE")
         save_button.setFlat(True)
         save_button.setFixedHeight(55)
@@ -543,26 +548,6 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs["save"] = save_button
         controls_row.addWidget(save_button)
 
-
-        self.control_inputs[FIT_BTN] = QPushButton("FIT")
-        self.control_inputs[FIT_BTN].setFlat(True)
-        self.control_inputs[FIT_BTN].setFixedHeight(55)
-        self.control_inputs[FIT_BTN].setCursor(Qt.CursorShape.PointingHandCursor)
-        self.control_inputs[FIT_BTN].setHidden(True)
-        self.control_inputs[FIT_BTN].clicked.connect(self.on_fit_btn_click)
-        self.control_inputs[FIT_BTN].setStyleSheet(
-            """
-        QPushButton {
-            background-color: #8d4ef2;
-            color: white;
-            border-radius: 5px;
-            padding: 5px 12px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        """
-        )
-        controls_row.addWidget(self.control_inputs[FIT_BTN])
 
         self.control_inputs["save"] = save_button
         controls_row.addWidget(save_button)
@@ -587,6 +572,11 @@ class SpectroscopyWindow(QWidget):
         )
         self.control_inputs["export_button"] = export_button
         controls_row.addWidget(export_button)
+
+        self.control_inputs[FIT_BTN_PLACEHOLDER] = QWidget()
+        self.control_inputs[FIT_BTN_PLACEHOLDER].setLayout(QHBoxLayout())
+        controls_row.addWidget(self.control_inputs[FIT_BTN_PLACEHOLDER])
+
         start_button = QPushButton("START")
         start_button.setFixedWidth(150)
         start_button.setObjectName("btn")
@@ -602,6 +592,37 @@ class SpectroscopyWindow(QWidget):
         controls_row.addSpacing(10)
         return controls_row
 
+    def fit_button_show(self):
+        self.control_inputs[FIT_BTN] = QPushButton("FIT")
+        self.control_inputs[FIT_BTN].setFlat(True)
+        self.control_inputs[FIT_BTN].setFixedHeight(55)
+        self.control_inputs[FIT_BTN].setCursor(Qt.CursorShape.PointingHandCursor)
+        self.control_inputs[FIT_BTN].clicked.connect(self.on_fit_btn_click)
+        self.control_inputs[FIT_BTN].setStyleSheet(
+            """
+        QPushButton {
+            background-color: #8d4ef2;
+            color: white;
+            border-radius: 5px;
+            padding: 5px 12px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        """
+        )
+        self.control_inputs[FIT_BTN_PLACEHOLDER].layout().addWidget(
+            self.control_inputs[FIT_BTN]
+        )
+
+    def fit_button_hide(self):
+        if FIT_BTN in self.control_inputs:
+
+            self.control_inputs[FIT_BTN_PLACEHOLDER].layout().removeWidget(
+                self.control_inputs[FIT_BTN]
+            )
+            self.control_inputs[FIT_BTN].deleteLater()
+            del self.control_inputs[FIT_BTN]
+
     def style_start_button(self):
         if self.mode == MODE_STOPPED:
             self.control_inputs["start_button"].setText("START")
@@ -616,7 +637,9 @@ class SpectroscopyWindow(QWidget):
         self.tab_selected = tab_name
         self.control_inputs[self.tab_selected].setChecked(True)
         self.hide_harmonic_selector()
-        self.control_inputs[FIT_BTN].setHidden(True)
+        self.fit_button_hide()
+
+
         if tab_name == TAB_SPECTROSCOPY:
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.hide_layout(self.control_inputs["phasors_resolution_container"])
@@ -1822,7 +1845,7 @@ class SpectroscopyWindow(QWidget):
         if is_export_data_active:
             QTimer.singleShot(500, self.save_bin_files)
         if self.tab_selected == TAB_FITTING:
-            self.control_inputs[FIT_BTN].setHidden(False)
+            self.fit_button_show()
 
     def save_bin_files(self):
         if self.tab_selected == TAB_SPECTROSCOPY:
