@@ -30,6 +30,13 @@ DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
 SETTINGS_WRITE_DATA = "write_data"
 DEFAULT_WRITE_DATA = True
 SETTINGS_TIME_SHIFTS = "time_shift"
+
+FIT_BTN = "fit_button"
+TAB_FITTING = "tab_deconv"
+
+TAB_PHASORS = "tab_data"
+TAB_SPECTROSCOPY = "tab_spectroscopy"
+
 DEFAULT_TIME_SHIFTS = "{}"
 CURSOR_TEXT = "⨁"
 
