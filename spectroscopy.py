@@ -575,6 +575,8 @@ class SpectroscopyWindow(QWidget):
 
         self.control_inputs[FIT_BTN_PLACEHOLDER] = QWidget()
         self.control_inputs[FIT_BTN_PLACEHOLDER].setLayout(QHBoxLayout())
+        # if no fit button is present, it must no occupy space
+        self.control_inputs[FIT_BTN_PLACEHOLDER].layout().setContentsMargins(0, 0, 0, 0)
         controls_row.addWidget(self.control_inputs[FIT_BTN_PLACEHOLDER])
 
         start_button = QPushButton("START")
@@ -593,26 +595,27 @@ class SpectroscopyWindow(QWidget):
         return controls_row
 
     def fit_button_show(self):
-        self.control_inputs[FIT_BTN] = QPushButton("FIT")
-        self.control_inputs[FIT_BTN].setFlat(True)
-        self.control_inputs[FIT_BTN].setFixedHeight(55)
-        self.control_inputs[FIT_BTN].setCursor(Qt.CursorShape.PointingHandCursor)
-        self.control_inputs[FIT_BTN].clicked.connect(self.on_fit_btn_click)
-        self.control_inputs[FIT_BTN].setStyleSheet(
+        if FIT_BTN not in self.control_inputs:
+            self.control_inputs[FIT_BTN] = QPushButton("FIT")
+            self.control_inputs[FIT_BTN].setFlat(True)
+            self.control_inputs[FIT_BTN].setFixedHeight(55)
+            self.control_inputs[FIT_BTN].setCursor(Qt.CursorShape.PointingHandCursor)
+            self.control_inputs[FIT_BTN].clicked.connect(self.on_fit_btn_click)
+            self.control_inputs[FIT_BTN].setStyleSheet(
+                """
+            QPushButton {
+                background-color: #8d4ef2;
+                color: white;
+                border-radius: 5px;
+                padding: 5px 12px;
+                font-weight: bold;
+                font-size: 16px;
+            }
             """
-        QPushButton {
-            background-color: #8d4ef2;
-            color: white;
-            border-radius: 5px;
-            padding: 5px 12px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        """
-        )
-        self.control_inputs[FIT_BTN_PLACEHOLDER].layout().addWidget(
-            self.control_inputs[FIT_BTN]
-        )
+            )
+            self.control_inputs[FIT_BTN_PLACEHOLDER].layout().addWidget(
+                self.control_inputs[FIT_BTN]
+            )
 
     def fit_button_hide(self):
         if FIT_BTN in self.control_inputs:
@@ -622,6 +625,7 @@ class SpectroscopyWindow(QWidget):
             )
             self.control_inputs[FIT_BTN].deleteLater()
             del self.control_inputs[FIT_BTN]
+            self.control_inputs[FIT_BTN_PLACEHOLDER].layout().setContentsMargins(0, 0, 0, 0)
 
     def style_start_button(self):
         if self.mode == MODE_STOPPED:
