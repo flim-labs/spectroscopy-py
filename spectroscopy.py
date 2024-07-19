@@ -738,7 +738,10 @@ class SpectroscopyWindow(QWidget):
 
     def on_fit_btn_click(self):
         data = []
-        for i, channel_index in enumerate(self.selected_channels):
+
+        channels_shown = [channel for channel in self.plots_to_show if channel in self.selected_channels]
+
+        for channel, channel_index in enumerate(channels_shown):
             x, y = self.decay_curves[channel_index].getData()
             data.append(
                 {
