@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 
-def fit_decay_curve(x_values, y_values, plot_title="Decay Curve Fitting", num_components=3, B_component=False):
+
+def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component):
     def decay_model_1_with_B(t, A1, tau1, B):
         return A1 * np.exp(-t / tau1) + B
 
@@ -31,6 +32,15 @@ def fit_decay_curve(x_values, y_values, plot_title="Decay Curve Fitting", num_co
     decay_models_with_B = [decay_model_1_with_B, decay_model_2_with_B, decay_model_3_with_B, decay_model_4_with_B]
 
     decay_start = np.argmax(y_values)
+
+    # if y_values is all zeros, return an error
+    if sum(y_values) == 0:
+        return {"error": "All counts are zero."}
+
+    # if all y_values are too big try to scale them until reaching a reasonable range (max 10000)
+    if max(y_values) > 1000:
+        scale_factor = max(y_values) / 1000
+        y_values = [y / scale_factor for y in y_values]
 
     t_data = x_values[decay_start:]
     y_data = y_values[decay_start:]

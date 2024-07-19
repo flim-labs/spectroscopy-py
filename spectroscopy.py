@@ -7,13 +7,6 @@ from math import floor, log
 
 import flim_labs
 import numpy as np
-from components.box_message import BoxMessage
-from components.buttons import CollapseButton, DownloadButton
-from components.export_data_settings import ExportDataSettingsPopup
-from components.file_utils import save_phasor_files, save_spectroscopy_file
-from components.layout_utilities import draw_layout_separator
-from components.lin_log_control import SpectroscopyLinLogControl
-from components.plots_config import PlotsConfigPopup
 import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
 from PyQt6.QtGui import QPixmap, QFont, QIcon
@@ -31,17 +24,26 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QFileDialog,
 )
+
+from components.box_message import BoxMessage
+from components.buttons import CollapseButton, DownloadButton
+from components.export_data_settings import ExportDataSettingsPopup
 from components.fancy_checkbox import FancyButton
+from components.file_utils import save_phasor_files, save_spectroscopy_file
+from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
 from components.helpers import format_size
 from components.input_number_control import InputNumberControl, InputFloatControl
+from components.layout_utilities import draw_layout_separator
+from components.lin_log_control import SpectroscopyLinLogControl
 from components.link_widget import LinkWidget
 from components.logo_utilities import OverlayWidget, TitlebarIcon
+from components.plots_config import PlotsConfigPopup
 from components.resource_path import resource_path
 from components.select_control import SelectControl
-from components.switch_control import SwitchControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
+from components.switch_control import SwitchControl
 from settings import *
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -74,6 +76,7 @@ class SpectroscopyWindow(QWidget):
         self.decay_widgets = {}
         self.cached_decay_values = {}
         self.cached_decay_x_values = np.array([])
+        self.spectroscopy_axis_x = np.arange(1)
         self.lin_log_switches = {}
         default_time_shifts = self.settings.value(
             SETTINGS_TIME_SHIFTS, DEFAULT_TIME_SHIFTS
@@ -131,7 +134,7 @@ class SpectroscopyWindow(QWidget):
             SETTINGS_QUANTIZE_PHASORS, DEFAULT_QUANTIZE_PHASORS
         )
         self.quantized_phasors = (
-            quantized_phasors == "true" or quantized_phasors == True
+                quantized_phasors == "true" or quantized_phasors == True
         )
         self.phasors_resolution = int(
             self.settings.value(SETTINGS_PHASORS_RESOLUTION, DEFAULT_PHASORS_RESOLUTION)
@@ -153,6 +156,8 @@ class SpectroscopyWindow(QWidget):
 
         self.pull_from_queue_timer = QTimer()
         self.pull_from_queue_timer.timeout.connect(self.pull_from_queue)
+
+        self.fitting_config_popup = None
 
         self.calc_exported_file_size()
 
@@ -387,7 +392,7 @@ class SpectroscopyWindow(QWidget):
         inp = SwitchControl(
             active_color="#11468F",
             checked=self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
-            == "true",
+                    == "true",
         )
         inp.toggled.connect(self.on_free_running_changed)
         switch_control.addWidget(QLabel("Free running:"))
@@ -493,7 +498,6 @@ class SpectroscopyWindow(QWidget):
         spacer = QWidget()
         controls_row.addWidget(spacer, 1)
 
-
         ctl, inp, label = SelectControl.setup(
             "Harmonic displayed:",
             1,
@@ -527,7 +531,6 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[LOAD_REF_BTN] = save_button
         controls_row.addWidget(save_button)
 
-
         save_button = QPushButton("SAVE")
         save_button.setFlat(True)
         save_button.setFixedHeight(55)
@@ -548,7 +551,6 @@ class SpectroscopyWindow(QWidget):
         )
         self.control_inputs["save"] = save_button
         controls_row.addWidget(save_button)
-
 
         self.control_inputs["save"] = save_button
         controls_row.addWidget(save_button)
@@ -620,7 +622,6 @@ class SpectroscopyWindow(QWidget):
 
     def fit_button_hide(self):
         if FIT_BTN in self.control_inputs:
-
             self.control_inputs[FIT_BTN_PLACEHOLDER].layout().removeWidget(
                 self.control_inputs[FIT_BTN]
             )
@@ -643,7 +644,6 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(True)
         self.hide_harmonic_selector()
         self.fit_button_hide()
-
 
         if tab_name == TAB_SPECTROSCOPY:
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
@@ -737,7 +737,29 @@ class SpectroscopyWindow(QWidget):
             DownloadButton.change_download_script_options(self)
 
     def on_fit_btn_click(self):
-        print("FIT FIT!")
+        data = []
+        for i, channel_index in enumerate(self.selected_channels):
+            x, y = self.decay_curves[channel_index].getData()
+            data.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "title": "Channel " + str(self.selected_channels[channel_index] + 1),
+                }
+            )
+
+        # check if every x len is the same as y len
+        if not all(len(data[0]['x']) == len(data[i]['x']) for i in range(1, len(data))):
+            BoxMessage.setup(
+                "Error",
+                "Different x-axis lengths detected. Please, check the data.",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
+            return
+
+        self.fitting_config_popup = FittingDecayConfigPopup(self, data)
+        self.fitting_config_popup.show()
 
     def on_tau_change(self, value):
         self.settings.setValue(SETTINGS_TAU_NS, value)
@@ -836,13 +858,13 @@ class SpectroscopyWindow(QWidget):
         else:
             for i, channel_index in enumerate(self.plots_to_show):
                 if len(self.plots_to_show) <= len(self.all_phasors_points):
-                        self.draw_points_in_phasors(
-                            channel_index,
-                            self.harmonic_selector_value,
-                            self.all_phasors_points[channel_index][
-                                self.harmonic_selector_value
-                            ],
-                        )    
+                    self.draw_points_in_phasors(
+                        channel_index,
+                        self.harmonic_selector_value,
+                        self.all_phasors_points[channel_index][
+                            self.harmonic_selector_value
+                        ],
+                    )
 
     def on_phasors_resolution_changed(self, value):
         self.phasors_resolution = int(value)
@@ -1074,10 +1096,11 @@ class SpectroscopyWindow(QWidget):
                     x = np.linspace(0, period, 256)
                 else:
                     x = np.arange(1)
+                self.spectroscopy_axis_x = x
                 y = x * 0
                 if (
-                    channel not in self.lin_log_mode
-                    or self.lin_log_mode[channel] == "LIN"
+                        channel not in self.lin_log_mode
+                        or self.lin_log_mode[channel] == "LIN"
                 ):
                     static_curve = curve_widget.plot(x, y, pen="#f72828", pen_width=2)
                 else:
@@ -1109,6 +1132,7 @@ class SpectroscopyWindow(QWidget):
                 h_decay_layout.addLayout(v_decay_layout, 11)
                 v_layout.addLayout(h_decay_layout, 3)
                 v_widget.setLayout(v_layout)
+                self.fit_button_hide()
             elif self.tab_selected == TAB_PHASORS:
                 h_layout = QHBoxLayout()
                 label = QLabel("No CPS")
@@ -1223,7 +1247,7 @@ class SpectroscopyWindow(QWidget):
         if freq_mhz == 0.0:
             return
         tau_phi = (1 / (2 * np.pi * freq_mhz * harmonic)) * (s / g) * 1e3
-        tau_m_component = (1 / (s**2 + g**2)) - 1
+        tau_m_component = (1 / (s ** 2 + g ** 2)) - 1
         if tau_m_component < 0:
             text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns")
             text.setHtml(
@@ -1233,7 +1257,7 @@ class SpectroscopyWindow(QWidget):
             )
         else:
             tau_m = (
-                (1 / (2 * np.pi * freq_mhz * harmonic)) * np.sqrt(tau_m_component) * 1e3
+                    (1 / (2 * np.pi * freq_mhz * harmonic)) * np.sqrt(tau_m_component) * 1e3
             )
             text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏m={round(tau_m, 2)} ns")
             text.setHtml(
@@ -1244,7 +1268,7 @@ class SpectroscopyWindow(QWidget):
 
     def draw_semi_circle(self, widget):
         x = np.linspace(0, 1, 1000)
-        y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
+        y = np.sqrt(0.5 ** 2 - (x - 0.5) ** 2)
         widget.plot(x, y, pen="#1E90FF", pen_width=4)
         widget.plot([-0.1, 1.1], [0, 0], pen="#1E90FF", pen_width=4)
 
@@ -1307,9 +1331,9 @@ class SpectroscopyWindow(QWidget):
             )
         else:
             file_size_MB = (
-                int(acquisition_time)
-                * len(self.selected_channels)
-                * (1000 / int(bin_width))
+                    int(acquisition_time)
+                    * len(self.selected_channels)
+                    * (1000 / int(bin_width))
             )
             self.bin_file_size = format_size(file_size_MB * 1024 * 1024)
             self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
@@ -1405,7 +1429,7 @@ class SpectroscopyWindow(QWidget):
             else int(
                 self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)
             )
-            * 1000
+                 * 1000
         )
         connection_type = self.control_inputs["channel_type"].currentText()
         if str(connection_type) == "USB":
@@ -1496,12 +1520,12 @@ class SpectroscopyWindow(QWidget):
                     )
                     return
                 if (
-                    not (
-                        all(
-                            plot in reference_data["channels"]
-                            for plot in self.plots_to_show
+                        not (
+                                all(
+                                    plot in reference_data["channels"]
+                                    for plot in self.plots_to_show
+                                )
                         )
-                    )
                 ) or len(self.plots_to_show) == 0:
                     popup = PlotsConfigPopup(
                         self,
@@ -1702,7 +1726,7 @@ class SpectroscopyWindow(QWidget):
         time_elapsed = time_ns - cps["last_time_ns"]
         if time_elapsed > 330_000_000:
             cps_value = (cps["current_count"] - cps["last_count"]) / (
-                time_elapsed / 1_000_000_000
+                    time_elapsed / 1_000_000_000
             )
             self.cps_widgets[channel_index].setText(
                 f"{self.humanize_number(cps_value)} CPS"
@@ -1716,7 +1740,7 @@ class SpectroscopyWindow(QWidget):
         units = ["", "K", "M", "G", "T", "P"]
         k = 1000.0
         magnitude = int(floor(log(number, k)))
-        return "%.2f%s" % (number / k**magnitude, units[magnitude])
+        return "%.2f%s" % (number / k ** magnitude, units[magnitude])
 
     def update_plots2(self, channel_index, time_ns, curve):
         bin_width_micros = int(
@@ -1755,13 +1779,13 @@ class SpectroscopyWindow(QWidget):
             elif self.tab_selected == TAB_SPECTROSCOPY or self.tab_selected == TAB_FITTING:
                 last_cached_decay_value = self.cached_decay_values[channel_index]
                 self.cached_decay_values[channel_index] = (
-                    np.array(curve) + last_cached_decay_value
+                        np.array(curve) + last_cached_decay_value
                 )
                 # Handle linear/logarithmic mode
                 decay_widget = self.decay_widgets[channel_index]
                 if (
-                    channel_index not in self.lin_log_mode
-                    or self.lin_log_mode[channel_index] == "LIN"
+                        channel_index not in self.lin_log_mode
+                        or self.lin_log_mode[channel_index] == "LIN"
                 ):
                     decay_widget.showGrid(x=False, y=False, alpha=0.3)
                     decay_curve.setData(
@@ -1899,9 +1923,9 @@ class SpectroscopyWindow(QWidget):
     def eventFilter(self, source, event):
         try:
             if event.type() in (
-                QEvent.Type.Resize,
-                QEvent.Type.MouseButtonPress,
-                QEvent.Type.MouseButtonRelease,
+                    QEvent.Type.Resize,
+                    QEvent.Type.MouseButtonPress,
+                    QEvent.Type.MouseButtonRelease,
             ):
                 self.overlay.raise_()
                 self.overlay.resize(self.size())
