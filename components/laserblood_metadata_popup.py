@@ -654,7 +654,6 @@ class LaserbloodMetadataPopup(QWidget):
             fpga = "300ps"   
         next((setting.update({"VALUE": fpga}) for setting in app.laserblood_settings if setting.get("LABEL") == "FPGA firmware type"), "")
         app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))   
-        
      
         
     def center_window(self):   

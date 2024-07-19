@@ -7,7 +7,6 @@ from laserblood_settings import LASER_TYPES
 from settings import DEFAULT_BIN_WIDTH, SETTINGS_BIN_WIDTH, SETTINGS_TAU_NS
 
 
-
 def directory_selector(window):
     folder_path = QFileDialog.getExistingDirectory(window, "Select Directory")
     return folder_path
@@ -83,40 +82,8 @@ def save_phasor_files(spectroscopy_new_filename, phasors_new_filename, dest_path
         
 
 def save_laserblood_metadata_json(filename, dest_path, window):
-    laser_type = window.laserblood_laser_type
-    filter_type = window.laserblood_filter_type
-    metadata_settings = window.laserblood_settings
-    custom_fields_settings = window.laserblood_new_added_inputs
     filter_wavelength_input = next((input for input in window.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
-    parsed_filter_type = f"{filter_type} {filter_wavelength_input["VALUE"]}" if filter_type in ["LP", "SP"] else f"{filter_wavelength_input["VALUE"]}"
-    frequency_mhz = window.get_frequency_mhz()
-    firmware_selected, connection_type = window.get_firmware_selected(frequency_mhz)
-    parsed_data = {
-        "Laser type": laser_type,
-        "Emission filter type": parsed_filter_type,
-        "Firmware selected": firmware_selected,
-        "Connection type": connection_type,
-        "Frequency (Mhz)": f"{frequency_mhz}",
-        "Enabled channels": [ch + 1 for ch in window.selected_channels],
-        "Acquisition time (s)": round((window.cps_counts[window.selected_channels[0]]["last_time_ns"])/1_000_000_000, 2),
-        "Bin width (µs)":  int( window.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)),
-        "Tau (ns)": window.settings.value(SETTINGS_TAU_NS, '0'),
-        "Harmonics": window.harmonic_selector_value
-    }
-    def map_values(data):
-        new_data = data.copy()
-        label = f"{new_data['LABEL']} ({new_data['UNIT']})" if new_data['UNIT'] is not None else f"{new_data['LABEL']}"
-        if isinstance(new_data['VALUE'], float) and new_data['VALUE'].is_integer():
-            parsed_data[label] = int(new_data['VALUE'])
-        else:
-            if(new_data["INPUT_TYPE"] == "select"):
-                parsed_data[label] = new_data["OPTIONS"][new_data["VALUE"]]
-            else:    
-                parsed_data[label] = new_data['VALUE']
-    for data in metadata_settings:
-        map_values(data)
-    for data in custom_fields_settings:
-        map_values(data)
+    parsed_data = parse_metadata_output(window)
     laser_key, filter_key = get_laser_info_slug(window, filter_wavelength_input)    
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     new_filename = f"{filename}_{laser_key}_{filter_key}_{timestamp}.laserblood_metadata.json"
@@ -128,6 +95,48 @@ def save_laserblood_metadata_json(filename, dest_path, window):
     except Exception as e:
         print("Error saving laserblood metadata file")
         
+
+def parse_metadata_output(app):    
+    laser_type = app.laserblood_laser_type
+    filter_type = app.laserblood_filter_type
+    metadata_settings = app.laserblood_settings
+    custom_fields_settings = app.laserblood_new_added_inputs
+    filter_wavelength_input = next((input for input in app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
+    parsed_filter_type = f"{filter_type} {filter_wavelength_input["VALUE"]}" if filter_type in ["LP", "SP"] else f"{filter_wavelength_input["VALUE"]}"
+    frequency_mhz = app.get_frequency_mhz()
+    firmware_selected, connection_type = app.get_firmware_selected(frequency_mhz)
+    parsed_data = [
+        {"label": "Laser type", "unit": "", "value": laser_type},
+        {"label": "Emission filter type", "unit": "", "value": parsed_filter_type},
+        {"label": "Firmware selected", "unit": "", "value": firmware_selected},
+        {"label": "Connection type", "unit": "", "value": connection_type},
+        {"label": "Frequency", "unit": "Mhz", "value": laser_type},
+        {"label": "Enabled channels", "unit": "", "value": [ch + 1 for ch in app.selected_channels]},
+        {"label": "Acquisition time", "unit": "s", "value": round((app.cps_counts[app.selected_channels[0]]["last_time_ns"])/1_000_000_000, 2)},
+        {"label": "Bin width", "unit": "µs", "value":  int( app.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH))},
+        {"label": "Tau", "unit": "ns", "value": app.settings.value(SETTINGS_TAU_NS, '0')},
+        {"label": "Harmonics", "unit": "", "value": app.harmonic_selector_value},   
+    ]
+    def map_values(data):
+        new_data = data.copy()
+        for d in new_data:
+            if isinstance(d['VALUE'], float) and d['VALUE'].is_integer():
+                value = int(d["VALUE"])
+            else: 
+                if d["INPUT_TYPE"] == "select":
+                    value = d["OPTIONS"][d["VALUE"]] 
+                else:
+                    value = d["VALUE"]     
+            parsed_data.append({
+                "label": d["LABEL"],
+                "unit": d["UNIT"] if d["UNIT"] is not None else "",
+                "value": value
+            })
+    map_values(metadata_settings)  
+    map_values(custom_fields_settings) 
+    return parsed_data    
+
+        
         
 def get_laser_info_slug(window, filter_input):
         laser_type = window.laserblood_laser_type
@@ -136,6 +145,8 @@ def get_laser_info_slug(window, filter_input):
         filter_key = filter_type.strip().replace(" ", "").replace("/", "_") 
         laser_key = laser_key.strip().replace(" ", "").replace("/", "_")  
         return laser_key, filter_key      
+            
+            
             
 
     

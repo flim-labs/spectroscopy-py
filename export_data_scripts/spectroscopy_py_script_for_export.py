@@ -12,10 +12,10 @@ laserblood_metadata_file_path = "<LASERBLOOD-METADATA-FILE-PATH>"
 with open(laserblood_metadata_file_path, 'r', encoding='utf-8') as file:
     print("\n") 
     data = json.load(file)  
-    for key, value in data.items():
-        print(f"{key}: {value}")
-    print("\n")    
-        
+    for item in data:
+        label = f"{item['label']} ({item['unit']})" if len(item['unit'].strip()) > 0 else f"{item['label']}"
+        print(f"{label}: {item['value']}")
+ 
 
 with open(spectroscopy_file_path, 'rb') as f:
     # first 4 bytes must be SP01

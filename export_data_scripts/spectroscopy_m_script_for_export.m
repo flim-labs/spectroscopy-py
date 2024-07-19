@@ -4,17 +4,23 @@ laserblood_metadata_file_path = "<LASERBLOOD-METADATA-FILE-PATH>"
 % READ LASERBLOOD EXPERIMENT METADATA
 laserblood_metadata_str = fileread(laserblood_metadata_file_path);
 laserblood_data = jsondecode(laserblood_metadata_str);
-laserblood_fields = fieldnames(laserblood_data);
-for i = 1:numel(laserblood_fields)
-    key = laserblood_fields{i};
-    value = laserblood_data.(key);
+fprintf('\n');
+for i = 1:numel(laserblood_data)
+    item = laserblood_data(i);
+    label = item.label;
+    unit = strtrim(item.unit);
+    if ~isempty(unit)
+        label = sprintf('%s (%s)', label, unit);
+    end
+    value = item.value;
     if isnumeric(value)
         value = num2str(value);
     elseif islogical(value)
         value = mat2str(value);
     end
-    fprintf('%s: %s\n', key, value);
+    fprintf('%s: %s\n', label, value);
 end
+
 
 % Open spectroscopy bin file            
 fid = fopen(spectroscopy_file_path, 'rb');

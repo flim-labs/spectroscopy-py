@@ -96,7 +96,6 @@ LASER_TYPES = [
     },
 ]
 
-
 SETTINGS_SAMPLE_VOL = {
     "LABEL": "Sample volume after incubation",
     "UNIT": "µL",
@@ -111,7 +110,7 @@ SETTINGS_SAMPLE_VOL = {
     "REQUIRED": True,
 }
 CUVETTE_TOTAL_VOL = {
-    "LABEL": "Cuvette total volume",
+    "LABEL": "Cuvette total volume", 
     "UNIT": "µL",
     "VALUE": 0,
     "OPTIONS": [],
