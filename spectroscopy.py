@@ -4,6 +4,7 @@ import queue
 import sys
 import time
 from math import floor, log
+
 import flim_labs
 import numpy as np
 from components.box_message import BoxMessage
@@ -163,7 +164,7 @@ class SpectroscopyWindow(QWidget):
         return empty
 
     def init_ui(self):
-        self.setWindowTitle("FlimLabs - SPECTROSCOPY v" + VERSION + " - API v" + API_VERSION)
+        self.setWindowTitle("FlimLabs - SPECTROSCOPY v" + VERSION + " - API v" + flim_labs.get_version())
         TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self)
         main_layout = QVBoxLayout()
