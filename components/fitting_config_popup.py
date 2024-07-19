@@ -174,6 +174,7 @@ class FittingDecayConfigPopup(QWidget):
         buf = BytesIO()
         plt.savefig(buf, format='png')
         buf.seek(0)
+        plt.close()
         return {'buffer': buf}
 
     def display_plot(self, plot_data, title):

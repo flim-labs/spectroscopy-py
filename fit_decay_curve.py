@@ -38,9 +38,10 @@ def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component)
         return {"error": "All counts are zero."}
 
     # if all y_values are too big try to scale them until reaching a reasonable range (max 10000)
+    scale_factor = np.float64(1)
     if max(y_values) > 1000:
-        scale_factor = max(y_values) / 1000
-        y_values = [y / scale_factor for y in y_values]
+        scale_factor = np.float64(max(y_values) / 1000)
+        y_values = [np.float64(y / scale_factor) for y in y_values]
 
     t_data = x_values[decay_start:]
     y_data = y_values[decay_start:]
@@ -75,14 +76,14 @@ def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component)
         output_data['component_B'] = popt[-1]
 
     fitted_values = decay_model(t_data, *popt)
-    residuals = y_data - fitted_values
+    residuals = np.array(y_data) * scale_factor - fitted_values * scale_factor
 
     # Plot the overall results and residuals
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), gridspec_kw={'height_ratios': [3, 1]})
 
     # Main plot
-    ax1.scatter(x_values, y_values, label='Counts', color='lime', s=1)
-    ax1.plot(t_data, decay_model(t_data, *popt), label='Fitted curve', color='red')
+    ax1.scatter(x_values, np.array(y_values) * scale_factor, label='Counts', color='lime', s=1)
+    ax1.plot(t_data, decay_model(t_data, *popt) * scale_factor, label='Fitted curve', color='red')
     ax1.set_xlabel('Time', color='white')
     ax1.set_ylabel('Counts', color='white')
     ax1.set_title(plot_title, color='white')
