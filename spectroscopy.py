@@ -163,7 +163,7 @@ class SpectroscopyWindow(QWidget):
         return empty
 
     def init_ui(self):
-        self.setWindowTitle("FlimLabs - SPECTROSCOPY v" + VERSION)
+        self.setWindowTitle("FlimLabs - SPECTROSCOPY v" + VERSION + " - API v" + API_VERSION)
         TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self)
         main_layout = QVBoxLayout()
