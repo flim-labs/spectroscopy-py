@@ -641,6 +641,20 @@ class LaserbloodMetadataPopup(QWidget):
             total_avg_rounded = 0
         next((setting.update({"VALUE": total_avg_rounded}) for setting in app.laserblood_settings if setting.get("LABEL") == "Average CPS"), None)
         app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))
+        
+        
+    @staticmethod     
+    def set_FPGA_firmware(app):
+        frequency_mhz = app.get_frequency_mhz()
+        firmware_selected, _ = app.get_firmware_selected(frequency_mhz)
+        fpga = ""
+        if firmware_selected is not None and "100ps" in firmware_selected:
+            fpga = "100ps"
+        if firmware_selected is not None and "100ps" not in firmware_selected: 
+            fpga = "300ps"   
+        next((setting.update({"VALUE": fpga}) for setting in app.laserblood_settings if setting.get("LABEL") == "FPGA firmware type"), "")
+        app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))   
+        
      
         
     def center_window(self):   

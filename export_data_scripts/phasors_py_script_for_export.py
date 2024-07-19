@@ -1,11 +1,14 @@
 import os
+import json
 import struct
 import matplotlib.pyplot as plt
 import numpy as np
 
 spectroscopy_file_path = "<SPECTROSCOPY-FILE-PATH>"
 phasors_file_path = "<PHASORS-FILE-PATH>"
+laserblood_metadata_file_path = "<LASERBLOOD-METADATA-FILE-PATH>"
 print("Using phasors_data file: " + phasors_file_path)
+
 
 def ns_to_mhz(laser_period_ns):
     period_s = laser_period_ns * 1e-9
@@ -13,6 +16,14 @@ def ns_to_mhz(laser_period_ns):
     frequency_mhz = frequency_hz / 1e6
     return frequency_mhz
 
+
+# Read laserblood experiment metadata
+with open(laserblood_metadata_file_path, 'r', encoding='utf-8') as file:
+    print("\n") 
+    data = json.load(file)  
+    for key, value in data.items():
+        print(f"{key}: {value}")
+    print("\n")    
 
 # READ PHASORS FILE
 phasors_data = {}
@@ -26,42 +37,14 @@ with open(phasors_file_path, "rb") as f:
     (json_length,) = struct.unpack("I", f.read(4))
     null = None
     metadata = eval(f.read(json_length).decode("utf-8"))
-
     # Enabled channels
     channels = metadata.get("channels", [])
     num_channels = len(channels)
-    if num_channels == 0:
-        print("No enabled channels found.")
-        exit(0)
-
-    print(
-        "Enabled channels: " + ", ".join(["Channel " + str(ch + 1) for ch in channels])
-    )
-
-    # Bin width (us)
-    bin_width_micros = metadata.get("bin_width_micros")
-    if bin_width_micros is not None:
-        print("Bin width: " + str(bin_width_micros) + "us")
-
-    # Acquisition time (duration of the acquisition)
-    acquisition_time_millis = metadata.get("acquisition_time_millis")
-    if acquisition_time_millis is not None:
-        print("Acquisition time: " + str(acquisition_time_millis / 1000) + "s")
-
     # Laser period (ns)
     laser_period_ns = metadata.get("laser_period_ns")
     if laser_period_ns is not None:
         print("Laser period: " + str(laser_period_ns) + "ns")
 
-    # Harmonics
-    harmonics = metadata.get("harmonics")
-    if harmonics is not None:
-        print("Harmonics: " + str(harmonics))
-
-    # Tau (ns)
-    tau_ns = metadata.get("tau_ns")
-    if tau_ns is not None:
-        print("Tau: " + str(tau_ns) + "ns")
     try:
         while True:
             bytes_read = f.read(32)

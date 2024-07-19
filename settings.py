@@ -79,9 +79,8 @@ UNICODE_SUP = {
 
 REALTIME_MS = 50
 REALTIME_ADJUSTMENT = REALTIME_MS * 1000
-DEFAULT_TICKS_LOG =  [0, 1, 2, 3, 4, 5, 6]
+DEFAULT_TICKS_LOG = [0, 1, 2, 3, 4, 5, 6]
 DEFAULT_TICKS_LIN = [0, 10, 100, 1000, 10000, 100000, 1000000]
-
 
 
 SETTINGS_EXPORTED_DATA_PATHS = "exported_data_paths"
@@ -91,7 +90,7 @@ EXPORTED_DATA_FILE_PATHS = {
     "spectroscopy": "",
     "phasors": "",
     "spectroscopy_phasors_ref": "",
-    "laserblood_metadata": ""
+    "laserblood_metadata": "",
 }
 
 PHASORS_RESOLUTIONS = ["16", "32", "64", "128", "256", "512"]

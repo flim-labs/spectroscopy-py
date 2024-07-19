@@ -18,13 +18,14 @@ phasors_m_script_path = resource_path("export_data_scripts/phasors_m_script_for_
 
 class ScriptFileUtils:
     @classmethod
-    def export_script_file(cls, bin_file_paths, file_extension, content_modifier):
+    def export_script_file(cls, bin_file_paths, json_path, file_extension, content_modifier):
         file_name, _ = QFileDialog.getSaveFileName(
             None, "Save File", "", f"All Files (*.{file_extension})"
         )
         if not file_name:
             return
         try:
+            # write bin files
             copied_files = {}
             for key, bin_file_path in bin_file_paths.items():
                 bin_file_name = os.path.join(
@@ -35,6 +36,15 @@ class ScriptFileUtils:
                 if bin_file_path:
                     shutil.copy(bin_file_path, bin_file_name)
                     copied_files[key] = bin_file_name
+                    
+            # write json metadata file
+            json_file_path = json_path["laserblood_metadata"]
+            new_json_file_name = os.path.join(
+                os.path.dirname(file_name),
+                f"{os.path.splitext(os.path.basename(file_name))[0]}_laserblood_metadata.json"
+            ).replace("\\", "/")
+            shutil.copy(json_file_path, new_json_file_name) 
+            copied_files["laserblood_metadata"]  = new_json_file_name     
 
             # write script file
             is_phasors = 'phasors' in bin_file_path
@@ -71,14 +81,15 @@ class ScriptFileUtils:
             return file.readlines()
 
     @classmethod
-    def manipulate_file_content(cls, content, file_paths, is_phasors):
+    def manipulate_file_content(cls, content, bin_paths, is_phasors):
         manipulated_lines = []
         for line in content:
+            line = line.replace("<LASERBLOOD-METADATA-FILE-PATH>", bin_paths['laserblood_metadata'].replace("\\", "/"))
             if is_phasors:
-                line = line.replace("<SPECTROSCOPY-FILE-PATH>", file_paths['spectroscopy_phasors_ref'].replace("\\", "/"))
-                line = line.replace("<PHASORS-FILE-PATH>", file_paths['phasors'].replace("\\", "/"))
+                line = line.replace("<SPECTROSCOPY-FILE-PATH>", bin_paths['spectroscopy_phasors_ref'].replace("\\", "/"))
+                line = line.replace("<PHASORS-FILE-PATH>", bin_paths['phasors'].replace("\\", "/"))
             else:
-                line = line.replace("<FILE-PATH>", file_paths['spectroscopy'].replace("\\", "/"))
+                line = line.replace("<FILE-PATH>", bin_paths['spectroscopy'].replace("\\", "/"))
             manipulated_lines.append(line)
         return manipulated_lines
 
@@ -110,20 +121,22 @@ class ScriptFileUtils:
 class PythonScriptUtils(ScriptFileUtils):
 
     @staticmethod
-    def download_spectroscopy(window, bin_file_path):
-        file_paths = {"spectroscopy": bin_file_path}
+    def download_spectroscopy(window, bin_file_path, json_metadata_file_path):
+        bin_paths = {"spectroscopy": bin_file_path}
+        json_path = {"laserblood_metadata": json_metadata_file_path}
         content_modifier = {
             "source_file": spectroscopy_py_script_path,
             "skip_pattern": "def get_recent_spectroscopy_file():",
-            "end_pattern": "with open(file_path, 'rb') as f:",
-            "replace_pattern": "with open(file_path, 'rb') as f:",
+            "end_pattern": "# Read laserblood experiment metadata",
+            "replace_pattern": "# Read laserblood experiment metadata",
             "requirements": ["matplotlib", "numpy"],
         }
-        ScriptFileUtils.export_script_file(file_paths, "py", content_modifier)
+        ScriptFileUtils.export_script_file(bin_paths, json_path, "py", content_modifier)
 
     @staticmethod
-    def download_phasors(window, spectroscopy_ref_file_path, phasors_file_path):
-        file_paths = {"spectroscopy_phasors_ref": spectroscopy_ref_file_path, "phasors": phasors_file_path}
+    def download_phasors(window, spectroscopy_ref_file_path, phasors_file_path, json_metadata_file_path):
+        bin_paths = {"spectroscopy_phasors_ref": spectroscopy_ref_file_path, "phasors": phasors_file_path}
+        json_path = {"laserblood_metadata": json_metadata_file_path}
         content_modifier = {
             "source_file": phasors_py_script_path,
             "skip_pattern": "get_recent_spectroscopy_file():",
@@ -131,30 +144,32 @@ class PythonScriptUtils(ScriptFileUtils):
             "replace_pattern": "def ns_to_mhz(laser_period_ns):",
             "requirements": ["matplotlib", "numpy"],
         }
-        ScriptFileUtils.export_script_file(file_paths, "py", content_modifier)
+        ScriptFileUtils.export_script_file(bin_paths, json_path, "py", content_modifier)
 
 
 class MatlabScriptUtils(ScriptFileUtils):
     @staticmethod
-    def download_spectroscopy(window, bin_file_path):
-        file_paths = {"spectroscopy": bin_file_path}
+    def download_spectroscopy(window, bin_file_path, json_metadata_file_path):
+        bin_paths = {"spectroscopy": bin_file_path}
+        json_path = {"laserblood_metadata": json_metadata_file_path}
         content_modifier = {
             "source_file": spectroscopy_m_script_path,      
             "skip_pattern": "% Get the recent spectroscopy file",
-            "end_pattern": "% Open the file",
-            "replace_pattern": "% Open the file",
+            "end_pattern": "% READ LASERBLOOD EXPERIMENT METADATA",
+            "replace_pattern": "% READ LASERBLOOD EXPERIMENT METADATA",
             "requirements": [],
         }
-        ScriptFileUtils.export_script_file(file_paths, "m", content_modifier)
+        ScriptFileUtils.export_script_file(bin_paths, json_path, "m", content_modifier)
 
     @staticmethod
-    def download_phasors(window, spectroscopy_ref_file_path, phasors_file_path):
-        file_paths = {"spectroscopy_phasors_ref": spectroscopy_ref_file_path, "phasors": phasors_file_path}
+    def download_phasors(window, spectroscopy_ref_file_path, phasors_file_path, json_metadata_file_path):
+        bin_paths = {"spectroscopy_phasors_ref": spectroscopy_ref_file_path, "phasors": phasors_file_path}
+        json_path = {"laserblood_metadata": json_metadata_file_path}
         content_modifier = {
             "source_file": phasors_m_script_path,
             "skip_pattern": "% Get recent spectroscopy file",
-            "end_pattern": "% READ SPECTROSCOPY DATA",
-            "replace_pattern": "% READ SPECTROSCOPY DATA",
+            "end_pattern": "% READ LASERBLOOD EXPERIMENT METADATA",
+            "replace_pattern": "% READ LASERBLOOD EXPERIMENT METADATA",
             "requirements": [],
         }
-        ScriptFileUtils.export_script_file(file_paths, "m", content_modifier)
+        ScriptFileUtils.export_script_file(bin_paths, json_path, "m", content_modifier)

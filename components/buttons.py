@@ -128,10 +128,12 @@ class DownloadButton(QWidget):
     @staticmethod
     def download_spectroscopy_script(app, script_type):
         bin_file_path = app.exported_data_file_paths["spectroscopy"]
+        laserblood_metadata_file_path = app.exported_data_file_paths["laserblood_metadata"]
+        print(laserblood_metadata_file_path)
         (
-            PythonScriptUtils.download_spectroscopy(app, bin_file_path)
+            PythonScriptUtils.download_spectroscopy(app, bin_file_path, laserblood_metadata_file_path)
             if script_type == "py"
-            else MatlabScriptUtils.download_spectroscopy(app, bin_file_path)
+            else MatlabScriptUtils.download_spectroscopy(app, bin_file_path, laserblood_metadata_file_path)
         )
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(False)
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(True)
@@ -140,10 +142,11 @@ class DownloadButton(QWidget):
     def download_phasors_script(app, script_type):
         spectroscopy_ref_bin_file_path = app.exported_data_file_paths["spectroscopy_phasors_ref"]
         phasors_bin_file_path = app.exported_data_file_paths["phasors"]
+        laserblood_metadata_file_path = app.exported_data_file_paths["laserblood_metadata"]
         (
-            PythonScriptUtils.download_phasors(app, spectroscopy_ref_bin_file_path, phasors_bin_file_path)
+            PythonScriptUtils.download_phasors(app, spectroscopy_ref_bin_file_path, phasors_bin_file_path, laserblood_metadata_file_path)
             if script_type == "py"
-            else MatlabScriptUtils.download_phasors(app, spectroscopy_ref_bin_file_path, phasors_bin_file_path)
+            else MatlabScriptUtils.download_phasors(app, spectroscopy_ref_bin_file_path, phasors_bin_file_path, laserblood_metadata_file_path)
         )
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(False)
         app.control_inputs[DOWNLOAD_BUTTON].setEnabled(True)

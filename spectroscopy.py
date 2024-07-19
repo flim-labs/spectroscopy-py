@@ -804,6 +804,7 @@ class SpectroscopyWindow(QWidget):
 
     def on_connection_type_value_change(self, value):
         self.settings.setValue(SETTINGS_CONNECTION_TYPE, value)
+        LaserbloodMetadataPopup.set_FPGA_firmware(self)
 
     def on_quantize_phasors_changed(self, value):
         frequency_mhz = self.get_frequency_mhz()
@@ -923,7 +924,6 @@ class SpectroscopyWindow(QWidget):
             self.channel_checkboxes[i].setEnabled(enabled)
 
     def on_channel_selected(self, checked: bool, channel: int):
-
         self.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(self.plots_to_show))
         if checked:
             if channel not in self.selected_channels:
@@ -943,6 +943,7 @@ class SpectroscopyWindow(QWidget):
         self.clear_plots()
         self.generate_plots()
         self.calc_exported_file_size()
+        LaserbloodMetadataPopup.set_FPGA_firmware(self)
 
     def on_sync_selected(self, sync: str):
         if self.selected_sync == sync and sync == "sync_in":
@@ -950,6 +951,7 @@ class SpectroscopyWindow(QWidget):
             return
         self.selected_sync = sync
         self.settings.setValue(SETTINGS_SYNC, sync)
+        LaserbloodMetadataPopup.set_FPGA_firmware(self)
 
     def start_sync_in_dialog(self):
         dialog = SyncInDialog()
@@ -1346,6 +1348,31 @@ class SpectroscopyWindow(QWidget):
         else:
             frequency_mhz = int(self.selected_sync.split("_")[-1])
         return frequency_mhz
+    
+    def get_firmware_selected(self, frequency_mhz):
+        connection_type = self.control_inputs["channel_type"].currentText()
+        if str(connection_type) == "USB":
+            connection_type = "USB"
+        else:
+            connection_type = "SMA"
+        firmware_selected = flim_labs.get_spectroscopy_firmware(
+            sync="in" if self.selected_sync == "sync_in" else "out",
+            frequency_mhz=frequency_mhz,
+            channel=connection_type.lower(),
+            channels=self.selected_channels,
+            sync_connection="sma",
+        )
+        return firmware_selected, connection_type
+    
+    def get_acquisition_time(self):
+        return  (
+            None
+            if self.get_free_running_state()
+            else int(
+                self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)
+            )
+        )
+        
 
     def begin_spectroscopy_experiment(self):
         bin_width_micros = int(
@@ -1399,32 +1426,15 @@ class SpectroscopyWindow(QWidget):
         self.clear_plots()
         self.cached_decay_values.clear()
         self.generate_plots(frequency_mhz)
-        acquisition_time_millis = (
-            None
-            if self.get_free_running_state()
-            else int(
-                self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)
-            )
-            * 1000
-        )
-        connection_type = self.control_inputs["channel_type"].currentText()
-        if str(connection_type) == "USB":
-            connection_type = "USB"
-        else:
-            connection_type = "SMA"
-        firmware_selected = flim_labs.get_spectroscopy_firmware(
-            sync="in" if self.selected_sync == "sync_in" else "out",
-            frequency_mhz=frequency_mhz,
-            channel=connection_type.lower(),
-            channels=self.selected_channels,
-            sync_connection="sma",
-        )
+        acquisition_time = self.get_acquisition_time()
+        acquisition_time_millis = f"{acquisition_time * 1000} ms" if acquisition_time is not None else "Free running"
+        firmware_selected, connection_type = self.get_firmware_selected(frequency_mhz)
         self.harmonic_selector_value = self.control_inputs[SETTINGS_HARMONIC].value()
         print(f"Firmware selected: {firmware_selected}")
         print(f"Connection type: {connection_type}")
         print(f"Frequency: {frequency_mhz} Mhz")
         print(f"Selected channels: {self.selected_channels}")
-        print(f"Acquisition time: {acquisition_time_millis} ms")
+        print(f"Acquisition time: {acquisition_time_millis}")
         print(f"Bin width: {bin_width_micros} µs")
         print(f"Free running: {self.get_free_running_state()}")
         print(f"Tau: {self.settings.value(SETTINGS_TAU_NS, '0')} ns")
@@ -1526,7 +1536,7 @@ class SpectroscopyWindow(QWidget):
                 bin_width_micros=bin_width_micros,
                 frequency_mhz=frequency_mhz,
                 firmware_file=firmware_selected,
-                acquisition_time_millis=acquisition_time_millis,
+                acquisition_time_millis=acquisition_time * 1000 if acquisition_time else None,
                 tau_ns=tau_ns,
                 reference_file=reference_file,
                 harmonics=int(self.harmonic_selector_value),

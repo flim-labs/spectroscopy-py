@@ -1,6 +1,23 @@
 spectroscopy_file_path = '<SPECTROSCOPY-FILE-PATH>'
 phasors_file_path = '<PHASORS-FILE-PATH>'
+laserblood_metadata_file_path = '<LASERBLOOD-METADATA-FILE-PATH>'
 fprintf('Using data file: %s\n', phasors_file_path);
+
+
+% READ LASERBLOOD EXPERIMENT METADATA
+laserblood_metadata_str = fileread(laserblood_metadata_file_path);
+laserblood_data = jsondecode(laserblood_metadata_str);
+laserblood_fields = fieldnames(laserblood_data);
+for i = 1:numel(laserblood_fields)
+    key = laserblood_fields{i};
+    value = laserblood_data.(key);
+    if isnumeric(value)
+        value = num2str(value);
+    elseif islogical(value)
+        value = mat2str(value);
+    end
+    fprintf('%s: %s\n', key, value);
+end
 
 % READ SPECTROSCOPY DATA
 spectroscopy_fid = fopen(spectroscopy_file_path, 'rb');
@@ -62,15 +79,6 @@ end
 phasors_json_length = fread(phasors_fid, 1, 'uint32');
 phasors_metadata_json = fread(phasors_fid, phasors_json_length, 'char');
 phasors_metadata = jsondecode(char(phasors_metadata_json'));
-fprintf('Enabled channels: %s\n', sprintf('Channel %d, ', phasors_metadata.channels + 1));
-fprintf('Bin width: %dus\n', phasors_metadata.bin_width_micros);
-fprintf('Acquisition time: %.2fs\n', phasors_metadata.acquisition_time_millis / 1000);
-fprintf('Laser period: %dns\n', phasors_metadata.laser_period_ns);
-if isfield(phasors_metadata, 'tau_ns') && ~isempty(phasors_metadata.tau_ns)
-    fprintf('Tau: %dns\n', phasors_metadata.tau_ns);
-end
-disp(['Harmonics: ' num2str(phasors_metadata.harmonics)]);
-
 phasors_data = struct();
 try
     while true

@@ -4,6 +4,7 @@ from datetime import datetime
 import shutil
 from PyQt6.QtWidgets import QFileDialog
 from laserblood_settings import LASER_TYPES
+from settings import DEFAULT_BIN_WIDTH, SETTINGS_BIN_WIDTH, SETTINGS_TAU_NS
 
 
 
@@ -88,9 +89,19 @@ def save_laserblood_metadata_json(filename, dest_path, window):
     custom_fields_settings = window.laserblood_new_added_inputs
     filter_wavelength_input = next((input for input in window.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
     parsed_filter_type = f"{filter_type} {filter_wavelength_input["VALUE"]}" if filter_type in ["LP", "SP"] else f"{filter_wavelength_input["VALUE"]}"
+    frequency_mhz = window.get_frequency_mhz()
+    firmware_selected, connection_type = window.get_firmware_selected(frequency_mhz)
     parsed_data = {
         "Laser type": laser_type,
-        "Filter type": parsed_filter_type,
+        "Emission filter type": parsed_filter_type,
+        "Firmware selected": firmware_selected,
+        "Connection type": connection_type,
+        "Frequency (Mhz)": f"{frequency_mhz}",
+        "Enabled channels": [ch + 1 for ch in window.selected_channels],
+        "Acquisition time (s)": round((window.cps_counts[window.selected_channels[0]]["last_time_ns"])/1_000_000_000, 2),
+        "Bin width (µs)":  int( window.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)),
+        "Tau (ns)": window.settings.value(SETTINGS_TAU_NS, '0'),
+        "Harmonics": window.harmonic_selector_value
     }
     def map_values(data):
         new_data = data.copy()
@@ -98,7 +109,10 @@ def save_laserblood_metadata_json(filename, dest_path, window):
         if isinstance(new_data['VALUE'], float) and new_data['VALUE'].is_integer():
             parsed_data[label] = int(new_data['VALUE'])
         else:
-            parsed_data[label] = new_data['VALUE']
+            if(new_data["INPUT_TYPE"] == "select"):
+                parsed_data[label] = new_data["OPTIONS"][new_data["VALUE"]]
+            else:    
+                parsed_data[label] = new_data['VALUE']
     for data in metadata_settings:
         map_values(data)
     for data in custom_fields_settings:
@@ -107,6 +121,7 @@ def save_laserblood_metadata_json(filename, dest_path, window):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     new_filename = f"{filename}_{laser_key}_{filter_key}_{timestamp}.laserblood_metadata.json"
     file_path = os.path.join(dest_path, new_filename)
+    window.exported_data_file_paths["laserblood_metadata"] = file_path
     try:
         with open(file_path, 'w') as json_file:
             json.dump(parsed_data, json_file, indent=4)

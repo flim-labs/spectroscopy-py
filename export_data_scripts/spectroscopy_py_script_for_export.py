@@ -1,47 +1,34 @@
 import os
+import json
 import struct
 import matplotlib.pyplot as plt
 import numpy as np
-file_path = "<FILE-PATH>"
 
-with open(file_path, 'rb') as f:
+spectroscopy_file_path = "<FILE-PATH>"
+laserblood_metadata_file_path = "<LASERBLOOD-METADATA-FILE-PATH>"
+
+
+# Read laserblood experiment metadata
+with open(laserblood_metadata_file_path, 'r', encoding='utf-8') as file:
+    print("\n") 
+    data = json.load(file)  
+    for key, value in data.items():
+        print(f"{key}: {value}")
+    print("\n")    
+        
+
+with open(spectroscopy_file_path, 'rb') as f:
     # first 4 bytes must be SP01
     # 'SP01' is an identifier for spectroscopy bin files
     if f.read(4) != b"SP01":
         print("Invalid data file")
         exit(0)
 
-    # read metadata from file
+    # read bin metadata from file
     (json_length,) = struct.unpack("I", f.read(4))
     null = None
     metadata = eval(f.read(json_length).decode("utf-8"))
-
-    # ENABLED CHANNELS
-    if "channels" in metadata and metadata["channels"] is not None:
-        print(
-            "Enabled channels: "
-            + (
-                ", ".join(
-                    ["Channel " + str(ch + 1) for ch in metadata["channels"]]
-                )
-            )
-        )   
-    # BIN WIDTH (us)    
-    if "bin_width_micros" in metadata and metadata["bin_width_micros"] is not None:
-        print("Bin width: " + str(metadata["bin_width_micros"]) + "us")    
-    # ACQUISITION TIME (duration of the acquisition)
-    if "acquisition_time_millis" in metadata and metadata["acquisition_time_millis"] is not None:
-        print("Acquisition time: " + str(metadata["acquisition_time_millis"] / 1000) + "s")
-    # LASER PERIOD (ns)
-    if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None:
-        laser_period_ns = metadata["laser_period_ns"]
-        print("Laser period: " + str(laser_period_ns) + "ns") 
-    else:
-        print("Laser period not found in metadata.")
-        exit(0)
-    # TAU (ns)
-    if "tau_ns" in metadata and metadata["tau_ns"] is not None:
-        print("Tau: " + str(metadata["tau_ns"]) + "ns")   
+    laser_period_ns = metadata["laser_period_ns"]
         
     channel_curves = [[] for _ in range(len(metadata["channels"]))]
     times = []

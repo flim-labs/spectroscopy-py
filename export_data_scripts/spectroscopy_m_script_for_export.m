@@ -1,6 +1,23 @@
-file_path = '<FILE-PATH>';
-% Open the file            
-fid = fopen(file_path, 'rb');
+spectroscopy_file_path = "<FILE-PATH>";
+laserblood_metadata_file_path = "<LASERBLOOD-METADATA-FILE-PATH>"
+
+% READ LASERBLOOD EXPERIMENT METADATA
+laserblood_metadata_str = fileread(laserblood_metadata_file_path);
+laserblood_data = jsondecode(laserblood_metadata_str);
+laserblood_fields = fieldnames(laserblood_data);
+for i = 1:numel(laserblood_fields)
+    key = laserblood_fields{i};
+    value = laserblood_data.(key);
+    if isnumeric(value)
+        value = num2str(value);
+    elseif islogical(value)
+        value = mat2str(value);
+    end
+    fprintf('%s: %s\n', key, value);
+end
+
+% Open spectroscopy bin file            
+fid = fopen(spectroscopy_file_path, 'rb');
 if fid == -1
     error('Could not open file');
 end
@@ -13,31 +30,12 @@ if ~isequal(char(sp01'), 'SP01')
     return;
 end
 
-% Read metadata
+% Read bin metadata
 json_length = fread(fid, 1, 'uint32');
 metadata_json = fread(fid, json_length, 'char');
 metadata = jsondecode(char(metadata_json'));
-
-% Print metadata information
-if isfield(metadata, 'channels') && ~isempty(metadata.channels)
-    enabled_channels = sprintf('Channel %d, ', metadata.channels + 1);
-    fprintf('Enabled channels: %s\n', enabled_channels(1:end-2));
-end
-if isfield(metadata, 'bin_width_micros') && ~isempty(metadata.bin_width_micros)
-    fprintf('Bin width: %dus\n', metadata.bin_width_micros);
-end
-if isfield(metadata, 'acquisition_time_millis') && ~isempty(metadata.acquisition_time_millis)
-    fprintf('Acquisition time: %.2fs\n', metadata.acquisition_time_millis / 1000);
-end
-if isfield(metadata, 'laser_period_ns') && ~isempty(metadata.laser_period_ns)
-    laser_period_ns = metadata.laser_period_ns;
-    fprintf('Laser period: %dns\n', laser_period_ns);
-else
-    error('Laser period not found in metadata.');
-end
-if isfield(metadata, 'tau_ns') && ~isempty(metadata.tau_ns)
-    fprintf('Tau: %dns\n', metadata.tau_ns);
-end
+enabled_channels = sprintf('Channel %d, ', metadata.channels + 1);
+laser_period_ns = metadata.laser_period_ns;
 
 num_channels = length(metadata.channels);
 channel_curves = cell(1, num_channels);
@@ -46,7 +44,7 @@ for i = 1:num_channels
 end
 times = [];
 
-% Read data
+% Read bin data
 while ~feof(fid)
     time_data = fread(fid, 1, 'double');
     if isempty(time_data)
