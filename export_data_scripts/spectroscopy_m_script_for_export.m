@@ -42,6 +42,7 @@ metadata_json = fread(fid, json_length, 'char');
 metadata = jsondecode(char(metadata_json'));
 enabled_channels = sprintf('Channel %d, ', metadata.channels + 1);
 laser_period_ns = metadata.laser_period_ns;
+fprintf('Laser period: %dns\n', laser_period_ns);
 
 num_channels = length(metadata.channels);
 channel_curves = cell(1, num_channels);

@@ -1885,6 +1885,7 @@ class SpectroscopyWindow(QWidget):
             self.harmonic_selector_shown = True
         if is_export_data_active:
             QTimer.singleShot(500, self.save_bin_files)
+        LaserbloodMetadataPopup.set_FPGA_firmware(self)    
         LaserbloodMetadataPopup.set_average_CPS(self.displayed_cps, self)    
 
     def save_bin_files(self):

@@ -251,6 +251,7 @@ class LaserbloodMetadataPopup(QWidget):
             widget = self.dispatch_create_input(new_input, new_added=True)
             self.new_added_inputs_grid.addWidget(widget, row, col)
             
+            
     def add_new_input_to_settings(self):
         is_numeric_input = self.new_input_type == "number"
         new_input = {
@@ -592,7 +593,6 @@ class LaserbloodMetadataPopup(QWidget):
         self.app.settings.setValue(NEW_ADDED_LASERBLOOD_INPUTS_KEY, json.dumps(self.app.laserblood_new_added_inputs)) 
         self.app.clear_layout_tree(self.new_added_inputs_grid)   
         self.init_new_input_added_layout()    
-
     
     @staticmethod
     def laserblood_metadata_valid(app):

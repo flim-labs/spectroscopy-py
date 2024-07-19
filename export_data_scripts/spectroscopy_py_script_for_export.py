@@ -29,6 +29,8 @@ with open(spectroscopy_file_path, 'rb') as f:
     null = None
     metadata = eval(f.read(json_length).decode("utf-8"))
     laser_period_ns = metadata["laser_period_ns"]
+    if laser_period_ns is not None:
+        print("Laser period: " + str(laser_period_ns) + "ns")
         
     channel_curves = [[] for _ in range(len(metadata["channels"]))]
     times = []

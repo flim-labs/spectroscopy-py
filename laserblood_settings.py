@@ -460,6 +460,19 @@ EMISSION_FILTER = {
     "REMOVABLE": False,
     "REQUIRED": True,
 }
+SPA_DETECTOR_TYPE = {
+    "LABEL": "SPAD Detector Type",
+    "UNIT": None,
+    "VALUE": 0,
+    "OPTIONS": ["", "Blue", "Red"],
+    "INPUT_TYPE": "select",
+    "MIN": None,
+    "MAX": None,
+    "POSITION": (7, 0, 1, 1),
+    "ENABLED": True,
+    "REMOVABLE": False,
+    "REQUIRED": True,
+}
 
 NOTES = {
     "LABEL": "Notes",
@@ -469,7 +482,7 @@ NOTES = {
     "OPTIONS": [],
     "MIN": None,
     "MAX": None,
-    "POSITION": (7, 0, 1, 4),
+    "POSITION": (8, 0, 1, 4),
     "ENABLED": True,
     "REMOVABLE": False,
     "REQUIRED": False,
@@ -505,6 +518,7 @@ LASERBLOOD_METADATA = [
     FPGA_FIRMWARE_TYPE,
     LASER_CENTRAL_WAVE_LENGTH,
     EMISSION_FILTER,
+    SPA_DETECTOR_TYPE,
     NOTES,
 ]
 
