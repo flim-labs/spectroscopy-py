@@ -1,4 +1,4 @@
-from flim_labs import flim_labs
+import flim_labs
 
 VERSION = "1.3"
 API_VERSION = flim_labs.get_version()
