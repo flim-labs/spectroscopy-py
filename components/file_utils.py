@@ -104,7 +104,7 @@ class FileUtils:
         metadata_settings = app.laserblood_settings
         custom_fields_settings = app.laserblood_new_added_inputs
         filter_wavelength_input = next((input for input in app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
-        parsed_filter_type = f"{filter_type} {filter_wavelength_input["VALUE"]}" if filter_type in ["LP", "SP"] else f"{filter_wavelength_input["VALUE"]}"
+        parsed_filter_type = filter_type +  " " + filter_wavelength_input["VALUE"]  if filter_type in ["LP", "SP"] else filter_wavelength_input["VALUE"]
         frequency_mhz = app.get_frequency_mhz()
         firmware_selected, connection_type = app.get_firmware_selected(frequency_mhz)
         parsed_data = [

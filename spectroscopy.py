@@ -1066,7 +1066,6 @@ class SpectroscopyWindow(QWidget):
         buttons_layout.addWidget(sync_out_10_button)
         self.sync_buttons.append((sync_out_10_button, "sync_out_10"))
         for button, name in self.sync_buttons:
-
             def on_toggle(toggled_name):
                 for b, n in self.sync_buttons:
                     b.set_selected(n == toggled_name)
@@ -1491,7 +1490,7 @@ class SpectroscopyWindow(QWidget):
                     GUIStyles.set_msg_box_style(),
                 )
                 return     
-        if self.tab_selected != "tab_data":
+        if self.tab_selected == TAB_SPECTROSCOPY:
             open_config_plots_popup = len(self.selected_channels) > 4
             if open_config_plots_popup and not self.plots_to_show_already_appear:
                 popup = PlotsConfigPopup(self, start_acquisition=True)
@@ -1933,6 +1932,8 @@ class SpectroscopyWindow(QWidget):
             self.harmonic_selector_shown = True
         if is_export_data_active:
             QTimer.singleShot(500, self.save_bin_files)
+        if self.tab_selected == TAB_FITTING:       
+            self.fit_button_show()    
         LaserbloodMetadataPopup.set_FPGA_firmware(self)    
         LaserbloodMetadataPopup.set_average_CPS(self.displayed_cps, self)    
 

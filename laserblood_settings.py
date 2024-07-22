@@ -430,7 +430,7 @@ FPGA_FIRMWARE_TYPE = {
     "MIN": None,
     "MAX": None,
     "POSITION": (6, 1, 1, 1),
-    "ENABLED": False,
+    "ENABLED": True,
     "REMOVABLE": False,
     "REQUIRED": True,
 }

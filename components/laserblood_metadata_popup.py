@@ -194,8 +194,9 @@ class LaserbloodMetadataPopup(QWidget):
 
         
     def on_filter_no_bandpass_value_change(self, value):
-        filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)     
-        self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(f"{value} nm")  
+        filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None) 
+        text = value + " nm"    
+        self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(text)  
                   
         
     def on_laser_selected(self, laser):
@@ -363,22 +364,23 @@ class LaserbloodMetadataPopup(QWidget):
         return h_box
 
     def dispatch_create_input(self, input, new_added):
-        input_type = input["INPUT_TYPE"] 
-        match input_type:
-            case "int":
-                widget_container = self.create_int_input(input, new_added_inp=new_added)
-            case "float":
-                widget_container = self.create_float_input(input, new_added_inp=new_added)
-            case "text":
-                widget_container = self.create_text_input(input, new_added_inp=new_added)
-            case "select":
-                widget_container = self.create_select_input(input, new_added_inp=new_added)
-            case "boolean":
-                widget_container = self.create_switch_input(input, new_added_inp=new_added)
-            case "textarea":
-                widget_container = self.create_textarea_input(input, new_added_inp=new_added)  
-        return widget_container 
-    
+        input_type = input["INPUT_TYPE"]
+        if input_type == "int":
+            widget_container = self.create_int_input(input, new_added_inp=new_added)
+        elif input_type == "float":
+            widget_container = self.create_float_input(input, new_added_inp=new_added)
+        elif input_type == "text":
+            widget_container = self.create_text_input(input, new_added_inp=new_added)
+        elif input_type == "select":
+            widget_container = self.create_select_input(input, new_added_inp=new_added)
+        elif input_type == "boolean":
+            widget_container = self.create_switch_input(input, new_added_inp=new_added)
+        elif input_type == "textarea":
+            widget_container = self.create_textarea_input(input, new_added_inp=new_added)
+        else:
+            raise ValueError(f"Unknown input type: {input_type}")
+        return widget_container
+
 
     def init_inputs_grid(self):
         inputs = self.app.laserblood_settings 
@@ -390,8 +392,9 @@ class LaserbloodMetadataPopup(QWidget):
         row = QHBoxLayout()
         row.setContentsMargins(0,10,0, 10)        
         position = input["POSITION"]
+        label = input["LABEL"] + ":" if not input["UNIT"] else input["LABEL"] + " (" + input["UNIT"] + "):"
         _, inp = InputNumberControl.setup(
-            label = f"{input["LABEL"]}:" if not input["UNIT"] else f"{input["LABEL"]} ({input["UNIT"]}):",
+            label = label,
             min = input["MIN"],
             max = input["MAX"],
             value = input["VALUE"],
@@ -413,8 +416,9 @@ class LaserbloodMetadataPopup(QWidget):
         row = QHBoxLayout()
         row.setContentsMargins(0,10,0, 10)         
         position = input["POSITION"]
+        label = input["LABEL"] + ":" if not input["UNIT"] else input["LABEL"] + " (" + input["UNIT"] + "):"
         _, inp = InputFloatControl.setup(
-            label = f"{input["LABEL"]}:" if not input["UNIT"] else f"{input["LABEL"]} ({input["UNIT"]}):",
+            label = label,
             min = input["MIN"],
             max = input["MAX"],
             value = input["VALUE"],
@@ -438,8 +442,9 @@ class LaserbloodMetadataPopup(QWidget):
         row.setContentsMargins(0, 10, 0, 10)
         control = QVBoxLayout()
         position = input["POSITION"]
+        label = input['LABEL'] + ":"
         label, inp = InputTextControl.setup(
-            label=f"{input['LABEL']}:",
+            label=label,
             text=input['VALUE'],
             placeholder="",
             event_callback=lambda text, inp=input, new_input=new_added_inp: self.on_input_text_change(text, inp, new_input),
@@ -471,7 +476,8 @@ class LaserbloodMetadataPopup(QWidget):
         position = input["POSITION"]
         widget_container = QWidget()
         v_box = QVBoxLayout()
-        label = QLabel(f"{input["LABEL"]}:")
+        label = input["LABEL"] + ":"
+        label = QLabel(label)
         inp = SwitchControl(
             active_color=PALETTE_BLUE_1, width=100, height=30, checked=input["VALUE"]
         )
@@ -490,8 +496,9 @@ class LaserbloodMetadataPopup(QWidget):
         control = QVBoxLayout() 
         control.setContentsMargins(0, 10, 12, 10)    
         position = input["POSITION"]
+        label = input["LABEL"] + ":"
         label, self.textarea = InputTextareaControl.setup(
-            label = f"{input["LABEL"]}:",
+            label = label,
             text = input["VALUE"] if input["VALUE"] is not None else "",
             placeholder="",
             event_callback=self.create_textarea_event_callback(input, new_added_inp),
@@ -513,8 +520,9 @@ class LaserbloodMetadataPopup(QWidget):
         h_box = QHBoxLayout()
         h_box.setContentsMargins(0,10,0, 10)      
         position = input["POSITION"]
+        label = input['LABEL'] + ":"
         control, inp, _, container = SelectControl.setup(
-            label=f"{input['LABEL']}:",
+            label=label,
             options=input["OPTIONS"],
             selectedValue=input["VALUE"],
             container=h_box,
