@@ -7,6 +7,10 @@ from laserblood_settings import LASER_TYPES
 from settings import DEFAULT_BIN_WIDTH, SETTINGS_BIN_WIDTH, SETTINGS_TAU_NS
 
 
+current_path = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_path))
+
+
 class FileUtils: 
     @staticmethod
     def directory_selector(window):
