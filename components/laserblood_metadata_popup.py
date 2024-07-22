@@ -18,7 +18,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QIcon
 from components.fancy_checkbox import FancyButton
-from components.file_utils import save_laserblood_metadata_json
 from components.input_number_control import InputFloatControl, InputNumberControl
 from components.input_text_control import InputTextControl, InputTextareaControl
 from components.layout_utilities import draw_layout_separator

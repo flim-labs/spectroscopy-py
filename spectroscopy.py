@@ -10,11 +10,8 @@ import numpy as np
 from components.box_message import BoxMessage
 from components.buttons import CollapseButton, DownloadButton
 from components.export_data_settings import ExportDataSettingsPopup
-from components.file_utils import (
-    save_laserblood_metadata_json,
-    save_phasor_files,
-    save_spectroscopy_file,
-)
+
+from components.file_utils import FileUtils
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
 from components.layout_utilities import draw_layout_separator
 from components.lin_log_control import SpectroscopyLinLogControl
@@ -41,7 +38,6 @@ from components.box_message import BoxMessage
 from components.buttons import CollapseButton, DownloadButton
 from components.export_data_settings import ExportDataSettingsPopup
 from components.fancy_checkbox import FancyButton
-from components.file_utils import save_phasor_files, save_spectroscopy_file
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
@@ -1946,19 +1942,19 @@ class SpectroscopyWindow(QWidget):
         LaserbloodMetadataPopup.set_average_CPS(self.displayed_cps, self)    
 
     def save_bin_files(self):
-        save_laserblood_metadata_json(
+        FileUtils.save_laserblood_metadata_json(
             self.exported_data_settings["laserblood_metadata_filename"],
             self.exported_data_settings["folder"],
             self,
         )
         if self.tab_selected == "tab_spectroscopy":
-            save_spectroscopy_file(
+            FileUtils.save_spectroscopy_file(
                 self.exported_data_settings["spectroscopy_filename"],
                 self.exported_data_settings["folder"],
                 self,
             )
         if self.tab_selected == TAB_PHASORS:
-            save_phasor_files(
+            FileUtils.save_phasor_files(
                 self.exported_data_settings["spectroscopy_phasors_ref_filename"],
                 self.exported_data_settings["phasors_filename"],
                 self.exported_data_settings["folder"],
