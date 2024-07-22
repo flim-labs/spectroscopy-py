@@ -1,4 +1,4 @@
-VERSION = "1.2"
+VERSION = "1.3"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
 TOP_BAR_HEIGHT = 250
@@ -30,6 +30,14 @@ DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
 SETTINGS_WRITE_DATA = "write_data"
 DEFAULT_WRITE_DATA = True
 SETTINGS_TIME_SHIFTS = "time_shift"
+
+FIT_BTN = "fit_button"
+FIT_BTN_PLACEHOLDER = "fit_button_placeholder"
+TAB_FITTING = "tab_deconv"
+
+TAB_PHASORS = "tab_data"
+TAB_SPECTROSCOPY = "tab_spectroscopy"
+
 DEFAULT_TIME_SHIFTS = "{}"
 CURSOR_TEXT = "⨁"
 
