@@ -378,7 +378,7 @@ AVERAGE_CPS = {
     "MIN": 0,
     "MAX": 10000000,
     "POSITION": (5, 1, 1, 1),
-    "ENABLED": True,
+    "ENABLED": False,
     "REMOVABLE": False,
     "REQUIRED": True,
 }
@@ -430,7 +430,7 @@ FPGA_FIRMWARE_TYPE = {
     "MIN": None,
     "MAX": None,
     "POSITION": (6, 1, 1, 1),
-    "ENABLED": True,
+    "ENABLED": False,
     "REMOVABLE": False,
     "REQUIRED": True,
 }
@@ -443,7 +443,7 @@ LASER_CENTRAL_WAVE_LENGTH = {
     "MIN": None,
     "MAX": None,
     "POSITION": (6, 2, 1, 1),
-    "ENABLED": True,
+    "ENABLED": False,
     "REMOVABLE": False,
     "REQUIRED": True,
 }
@@ -456,7 +456,7 @@ EMISSION_FILTER = {
     "MIN": None,
     "MAX": None,
     "POSITION": (6, 3, 1, 1),
-    "ENABLED": True,
+    "ENABLED": False,
     "REMOVABLE": False,
     "REQUIRED": True,
 }
