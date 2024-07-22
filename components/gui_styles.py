@@ -219,7 +219,7 @@ class GUIStyles:
                 font-family: "Montserrat";
                 font-size: 14px;
                 padding: 8px;
-                min-width: 100px;
+                min-width: 60px;
                 border: 1px solid {border_color};
                 border-radius: 5px;
                 background-color: transparent;
@@ -238,7 +238,7 @@ class GUIStyles:
                 font-family: "Montserrat";
                 font-size: 14px;
                 padding: 8px;
-                min-width: 100px;
+                min-width: 60px;
                 border: 1px solid {border_color};
                 border-radius: 5px;
                 background-color: transparent;

@@ -590,9 +590,7 @@ class SpectroscopyWindow(QWidget):
         )
         self.control_inputs["save"] = save_button
         controls_row.addWidget(save_button)
-
-        self.control_inputs["save"] = save_button
-        controls_row.addWidget(save_button)
+    
         export_button = QPushButton("EXPORT")
         export_button.setFlat(True)
         export_button.setSizePolicy(
