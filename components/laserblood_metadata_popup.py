@@ -29,6 +29,7 @@ from components.switch_control import SwitchControl
 from laserblood_settings import FILTERS_TYPES, FILTERS_TYPES_NO_BANDPASS, LASER_TYPES, LASERBLOOD_METADATA_POPUP, METADATA_LASERBLOOD_KEY, NEW_ADDED_LASERBLOOD_INPUTS_KEY, SETTINGS_FILTER_TYPE, SETTINGS_LASER_TYPE
 from settings import *
 
+
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
 

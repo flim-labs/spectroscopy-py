@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QIcon
-from components.file_utils import directory_selector
 from components.input_text_control import InputTextControl
 from components.logo_utilities import TitlebarIcon
 from components.resource_path import resource_path
@@ -22,6 +21,8 @@ from settings import *
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
+
+from components.file_utils import FileUtils
 
 
 class ExportDataSettingsPopup(QWidget):
@@ -149,7 +150,7 @@ class ExportDataSettingsPopup(QWidget):
         self.start_btn.setEnabled(ExportDataSettingsPopup.exported_data_settings_valid(self.app))    
             
     def on_folder_button_clicked(self):
-        folder_path = directory_selector(self)
+        folder_path = FileUtils.directory_selector(self)
         if folder_path:
             self.inputs["folder_inp"].setText(folder_path)
             self.on_input_change(folder_path, "folder")
