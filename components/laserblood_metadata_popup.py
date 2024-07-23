@@ -424,9 +424,7 @@ class LaserbloodMetadataPopup(QWidget):
         inp.setEnabled(input["ENABLED"])
         self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
         self.app.laserblood_widgets[input["LABEL"]] = inp
-        widget_container.setLayout(row)
-        if not new_added_inp:
-            widget_container.setFixedWidth(236)        
+        widget_container.setLayout(row)      
         if not new_added_inp:            
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3],)
             self.inputs_grid.setColumnStretch(position[1], input["STRETCH"])
@@ -450,9 +448,7 @@ class LaserbloodMetadataPopup(QWidget):
         inp.setEnabled(input["ENABLED"])
         self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
         self.app.laserblood_widgets[input["LABEL"]] = inp         
-        widget_container.setLayout(row)   
-        if not new_added_inp:
-            widget_container.setFixedWidth(236)         
+        widget_container.setLayout(row)          
         if not new_added_inp:         
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3],)
             self.inputs_grid.setColumnStretch(position[1], input["STRETCH"])
@@ -488,7 +484,7 @@ class LaserbloodMetadataPopup(QWidget):
         row.addLayout(control)
         widget_container.setLayout(row)
         if not new_added_inp:
-            widget_container.setFixedWidth(220)
+            widget_container.setFixedWidth(234)
         if not new_added_inp:
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3])
             self.inputs_grid.setColumnStretch(position[1], input["STRETCH"])
@@ -557,9 +553,7 @@ class LaserbloodMetadataPopup(QWidget):
         widget_container.setLayout(container)
         inp.setEnabled(input["ENABLED"])
         self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"])
-        self.app.laserblood_widgets[input["LABEL"]] = inp  
-        if not new_added_inp:
-            widget_container.setFixedWidth(236)              
+        self.app.laserblood_widgets[input["LABEL"]] = inp       
         if not new_added_inp:           
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3]) 
         return widget_container              
