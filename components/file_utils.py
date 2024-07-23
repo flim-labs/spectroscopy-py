@@ -47,6 +47,7 @@ class FileUtils:
         laser_key, filter_key = FileUtils.get_laser_info_slug(window, filter_wavelength_input)    
         _, file_extension = os.path.splitext(source_file)
         base_name = os.path.basename(source_file).replace(file_extension, "")
+        base_name = base_name.replace("spectroscopy-phasors", "phasors")
         dest_file_name = f"{new_filename}_{laser_key}_{filter_key}_{base_name}{file_extension}"
         return dest_file_name
 
