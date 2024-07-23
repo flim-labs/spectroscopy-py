@@ -96,16 +96,8 @@ class ExportDataSettingsPopup(QWidget):
              text= self.app.exported_data_settings["spectroscopy_filename"],
             event_callback=partial(self.on_input_change, inp_type="spectroscopy_filename"),
         )
-        spectro_phasors_ref_inp = InputTextControl.setup(
-            label="SPECTROSCOPY-PHASORS REF NAME:",
-            placeholder="",
-             text= self.app.exported_data_settings["spectroscopy_phasors_ref_filename"],
-            event_callback=partial(self.on_input_change, inp_type="spectroscopy_phasors_ref_filename"),
-        )
      
         form_layout.addRow(*spectroscopy_inp)
-        form_layout.addRow(*spectro_phasors_ref_inp)
-
         
         self.setLayout(main_layout)
         self.app.widgets[EXPORT_DATA_SETTINGS_POPUP] = self
@@ -113,7 +105,6 @@ class ExportDataSettingsPopup(QWidget):
         self.inputs = {
             "folder_inp": folder_inp[1],
             "spectroscopy_inp": spectroscopy_inp[1],
-            "spectro_phasors_ref_inp": spectro_phasors_ref_inp[1],
         }
 
         for input_widget in self.inputs.values():
@@ -134,6 +125,7 @@ class ExportDataSettingsPopup(QWidget):
         if inp_type == "spectroscopy_filename":
             self.app.exported_data_settings["phasors_filename"] = text_trimmed
             self.app.exported_data_settings["laserblood_metadata_filename"] = text_trimmed
+            self.app.exported_data_settings["spectroscopy_phasors_ref_filename"] = text_trimmed
         self.app.settings.setValue(SETTINGS_EXPORTED_DATA_PATHS, json.dumps(self.app.exported_data_settings))
         self.start_btn.setEnabled(ExportDataSettingsPopup.exported_data_settings_valid(self.app))    
             

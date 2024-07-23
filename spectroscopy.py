@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import os
 import queue
@@ -844,12 +845,17 @@ class SpectroscopyWindow(QWidget):
             )
             if file_name:
                 if not file_name.endswith(".reference.json"):
-                    file_name += ".reference.json"
+                    uniform_name = self.exported_data_settings["spectroscopy_filename"]
+                    laser_key, filter_key = FileUtils.get_laser_and_filter_names_info(self) 
+                    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    directory_path = os.path.dirname(file_name)
+                    original_name =  os.path.basename(file_name)
+                    directory_path += f"/{uniform_name}_{original_name}_{laser_key}_{filter_key}_{timestamp}.reference.json"
                 try:
                     with open(reference_file, "r") as f:
-                        with open(file_name, "w") as f2:
+                        with open(directory_path, "w") as f2:
                             f2.write(f.read())
-                except:
+                except Exception as e:
                     BoxMessage.setup(
                         "Error",
                         "Error saving reference file",

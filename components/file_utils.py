@@ -43,13 +43,18 @@ class FileUtils:
 
     @staticmethod
     def rename_bin_file(source_file, new_filename, window):
-        filter_wavelength_input = next((input for input in window.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
-        laser_key, filter_key = FileUtils.get_laser_info_slug(window, filter_wavelength_input)    
+        laser_key, filter_key = FileUtils.get_laser_and_filter_names_info(window)    
         _, file_extension = os.path.splitext(source_file)
         base_name = os.path.basename(source_file).replace(file_extension, "")
         base_name = base_name.replace("spectroscopy-phasors", "phasors")
         dest_file_name = f"{new_filename}_{laser_key}_{filter_key}_{base_name}{file_extension}"
         return dest_file_name
+    
+    @staticmethod
+    def get_laser_and_filter_names_info(window):
+        filter_wavelength_input = next((input for input in window.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
+        laser_key, filter_key = FileUtils.get_laser_info_slug(window, filter_wavelength_input)  
+        return laser_key, filter_key
 
     @staticmethod
     def save_spectroscopy_file(new_filename, dest_path, window):
