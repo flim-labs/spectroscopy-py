@@ -880,6 +880,7 @@ class SpectroscopyWindow(QWidget):
 
     def on_quantize_phasors_changed(self, value):
         frequency_mhz = self.get_frequency_mhz()
+        harmonic_value = int(self.control_inputs[HARMONIC_SELECTOR].currentText())
         self.quantized_phasors = value
         self.settings.setValue(SETTINGS_QUANTIZE_PHASORS, value)
         (
@@ -891,7 +892,7 @@ class SpectroscopyWindow(QWidget):
         self.generate_plots(frequency_mhz)
         if value:
             self.quantize_phasors(
-                self.harmonic_selector_value,
+                harmonic_value,
                 bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution]),
             )
         else:
@@ -899,17 +900,18 @@ class SpectroscopyWindow(QWidget):
                 if len(self.plots_to_show) <= len(self.all_phasors_points):
                     self.draw_points_in_phasors(
                         channel_index,
-                        self.harmonic_selector_value,
+                        harmonic_value,
                         self.all_phasors_points[channel_index][
-                            self.harmonic_selector_value
+                            harmonic_value
                         ],
                     )
 
     def on_phasors_resolution_changed(self, value):
         self.phasors_resolution = int(value)
+        harmonic_value = int(self.control_inputs[HARMONIC_SELECTOR].currentText())
         self.settings.setValue(SETTINGS_PHASORS_RESOLUTION, value)
         self.quantize_phasors(
-            self.harmonic_selector_value,
+            harmonic_value,
             bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution]),
         )
 
@@ -1500,6 +1502,7 @@ class SpectroscopyWindow(QWidget):
         acquisition_time_millis = f"{acquisition_time * 1000} ms" if acquisition_time is not None else "Free running"
         firmware_selected, connection_type = self.get_firmware_selected(frequency_mhz)
         self.harmonic_selector_value = self.control_inputs[SETTINGS_HARMONIC].value()
+        self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
         print(f"Firmware selected: {firmware_selected}")
         print(f"Connection type: {connection_type}")
         print(f"Frequency: {frequency_mhz} Mhz")
