@@ -825,43 +825,35 @@ class SpectroscopyWindow(QWidget):
             if file_name:
                 self.reference_file = file_name
 
-    def on_save_reference(self):
+    def on_save_reference(self):   
         if self.tab_selected == TAB_SPECTROSCOPY:
             # read all lines from .pid file
             with open(".pid", "r") as f:
                 lines = f.readlines()
-                reference_file = lines[0].split("=")[1]
-            dialog = QFileDialog()
-            dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
-            # extension supported: .reference.json
-            dialog.setNameFilter("Reference files (*.reference.json)")
-            dialog.setDefaultSuffix("reference.json")
-            file_name, _ = dialog.getSaveFileName(
-                self,
-                "Save reference file",
-                "",
-                "Reference files (*.reference.json)",
-                options=QFileDialog.Option.DontUseNativeDialog,
-            )
-            if file_name:
-                if not file_name.endswith(".reference.json"):
-                    uniform_name = self.exported_data_settings["spectroscopy_filename"]
-                    laser_key, filter_key = FileUtils.get_laser_and_filter_names_info(self) 
-                    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                    directory_path = os.path.dirname(file_name)
-                    original_name =  os.path.basename(file_name)
-                    directory_path += f"/{uniform_name}_{original_name}_{laser_key}_{filter_key}_{timestamp}.reference.json"
-                try:
-                    with open(reference_file, "r") as f:
-                        with open(directory_path, "w") as f2:
-                            f2.write(f.read())
-                except Exception as e:
-                    BoxMessage.setup(
-                        "Error",
-                        "Error saving reference file",
-                        QMessageBox.Icon.Warning,
-                        GUIStyles.set_msg_box_style(),
-                    )
+                reference_file = lines[0].split("=")[1].strip()
+            path = self.exported_data_settings["folder"]
+            file_name = self.exported_data_settings["spectroscopy_filename"]
+            laser_key, filter_key = FileUtils.get_laser_and_filter_names_info(self) 
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            full_path = os.path.join(path, f"{file_name}_{laser_key}_{filter_key}_{timestamp}.reference.json")
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            try:
+                with open(reference_file, "r") as f:
+                    with open(full_path, "w") as f2:
+                        f2.write(f.read())
+                BoxMessage.setup(  
+                "Save reference",
+                "Reference file saved successfully!",
+                QMessageBox.Icon.Information,
+                GUIStyles.set_msg_box_style(),
+            )        
+            except Exception as e:
+                BoxMessage.setup(
+                    "Error",
+                    "Error saving reference file",
+                    QMessageBox.Icon.Warning,
+                    GUIStyles.set_msg_box_style(),
+                )
 
     def get_free_running_state(self):
         return self.control_inputs[SETTINGS_FREE_RUNNING].isChecked()
