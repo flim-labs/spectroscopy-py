@@ -1502,7 +1502,9 @@ class SpectroscopyWindow(QWidget):
         acquisition_time_millis = f"{acquisition_time * 1000} ms" if acquisition_time is not None else "Free running"
         firmware_selected, connection_type = self.get_firmware_selected(frequency_mhz)
         self.harmonic_selector_value = self.control_inputs[SETTINGS_HARMONIC].value()
+        self.control_inputs[HARMONIC_SELECTOR].blockSignals(True)
         self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
+        self.control_inputs[HARMONIC_SELECTOR].blockSignals(False)
         print(f"Firmware selected: {firmware_selected}")
         print(f"Connection type: {connection_type}")
         print(f"Frequency: {frequency_mhz} Mhz")
