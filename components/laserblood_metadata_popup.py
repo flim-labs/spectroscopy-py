@@ -58,10 +58,27 @@ class LaserbloodMetadataPopup(QWidget):
         self.q_v_box_inputs_container = QVBoxLayout()
         self.inputs_grid = QGridLayout()
         self.new_added_inputs_grid = QGridLayout()
+        
+        start_btn_row = QHBoxLayout()
+        start_btn_row.setContentsMargins(0,0,10,0)
+        start_btn_row.addStretch(1)
+        self.start_btn = QPushButton("SAVE")
+        self.start_btn.setFixedWidth(150)
+        self.start_btn.setFixedHeight(55)
+        self.start_btn.setObjectName("btn")
+        self.start_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        GUIStyles.set_start_btn_style(self.start_btn)
+        self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))
+        self.start_btn.clicked.connect(self.on_save_btn_click)
+        start_btn_row.addWidget(self.start_btn)
+        
         self.init_inputs_grid()
         self.init_new_input_added_layout()
         self.q_v_box_inputs_container.addLayout(self.inputs_grid)
         self.q_v_box_inputs_container.addLayout(self.new_added_inputs_grid)
+        self.q_v_box_inputs_container.addSpacing(20)
+        self.q_v_box_inputs_container.addLayout(start_btn_row)
+        
         self.init_laser_filter_settings_layout()
         self.no_bandpass_input = self.create_no_bandpass_filter_input()
         self.filters_no_bandpass_grid.addLayout(self.no_bandpass_input, 1, 3)
@@ -196,7 +213,8 @@ class LaserbloodMetadataPopup(QWidget):
     def on_filter_no_bandpass_value_change(self, value):
         filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None) 
         text = str(value) + " nm"    
-        self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(text)  
+        self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(text) 
+        self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app)) 
                   
         
     def on_laser_selected(self, laser):
@@ -218,6 +236,7 @@ class LaserbloodMetadataPopup(QWidget):
         self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NO BANDPASS)", bandpass=False, container=self.filters_no_bandpass_grid)
         self.no_bandpass_input = self.create_no_bandpass_filter_input()
         self.filters_no_bandpass_grid.addLayout(self.no_bandpass_input, 1, 3)
+        self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))
         
     def on_filter_selected(self, filter):
         self.selected_filter = filter
@@ -236,6 +255,7 @@ class LaserbloodMetadataPopup(QWidget):
             self.app.laserblood_filter_type = filter
             self.app.settings.setValue(SETTINGS_FILTER_TYPE, filter) 
             self.app.laserblood_widgets["Emission filter wavelength"].setText("")
+        self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))    
       
 
     def set_add_button_enabled(self):
@@ -409,6 +429,7 @@ class LaserbloodMetadataPopup(QWidget):
             widget_container.setFixedWidth(236)        
         if not new_added_inp:            
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3],)
+            self.inputs_grid.setColumnStretch(position[1], input["STRETCH"])
         return widget_container    
     
     def create_float_input(self, input, new_added_inp = False):
@@ -434,6 +455,7 @@ class LaserbloodMetadataPopup(QWidget):
             widget_container.setFixedWidth(236)         
         if not new_added_inp:         
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3],)
+            self.inputs_grid.setColumnStretch(position[1], input["STRETCH"])
         return widget_container    
 
     def create_text_input(self, input, new_added_inp=False):
@@ -469,6 +491,7 @@ class LaserbloodMetadataPopup(QWidget):
             widget_container.setFixedWidth(220)
         if not new_added_inp:
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3])
+            self.inputs_grid.setColumnStretch(position[1], input["STRETCH"])
         return widget_container
 
     
@@ -489,6 +512,7 @@ class LaserbloodMetadataPopup(QWidget):
         widget_container.setLayout(v_box)
         if not new_added_inp:
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3], )
+            self.inputs_grid.setColumnStretch(position[1], input["STRETCH"])
         return widget_container    
     
     def create_textarea_input(self, input, new_added_inp = False):
@@ -510,6 +534,7 @@ class LaserbloodMetadataPopup(QWidget):
         widget_container.setLayout(control) 
         if not new_added_inp:   
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3], )
+            self.inputs_grid.setColumnStretch(position[1], input["STRETCH"])
         return widget_container              
         
     def create_textarea_event_callback(self, input, new_input):       
@@ -546,12 +571,15 @@ class LaserbloodMetadataPopup(QWidget):
             self.update_new_added_inputs_settings(value, input)
         else:    
             self.update_settings(value, input)
+        self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))    
     
     def on_input_state_change(self, state, input, new_input):
         if new_input:
             self.update_new_added_inputs_settings(state, input)
         else:    
             self.update_settings(state, input)
+        self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))    
+            
     
     def on_input_text_change(self, text, input, new_input):
         self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], text)
@@ -559,7 +587,9 @@ class LaserbloodMetadataPopup(QWidget):
             self.update_new_added_inputs_settings(text, input)
         else:    
             self.update_settings(text, input)
+        self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))    
         
+    
     def on_input_textarea_change(self, input, textarea, new_input):
         text_content = textarea.toPlainText()
         if not new_input:
@@ -601,6 +631,10 @@ class LaserbloodMetadataPopup(QWidget):
         self.app.settings.setValue(NEW_ADDED_LASERBLOOD_INPUTS_KEY, json.dumps(self.app.laserblood_new_added_inputs)) 
         self.app.clear_layout_tree(self.new_added_inputs_grid)   
         self.init_new_input_added_layout()    
+    
+    
+    def on_save_btn_click(self):
+        self.close()
     
     @staticmethod
     def laserblood_metadata_valid(app):
