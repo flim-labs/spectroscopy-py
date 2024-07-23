@@ -195,7 +195,7 @@ class LaserbloodMetadataPopup(QWidget):
         
     def on_filter_no_bandpass_value_change(self, value):
         filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None) 
-        text = value + " nm"    
+        text = str(value) + " nm"    
         self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(text)  
                   
         
