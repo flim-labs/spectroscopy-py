@@ -642,6 +642,11 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(True)
         self.hide_harmonic_selector()
         self.fit_button_hide()
+        
+        self.control_inputs["save"].setHidden(True)       
+        self.clear_plots()
+        self.cached_decay_values.clear()
+        self.generate_plots()
 
         if tab_name == TAB_SPECTROSCOPY:
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
@@ -656,10 +661,7 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["calibration_label"].show()
             current_tau = self.settings.value(SETTINGS_TAU_NS, "0")
             self.control_inputs["tau"].setValue(float(current_tau))
-            current_harmonic = self.settings.value(SETTINGS_HARMONIC, "1")
-            self.control_inputs[SETTINGS_HARMONIC].setValue(int(current_harmonic))
             self.on_tau_change(float(current_tau))
-            self.on_harmonic_change(int(current_harmonic))
             current_calibration = self.settings.value(
                 SETTINGS_CALIBRATION_TYPE, DEFAULT_SETTINGS_CALIBRATION_TYPE
             )
@@ -707,15 +709,16 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["save"].setHidden(True)
             channels_grid = self.widgets[CHANNELS_GRID]
             if self.harmonic_selector_shown:
+                if self.quantized_phasors:
+                    self.quantize_phasors(
+                        1, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
+                    )
                 self.show_harmonic_selector(self.harmonic_selector_value)    
             plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(False)
 
-        self.control_inputs["save"].setHidden(True)
-        self.clear_plots()
-        self.cached_decay_values.clear()
-        self.generate_plots()
+ 
 
     def on_start_button_click(self):
         if self.mode == MODE_STOPPED:
