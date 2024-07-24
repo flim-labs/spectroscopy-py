@@ -707,10 +707,6 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["save"].setHidden(True)
             channels_grid = self.widgets[CHANNELS_GRID]
             if self.harmonic_selector_shown:
-                if self.quantized_phasors:
-                    self.quantize_phasors(
-                        1, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
-                    )
                 self.show_harmonic_selector(self.harmonic_selector_value)    
             plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
             if plot_config_btn is not None:
