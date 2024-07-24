@@ -1240,7 +1240,7 @@ class SpectroscopyWindow(QWidget):
         crosshair.setText(CURSOR_TEXT)
         text.setPos(mouse_point.x(), mouse_point.y())
         freq_mhz = self.get_current_frequency_mhz()
-        harmonic = self.harmonic_selector_value
+        harmonic = int(self.control_inputs[HARMONIC_SELECTOR].currentText())
         g = mouse_point.x()
         s = mouse_point.y()
         if freq_mhz == 0.0:
@@ -1817,6 +1817,8 @@ class SpectroscopyWindow(QWidget):
 
     def on_harmonic_selector_change(self, value):
         self.harmonic_selector_value = int(value) + 1
+        if not self.phasors_widgets:
+            return
         if self.harmonic_selector_value >= 1 and self.quantized_phasors:
             self.quantize_phasors(
                 self.harmonic_selector_value,
