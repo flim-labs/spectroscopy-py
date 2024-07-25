@@ -53,8 +53,6 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
 
 
-
-
 class SpectroscopyWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -77,9 +75,9 @@ class SpectroscopyWindow(QWidget):
         self.phasors_crosshairs = {}
         self.cps_widgets = {}
         self.cps_counts = {}
-        self.displayed_cps = {}
         self.decay_curves = {}
         self.decay_widgets = {}
+        self.displayed_cps = {}
         self.cached_decay_values = {}
         self.cached_decay_x_values = np.array([])
         self.spectroscopy_axis_x = np.arange(1)
@@ -106,7 +104,6 @@ class SpectroscopyWindow(QWidget):
         )
         self.cached_time_span_seconds = 3
         self.selected_channels = []
-
         default_plots_to_show = self.settings.value(
             SETTINGS_PLOTS_TO_SHOW, DEFAULT_PLOTS_TO_SHOW
         )
@@ -148,26 +145,19 @@ class SpectroscopyWindow(QWidget):
         )
 
         self.get_selected_channels_from_settings()
-
         (self.top_bar, self.grid_layout) = self.init_ui()
-
         self.on_tab_selected(TAB_SPECTROSCOPY)
 
         # self.update_sync_in_button()
-
         self.generate_plots()
         self.all_phasors_points = self.get_empty_phasors_points()
-
         self.overlay = OverlayWidget(self)
         self.installEventFilter(self)
-
         self.pull_from_queue_timer = QTimer()
         self.pull_from_queue_timer.timeout.connect(self.pull_from_queue)
-
         self.fitting_config_popup = None
-
         self.calc_exported_file_size()
-
+        self.phasors_harmonic_selected = 1
         ## LASERBLOOD METADATA
         self.laserblood_settings = json.loads(
             self.settings.value(METADATA_LASERBLOOD_KEY, LASERBLOOD_METADATA_JSON)
@@ -184,6 +174,7 @@ class SpectroscopyWindow(QWidget):
             )
         )
         self.laserblood_widgets = {}
+        
 
     @staticmethod
     def get_empty_phasors_points():
@@ -223,7 +214,6 @@ class SpectroscopyWindow(QWidget):
     def create_top_bar(self):
         top_bar = QVBoxLayout()
         top_bar.setContentsMargins(0, 0, 0, 0)
-        top_bar.setSpacing(5)
         top_bar.setAlignment(Qt.AlignmentFlag.AlignTop)
         top_collapsible_widget = QWidget()
         top_collapsible_layout = QVBoxLayout()
@@ -280,7 +270,6 @@ class SpectroscopyWindow(QWidget):
         tabs_layout.addWidget(self.control_inputs[TAB_FITTING])
         top_bar_header.addLayout(tabs_layout)
         top_bar_header.addStretch(1)
-
         # LASERBLOOD METADATA
         laserblood_metadata_btn = QPushButton(" METADATA")
         laserblood_metadata_btn.setIcon(
@@ -295,16 +284,15 @@ class SpectroscopyWindow(QWidget):
         laserblood_metadata_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         laserblood_metadata_btn.clicked.connect(self.open_laserblood_metadata_popup)
         top_bar_header.addWidget(laserblood_metadata_btn)
-
         download_button = DownloadButton(self)
         info_link_widget, export_data_control = self.create_export_data_input()
         file_size_info_layout = self.create_file_size_info_row()
         top_bar_header.addWidget(download_button)
         top_bar_header.addWidget(info_link_widget)
         top_bar_header.addLayout(export_data_control)
-        export_data_control.addSpacing(5)
+        export_data_control.addSpacing(10)
         top_bar_header.addLayout(file_size_info_layout)
-        top_bar_header.addSpacing(5)
+        top_bar_header.addSpacing(10)
         top_bar.addLayout(top_bar_header)
         channels_widget = QWidget()
         sync_buttons_widget = QWidget()
@@ -400,7 +388,7 @@ class SpectroscopyWindow(QWidget):
     def create_control_inputs(self):
         controls_row = QHBoxLayout()
         controls_row.addSpacing(10)
-        _, inp, __, container = SelectControl.setup(
+        _, inp, __, container  = SelectControl.setup(
             "Channel type:",
             int(self.settings.value(SETTINGS_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)),
             controls_row,
@@ -480,7 +468,7 @@ class SpectroscopyWindow(QWidget):
         controls_row.addLayout(quantize_phasors_switch_control)
         controls_row.addSpacing(20)
         # PHASORS RESOLUTION
-        phasors_resolution_container, inp, __, container = SelectControl.setup(
+        phasors_resolution_container, inp, __, container  = SelectControl.setup(
             "Squares:",
             self.phasors_resolution,
             controls_row,
@@ -499,7 +487,7 @@ class SpectroscopyWindow(QWidget):
             phasors_resolution_container
         )
 
-        _, inp, label, container = SelectControl.setup(
+        _, inp, label, container  = SelectControl.setup(
             "Calibration:",
             int(
                 self.settings.value(
@@ -538,7 +526,8 @@ class SpectroscopyWindow(QWidget):
 
         spacer = QWidget()
         controls_row.addWidget(spacer, 1)
-        ctl, inp, label, container = SelectControl.setup(
+
+        ctl, inp, label, container  = SelectControl.setup(
             "Harmonic displayed:",
             1,
             controls_row,
@@ -591,7 +580,6 @@ class SpectroscopyWindow(QWidget):
         )
         self.control_inputs["save"] = save_button
         controls_row.addWidget(save_button)
-    
         export_button = QPushButton("EXPORT")
         export_button.setFlat(True)
         export_button.setSizePolicy(
@@ -680,10 +668,15 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(False)
         self.tab_selected = tab_name
         self.control_inputs[self.tab_selected].setChecked(True)
-        self.hide_harmonic_selector()
         self.fit_button_hide()
+        
+        self.control_inputs["save"].setHidden(True)       
+        self.clear_plots()
+        self.cached_decay_values.clear()
+        self.generate_plots()
 
         if tab_name == TAB_SPECTROSCOPY:
+            self.hide_harmonic_selector()
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.hide_layout(self.control_inputs["phasors_resolution_container"])
             self.hide_layout(self.control_inputs["quantize_phasors_container"])
@@ -696,10 +689,7 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["calibration_label"].show()
             current_tau = self.settings.value(SETTINGS_TAU_NS, "0")
             self.control_inputs["tau"].setValue(float(current_tau))
-            current_harmonic = self.settings.value(SETTINGS_HARMONIC, "1")
-            self.control_inputs[SETTINGS_HARMONIC].setValue(int(current_harmonic))
             self.on_tau_change(float(current_tau))
-            self.on_harmonic_change(int(current_harmonic))
             current_calibration = self.settings.value(
                 SETTINGS_CALIBRATION_TYPE, DEFAULT_SETTINGS_CALIBRATION_TYPE
             )
@@ -710,6 +700,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_FITTING:
+            self.hide_harmonic_selector()          
             self.hide_layout(self.control_inputs["phasors_resolution_container"])
             self.hide_layout(self.control_inputs["quantize_phasors_container"])
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(False)
@@ -727,6 +718,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_PHASORS:
+            
             (
                 self.show_layout(self.control_inputs["phasors_resolution_container"])
                 if self.quantized_phasors
@@ -749,17 +741,15 @@ class SpectroscopyWindow(QWidget):
             if self.harmonic_selector_shown:
                 if self.quantized_phasors:
                     self.quantize_phasors(
-                        1, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
+                        self.phasors_harmonic_selected, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
                     )
-                self.show_harmonic_selector(self.harmonic_selector_value)
+                else:
+                    self.on_quantize_phasors_changed(False)    
+                self.show_harmonic_selector(self.control_inputs[SETTINGS_HARMONIC].value())      
             plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(False)
 
-        self.control_inputs["save"].setHidden(True)
-        self.clear_plots()
-        self.cached_decay_values.clear()
-        self.generate_plots()
 
     def on_start_button_click(self):
         if self.mode == MODE_STOPPED:
@@ -998,6 +988,7 @@ class SpectroscopyWindow(QWidget):
             self.channel_checkboxes[i].setEnabled(enabled)
 
     def on_channel_selected(self, checked: bool, channel: int):
+
         self.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(self.plots_to_show))
         if checked:
             if channel not in self.selected_channels:
@@ -1064,6 +1055,7 @@ class SpectroscopyWindow(QWidget):
         buttons_layout.addWidget(sync_out_10_button)
         self.sync_buttons.append((sync_out_10_button, "sync_out_10"))
         for button, name in self.sync_buttons:
+
             def on_toggle(toggled_name):
                 for b, n in self.sync_buttons:
                     b.set_selected(n == toggled_name)
@@ -1282,7 +1274,7 @@ class SpectroscopyWindow(QWidget):
         crosshair.setText(CURSOR_TEXT)
         text.setPos(mouse_point.x(), mouse_point.y())
         freq_mhz = self.get_current_frequency_mhz()
-        harmonic = self.harmonic_selector_value
+        harmonic = int(self.control_inputs[HARMONIC_SELECTOR].currentText())
         g = mouse_point.x()
         s = mouse_point.y()
         if freq_mhz == 0.0:
@@ -1421,7 +1413,7 @@ class SpectroscopyWindow(QWidget):
             frequency_mhz = int(self.selected_sync.split("_")[-1])
         return frequency_mhz
     
-    def get_firmware_selected(self, frequency_mhz):
+    def get_firmware_selected(self, frequency_mhz):    
         connection_type = self.control_inputs["channel_type"].currentText()
         if str(connection_type) == "USB":
             connection_type = "USB"
@@ -1444,7 +1436,6 @@ class SpectroscopyWindow(QWidget):
                 self.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)
             )
         )
-        
 
     def begin_spectroscopy_experiment(self):
         bin_width_micros = int(
@@ -1474,21 +1465,21 @@ class SpectroscopyWindow(QWidget):
                 QMessageBox.Icon.Warning,
                 GUIStyles.set_msg_box_style(),
             )
-            return       
+            return
         if self.write_data_gui:
             if not ExportDataSettingsPopup.exported_data_settings_valid(self):
                 popup = ExportDataSettingsPopup(self, start_acquisition=True)
                 popup.show()
                 return
-            if not LaserbloodMetadataPopup.laserblood_metadata_valid(self):        
+            if not LaserbloodMetadataPopup.laserblood_metadata_valid(self):                    
                 BoxMessage.setup(
                     "Error",
                     "All required Laserblood metadata must be filled before starting the acquisition. Required fields are highlighted with a red border. Fields set to 0 are highlighted with a yellow border; it's recommended to double-check them, if present. Laser type and filter type must be set",
                     QMessageBox.Icon.Warning,
                     GUIStyles.set_msg_box_style(),
                 )
-                return     
-        if self.tab_selected == TAB_SPECTROSCOPY:
+                return   
+        if self.tab_selected == TAB_SPECTROSCOPY or self.tab_selected == TAB_FITTING:
             open_config_plots_popup = len(self.selected_channels) > 4
             if open_config_plots_popup and not self.plots_to_show_already_appear:
                 popup = PlotsConfigPopup(self, start_acquisition=True)
@@ -1502,14 +1493,18 @@ class SpectroscopyWindow(QWidget):
         acquisition_time_millis = f"{acquisition_time * 1000} ms" if acquisition_time is not None else "Free running"
         firmware_selected, connection_type = self.get_firmware_selected(frequency_mhz)
         self.harmonic_selector_value = self.control_inputs[SETTINGS_HARMONIC].value()
-        self.control_inputs[HARMONIC_SELECTOR].blockSignals(True)
-        self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
-        self.control_inputs[HARMONIC_SELECTOR].blockSignals(False)
+        if self.tab_selected == TAB_PHASORS:
+            self.control_inputs[HARMONIC_SELECTOR].blockSignals(True)
+            self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
+            self.control_inputs[HARMONIC_SELECTOR].blockSignals(False)
+        if self.tab_selected == TAB_SPECTROSCOPY:
+            self.phasors_harmonic_selected = 1    
+        
         print(f"Firmware selected: {firmware_selected}")
         print(f"Connection type: {connection_type}")
         print(f"Frequency: {frequency_mhz} Mhz")
         print(f"Selected channels: {self.selected_channels}")
-        print(f"Acquisition time: {acquisition_time_millis}")
+        print(f"Acquisition time: {acquisition_time_millis} ms")
         print(f"Bin width: {bin_width_micros} µs")
         print(f"Free running: {self.get_free_running_state()}")
         print(f"Tau: {self.settings.value(SETTINGS_TAU_NS, '0')} ns")
@@ -1726,12 +1721,13 @@ class SpectroscopyWindow(QWidget):
         if harmonics > 1:
             self.control_inputs[HARMONIC_SELECTOR].show()
             self.control_inputs[HARMONIC_SELECTOR_LABEL].show()
-            # clear the items
-            self.control_inputs[HARMONIC_SELECTOR].clear()
-            for i in range(harmonics):
-                self.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))
-            self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
-            self.harmonic_selector_value = 1
+            selector_harmonics = [int(self.control_inputs[HARMONIC_SELECTOR].itemText(index)) for index in range(self.control_inputs[HARMONIC_SELECTOR].count())]
+            if len(selector_harmonics) != self.control_inputs[SETTINGS_HARMONIC].value():
+                # clear the items
+                self.control_inputs[HARMONIC_SELECTOR].clear()
+                for i in range(harmonics):
+                    self.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))  
+                self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(self.phasors_harmonic_selected - 1)
 
     def hide_harmonic_selector(self):
         self.control_inputs[HARMONIC_SELECTOR].hide()
@@ -1879,7 +1875,11 @@ class SpectroscopyWindow(QWidget):
         plot.setYRange(-1, y_max, padding=0)
 
     def on_harmonic_selector_change(self, value):
+        if not self.phasors_widgets or value < 0:
+            return   
         self.harmonic_selector_value = int(value) + 1
+        self.phasors_harmonic_selected = int(value) + 1
+        
         if self.harmonic_selector_value >= 1 and self.quantized_phasors:
             self.quantize_phasors(
                 self.harmonic_selector_value,
@@ -1908,6 +1908,11 @@ class SpectroscopyWindow(QWidget):
         self.mode = MODE_STOPPED
         self.style_start_button()
         QApplication.processEvents()
+        # time.sleep(0.5)
+        # self.pull_from_queue_timer.stop()
+        # time.sleep(0.5)
+        # self.timer_update.stop()
+        # self.update_plots_enabled = False
         is_export_data_active = self.write_data_gui
         SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, True)
         self.top_bar_set_enabled(True)
@@ -1933,10 +1938,10 @@ class SpectroscopyWindow(QWidget):
             self.harmonic_selector_shown = True
         if is_export_data_active:
             QTimer.singleShot(500, self.save_bin_files)
-        if self.tab_selected == TAB_FITTING:       
-            self.fit_button_show()    
-        LaserbloodMetadataPopup.set_FPGA_firmware(self)    
-        LaserbloodMetadataPopup.set_average_CPS(self.displayed_cps, self)    
+        if self.tab_selected == TAB_FITTING:
+            self.fit_button_show()
+        LaserbloodMetadataPopup.set_FPGA_firmware(self)            
+        LaserbloodMetadataPopup.set_average_CPS(self.displayed_cps, self)        
 
     def save_bin_files(self):
         FileUtils.save_laserblood_metadata_json(
@@ -1965,10 +1970,10 @@ class SpectroscopyWindow(QWidget):
     def open_export_data_settings_popup(self):
         self.popup = ExportDataSettingsPopup(self, start_acquisition=False)
         self.popup.show()
-
-    def open_laserblood_metadata_popup(self):
+    
+    def open_laserblood_metadata_popup(self):    
         self.popup = LaserbloodMetadataPopup(self, start_acquisition=False)
-        self.popup.show()
+        self.popup.show()    
 
     def hide_layout(self, layout):
         for i in range(layout.count()):
@@ -1989,8 +1994,8 @@ class SpectroscopyWindow(QWidget):
             self.widgets[PLOTS_CONFIG_POPUP].close()
         if EXPORT_DATA_SETTINGS_POPUP in self.widgets:
             self.widgets[EXPORT_DATA_SETTINGS_POPUP].close()
-        if LASERBLOOD_METADATA_POPUP in self.widgets:
-            self.widgets[LASERBLOOD_METADATA_POPUP].close()
+        if LASERBLOOD_METADATA_POPUP in self.widgets:        
+            self.widgets[LASERBLOOD_METADATA_POPUP].close()    
         event.accept()
 
     def eventFilter(self, source, event):
