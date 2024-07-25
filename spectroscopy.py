@@ -650,9 +650,7 @@ class SpectroscopyWindow(QWidget):
         self.generate_plots()
 
         if tab_name == TAB_SPECTROSCOPY:
-            #TODO
             self.hide_harmonic_selector()
-            
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.hide_layout(self.control_inputs["phasors_resolution_container"])
             self.hide_layout(self.control_inputs["quantize_phasors_container"])
@@ -676,9 +674,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_FITTING:
-            #TODO
-            self.hide_harmonic_selector()
-                        
+            self.hide_harmonic_selector()          
             self.hide_layout(self.control_inputs["phasors_resolution_container"])
             self.hide_layout(self.control_inputs["quantize_phasors_container"])
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(False)
@@ -718,20 +714,16 @@ class SpectroscopyWindow(QWidget):
             channels_grid = self.widgets[CHANNELS_GRID]
             if self.harmonic_selector_shown:
                 if self.quantized_phasors:
-                    # TODO 
                     self.quantize_phasors(
                         self.phasors_harmonic_selected, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
                     )
                 else:
                     self.on_quantize_phasors_changed(False)    
-                # TODO    
-                # self.show_harmonic_selector(self.harmonic_selector_value) 
                 self.show_harmonic_selector(self.control_inputs[SETTINGS_HARMONIC].value())      
             plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(False)
 
- 
 
     def on_start_button_click(self):
         if self.mode == MODE_STOPPED:
@@ -1455,8 +1447,6 @@ class SpectroscopyWindow(QWidget):
             sync_connection="sma",
         )
         self.harmonic_selector_value = self.control_inputs[SETTINGS_HARMONIC].value()
-        
-        #TODO
         if self.tab_selected == TAB_PHASORS:
             self.control_inputs[HARMONIC_SELECTOR].blockSignals(True)
             self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
@@ -1685,18 +1675,13 @@ class SpectroscopyWindow(QWidget):
         if harmonics > 1:
             self.control_inputs[HARMONIC_SELECTOR].show()
             self.control_inputs[HARMONIC_SELECTOR_LABEL].show()
-            
-            #TODO
             selector_harmonics = [int(self.control_inputs[HARMONIC_SELECTOR].itemText(index)) for index in range(self.control_inputs[HARMONIC_SELECTOR].count())]
             if len(selector_harmonics) != self.control_inputs[SETTINGS_HARMONIC].value():
                 # clear the items
                 self.control_inputs[HARMONIC_SELECTOR].clear()
                 for i in range(harmonics):
-                    self.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))
-                # TODO    
+                    self.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))  
                 self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(self.phasors_harmonic_selected - 1)
-            #self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
-            #self.harmonic_selector_value = 1
 
     def hide_harmonic_selector(self):
         self.control_inputs[HARMONIC_SELECTOR].hide()
@@ -1840,11 +1825,9 @@ class SpectroscopyWindow(QWidget):
         plot.setYRange(-1, y_max, padding=0)
 
     def on_harmonic_selector_change(self, value):
-        #TODO
         if not self.phasors_widgets or value < 0:
             return   
         self.harmonic_selector_value = int(value) + 1
-        #TODO
         self.phasors_harmonic_selected = int(value) + 1
         
         if self.harmonic_selector_value >= 1 and self.quantized_phasors:
