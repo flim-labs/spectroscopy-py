@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import queue
@@ -160,6 +161,8 @@ class SpectroscopyWindow(QWidget):
         self.fitting_config_popup = None
 
         self.calc_exported_file_size()
+        
+        self.phasors_harmonic_selected = 1
 
     @staticmethod
     def get_empty_phasors_points():
@@ -551,9 +554,6 @@ class SpectroscopyWindow(QWidget):
         )
         self.control_inputs["save"] = save_button
         controls_row.addWidget(save_button)
-
-        self.control_inputs["save"] = save_button
-        controls_row.addWidget(save_button)
         export_button = QPushButton("EXPORT")
         export_button.setFlat(True)
         export_button.setSizePolicy(
@@ -642,10 +642,15 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(False)
         self.tab_selected = tab_name
         self.control_inputs[self.tab_selected].setChecked(True)
-        self.hide_harmonic_selector()
         self.fit_button_hide()
+        
+        self.control_inputs["save"].setHidden(True)       
+        self.clear_plots()
+        self.cached_decay_values.clear()
+        self.generate_plots()
 
         if tab_name == TAB_SPECTROSCOPY:
+            self.hide_harmonic_selector()
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.hide_layout(self.control_inputs["phasors_resolution_container"])
             self.hide_layout(self.control_inputs["quantize_phasors_container"])
@@ -658,10 +663,7 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["calibration_label"].show()
             current_tau = self.settings.value(SETTINGS_TAU_NS, "0")
             self.control_inputs["tau"].setValue(float(current_tau))
-            current_harmonic = self.settings.value(SETTINGS_HARMONIC, "1")
-            self.control_inputs[SETTINGS_HARMONIC].setValue(int(current_harmonic))
             self.on_tau_change(float(current_tau))
-            self.on_harmonic_change(int(current_harmonic))
             current_calibration = self.settings.value(
                 SETTINGS_CALIBRATION_TYPE, DEFAULT_SETTINGS_CALIBRATION_TYPE
             )
@@ -672,6 +674,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_FITTING:
+            self.hide_harmonic_selector()          
             self.hide_layout(self.control_inputs["phasors_resolution_container"])
             self.hide_layout(self.control_inputs["quantize_phasors_container"])
             self.control_inputs[DOWNLOAD_BUTTON].setVisible(False)
@@ -689,6 +692,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_PHASORS:
+            
             (
                 self.show_layout(self.control_inputs["phasors_resolution_container"])
                 if self.quantized_phasors
@@ -711,17 +715,15 @@ class SpectroscopyWindow(QWidget):
             if self.harmonic_selector_shown:
                 if self.quantized_phasors:
                     self.quantize_phasors(
-                        1, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
+                        self.phasors_harmonic_selected, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
                     )
-                self.show_harmonic_selector(self.harmonic_selector_value)
+                else:
+                    self.on_quantize_phasors_changed(False)    
+                self.show_harmonic_selector(self.control_inputs[SETTINGS_HARMONIC].value())      
             plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(False)
 
-        self.control_inputs["save"].setHidden(True)
-        self.clear_plots()
-        self.cached_decay_values.clear()
-        self.generate_plots()
 
     def on_start_button_click(self):
         if self.mode == MODE_STOPPED:
@@ -787,38 +789,34 @@ class SpectroscopyWindow(QWidget):
             if file_name:
                 self.reference_file = file_name
 
-    def on_save_reference(self):
+    def on_save_reference(self):   
         if self.tab_selected == TAB_SPECTROSCOPY:
             # read all lines from .pid file
             with open(".pid", "r") as f:
                 lines = f.readlines()
-                reference_file = lines[0].split("=")[1]
-            dialog = QFileDialog()
-            dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
-            # extension supported: .reference.json
-            dialog.setNameFilter("Reference files (*.reference.json)")
-            dialog.setDefaultSuffix("reference.json")
-            file_name, _ = dialog.getSaveFileName(
-                self,
-                "Save reference file",
-                "",
-                "Reference files (*.reference.json)",
-                options=QFileDialog.Option.DontUseNativeDialog,
-            )
-            if file_name:
-                if not file_name.endswith(".reference.json"):
-                    file_name += ".reference.json"
-                try:
-                    with open(reference_file, "r") as f:
-                        with open(file_name, "w") as f2:
-                            f2.write(f.read())
-                except:
-                    BoxMessage.setup(
-                        "Error",
-                        "Error saving reference file",
-                        QMessageBox.Icon.Warning,
-                        GUIStyles.set_msg_box_style(),
-                    )
+                reference_file = lines[0].split("=")[1].strip()
+            path = self.exported_data_settings["folder"]
+            file_name = self.exported_data_settings["spectroscopy_filename"]
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            full_path = os.path.join(path, f"{file_name}_{timestamp}.reference.json")
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            try:
+                with open(reference_file, "r") as f:
+                    with open(full_path, "w") as f2:
+                        f2.write(f.read())
+                BoxMessage.setup(  
+                "Save reference",
+                "Reference file saved successfully!",
+                QMessageBox.Icon.Information,
+                GUIStyles.set_msg_box_style(),
+            )        
+            except Exception as e:
+                BoxMessage.setup(
+                    "Error",
+                    "Error saving reference file",
+                    QMessageBox.Icon.Warning,
+                    GUIStyles.set_msg_box_style(),
+                )
 
     def get_free_running_state(self):
         return self.control_inputs[SETTINGS_FREE_RUNNING].isChecked()
@@ -844,6 +842,7 @@ class SpectroscopyWindow(QWidget):
 
     def on_quantize_phasors_changed(self, value):
         frequency_mhz = self.get_frequency_mhz()
+        harmonic_value = int(self.control_inputs[HARMONIC_SELECTOR].currentText())
         self.quantized_phasors = value
         self.settings.setValue(SETTINGS_QUANTIZE_PHASORS, value)
         (
@@ -855,7 +854,7 @@ class SpectroscopyWindow(QWidget):
         self.generate_plots(frequency_mhz)
         if value:
             self.quantize_phasors(
-                self.harmonic_selector_value,
+                harmonic_value,
                 bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution]),
             )
         else:
@@ -863,17 +862,18 @@ class SpectroscopyWindow(QWidget):
                 if len(self.plots_to_show) <= len(self.all_phasors_points):
                     self.draw_points_in_phasors(
                         channel_index,
-                        self.harmonic_selector_value,
+                        harmonic_value,
                         self.all_phasors_points[channel_index][
-                            self.harmonic_selector_value
+                            harmonic_value
                         ],
                     )
 
     def on_phasors_resolution_changed(self, value):
         self.phasors_resolution = int(value)
+        harmonic_value = int(self.control_inputs[HARMONIC_SELECTOR].currentText())
         self.settings.setValue(SETTINGS_PHASORS_RESOLUTION, value)
         self.quantize_phasors(
-            self.harmonic_selector_value,
+            harmonic_value,
             bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution]),
         )
 
@@ -1244,7 +1244,7 @@ class SpectroscopyWindow(QWidget):
         crosshair.setText(CURSOR_TEXT)
         text.setPos(mouse_point.x(), mouse_point.y())
         freq_mhz = self.get_current_frequency_mhz()
-        harmonic = self.harmonic_selector_value
+        harmonic = int(self.control_inputs[HARMONIC_SELECTOR].currentText())
         g = mouse_point.x()
         s = mouse_point.y()
         if freq_mhz == 0.0:
@@ -1447,6 +1447,13 @@ class SpectroscopyWindow(QWidget):
             sync_connection="sma",
         )
         self.harmonic_selector_value = self.control_inputs[SETTINGS_HARMONIC].value()
+        if self.tab_selected == TAB_PHASORS:
+            self.control_inputs[HARMONIC_SELECTOR].blockSignals(True)
+            self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
+            self.control_inputs[HARMONIC_SELECTOR].blockSignals(False)
+        if self.tab_selected == TAB_SPECTROSCOPY:
+            self.phasors_harmonic_selected = 1    
+        
         print(f"Firmware selected: {firmware_selected}")
         print(f"Connection type: {connection_type}")
         print(f"Frequency: {frequency_mhz} Mhz")
@@ -1668,12 +1675,13 @@ class SpectroscopyWindow(QWidget):
         if harmonics > 1:
             self.control_inputs[HARMONIC_SELECTOR].show()
             self.control_inputs[HARMONIC_SELECTOR_LABEL].show()
-            # clear the items
-            self.control_inputs[HARMONIC_SELECTOR].clear()
-            for i in range(harmonics):
-                self.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))
-            self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
-            self.harmonic_selector_value = 1
+            selector_harmonics = [int(self.control_inputs[HARMONIC_SELECTOR].itemText(index)) for index in range(self.control_inputs[HARMONIC_SELECTOR].count())]
+            if len(selector_harmonics) != self.control_inputs[SETTINGS_HARMONIC].value():
+                # clear the items
+                self.control_inputs[HARMONIC_SELECTOR].clear()
+                for i in range(harmonics):
+                    self.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))  
+                self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(self.phasors_harmonic_selected - 1)
 
     def hide_harmonic_selector(self):
         self.control_inputs[HARMONIC_SELECTOR].hide()
@@ -1817,7 +1825,11 @@ class SpectroscopyWindow(QWidget):
         plot.setYRange(-1, y_max, padding=0)
 
     def on_harmonic_selector_change(self, value):
+        if not self.phasors_widgets or value < 0:
+            return   
         self.harmonic_selector_value = int(value) + 1
+        self.phasors_harmonic_selected = int(value) + 1
+        
         if self.harmonic_selector_value >= 1 and self.quantized_phasors:
             self.quantize_phasors(
                 self.harmonic_selector_value,
@@ -1878,6 +1890,7 @@ class SpectroscopyWindow(QWidget):
             QTimer.singleShot(500, self.save_bin_files)
         if self.tab_selected == TAB_FITTING:
             self.fit_button_show()
+    
 
     def save_bin_files(self):
         if self.tab_selected == TAB_SPECTROSCOPY:
