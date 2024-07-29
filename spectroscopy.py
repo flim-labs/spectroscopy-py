@@ -388,15 +388,6 @@ class SpectroscopyWindow(QWidget):
     def create_control_inputs(self):
         controls_row = QHBoxLayout()
         controls_row.addSpacing(10)
-        _, inp, __, container  = SelectControl.setup(
-            "Channel type:",
-            int(self.settings.value(SETTINGS_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)),
-            controls_row,
-            ["USB", "SMA"],
-            self.on_connection_type_value_change,
-        )
-        inp.setStyleSheet(GUIStyles.set_input_select_style())
-        self.control_inputs["channel_type"] = inp
         _, inp = InputNumberControl.setup(
             "Bin width (µs):",
             1000,
@@ -935,9 +926,26 @@ class SpectroscopyWindow(QWidget):
         plots_config_btn.setFixedHeight(40)
         plots_config_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         plots_config_btn.clicked.connect(self.open_plots_config_popup)
+        widget_channel_type =  QWidget()
+        row_channel_type = QHBoxLayout()
+        row_channel_type.setContentsMargins(0,0,0,0)
+        _, inp, __, container = SelectControl.setup(
+            "Channel type:",
+            int(self.settings.value(SETTINGS_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)),
+            row_channel_type,
+            ["USB", "SMA"],
+            self.on_connection_type_value_change,
+            spacing=None,
+            
+        )
+        inp.setStyleSheet(GUIStyles.set_input_select_style())
+        widget_channel_type.setLayout(row_channel_type)
+        self.control_inputs["channel_type"] = inp
+        grid.addWidget(widget_channel_type, alignment=Qt.AlignmentFlag.AlignBottom)
         for i in range(MAX_CHANNELS):
             ch_wrapper = QWidget()
             ch_wrapper.setObjectName(f"ch_checkbox_wrapper")
+            ch_wrapper.setFixedHeight(40)
             row = QHBoxLayout()
             from components.fancy_checkbox import FancyCheckbox
 
@@ -951,9 +959,9 @@ class SpectroscopyWindow(QWidget):
             row.addWidget(fancy_checkbox)
             ch_wrapper.setLayout(row)
             ch_wrapper.setStyleSheet(GUIStyles.checkbox_wrapper_style())
-            grid.addWidget(ch_wrapper)
+            grid.addWidget(ch_wrapper, alignment=Qt.AlignmentFlag.AlignBottom)
             self.channel_checkboxes.append(fancy_checkbox)
-        grid.addWidget(plots_config_btn)
+        grid.addWidget(plots_config_btn, alignment=Qt.AlignmentFlag.AlignBottom)
         self.widgets[CHANNELS_GRID] = grid
         return grid
 
