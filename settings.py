@@ -30,6 +30,8 @@ DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
 SETTINGS_WRITE_DATA = "write_data"
 DEFAULT_WRITE_DATA = True
 SETTINGS_TIME_SHIFTS = "time_shift"
+SETTINGS_READER_MODE = "reader"
+DEFAULT_READER_MODE = False
 
 FIT_BTN = "fit_button"
 FIT_BTN_PLACEHOLDER = "fit_button_placeholder"
@@ -60,16 +62,10 @@ DEFAULT_LIN_LOG_MODE = "{}"
 
 CHANNELS_GRID = "channels_grid"
 
-DOWNLOAD_BUTTON = "download_button"
-DOWNLOAD_MENU = "download_menu"
 
-SPECTROSCOPY_SCRIPT_ACTION_PY = "spectroscopy_script_action_py"
-PHASORS_SCRIPT_ACTION_PY = "phasors_script_action_py"
-SPECTROSCOPY_SCRIPT_ACTION_M = "spectroscopy_script_action_m"
-PHASORS_SCRIPT_ACTION_M = "phasors_script_action_m"
 
-EXPORT_DATA_SETTINGS_BUTTON = "export_data_settings_button"
-EXPORT_DATA_SETTINGS_POPUP = "export_data_settings_popup"
+
+
 
 
 UNICODE_SUP = {

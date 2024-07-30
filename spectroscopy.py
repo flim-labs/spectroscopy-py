@@ -1,4 +1,3 @@
-import datetime
 from functools import partial
 import json
 import os
@@ -41,6 +40,7 @@ from components.lin_log_control import SpectroscopyLinLogControl
 from components.link_widget import LinkWidget
 from components.logo_utilities import OverlayWidget, TitlebarIcon
 from components.plots_config import PlotsConfigPopup
+from components.read_data import ReadData
 from components.resource_path import resource_path
 from components.select_control import SelectControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
@@ -122,6 +122,10 @@ class SpectroscopyWindow(QWidget):
         self.show_bin_file_size_helper = self.write_data_gui
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
+        
+        #TODO
+        reader_mode = self.settings.value(SETTINGS_READER_MODE, DEFAULT_READER_MODE)
+        self.reader_mode = reader_mode == "true" or reader_mode == True
      
         self.harmonic_selector_shown = False
         quantized_phasors = self.settings.value(
@@ -272,10 +276,6 @@ class SpectroscopyWindow(QWidget):
         top_bar.addLayout(self.create_control_inputs())
         top_bar.addWidget(draw_layout_separator())
         top_bar.addSpacing(5)
-        # # add a label to use as status
-        # self.control_inputs["status"] = QLabel("Status: Ready")
-        # self.control_inputs["status"].setStyleSheet("QLabel { color : #FFA726; }")
-        # top_bar.addWidget(self.control_inputs["status"])
         container = QWidget()
         container.setLayout(top_bar)
         return container
@@ -481,6 +481,22 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[HARMONIC_SELECTOR] = inp
         label.hide()
         inp.hide()
+        
+        # TODO              
+        # READER MODE
+        reader_mode_switch_control = QVBoxLayout()
+        reader_mode_inp = SwitchControl(
+            active_color="#11468F",
+            checked=self.reader_mode,
+        )
+        reader_mode_switch_control.addWidget(QLabel("Reader mode:"))
+        reader_mode_switch_control.addSpacing(8)
+        reader_mode_switch_control.addWidget(reader_mode_inp)
+        controls_row.addLayout(reader_mode_switch_control)
+        self.control_inputs[SETTINGS_READER_MODE] = reader_mode_inp
+        controls_row.addSpacing(20)
+        
+        
         save_button = QPushButton("LOAD REFERENCE")
         save_button.setFlat(True)
         save_button.setFixedHeight(55)
@@ -529,7 +545,10 @@ class SpectroscopyWindow(QWidget):
         # if no fit button is present, it must no occupy space
         self.control_inputs[FIT_BTN_PLACEHOLDER].layout().setContentsMargins(0, 0, 0, 0)
         controls_row.addWidget(self.control_inputs[FIT_BTN_PLACEHOLDER])
-
+ 
+        
+        #TODO
+        # START BUTTON
         start_button = QPushButton("START")
         start_button.setFixedWidth(150)
         start_button.setObjectName("btn")
@@ -537,12 +556,27 @@ class SpectroscopyWindow(QWidget):
         start_button.setFixedHeight(55)
         start_button.setCursor(Qt.CursorShape.PointingHandCursor)
         start_button.clicked.connect(self.on_start_button_click)
+        start_button.setVisible(not self.reader_mode)
         self.control_inputs["start_button"] = start_button
+        
+        #READ BIN BUTTON
+        read_bin_button = QPushButton("READ")
+        read_bin_button.setObjectName("btn")
+        read_bin_button.setFlat(True)
+        read_bin_button.setFixedHeight(55)
+        read_bin_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.control_inputs["read_bin_button"] = read_bin_button
+        read_bin_button.clicked.connect(self.on_read_bin_click)
+        read_bin_button.setVisible(self.reader_mode)
         self.style_start_button()
+        
         collapse_button = CollapseButton(self.widgets[TOP_COLLAPSIBLE_WIDGET])
         controls_row.addWidget(start_button)
+        controls_row.addWidget(read_bin_button)
         controls_row.addWidget(collapse_button)
         controls_row.addSpacing(10)
+        #TODO
+        reader_mode_inp.toggled.connect(self.on_reader_mode_changed)
         return controls_row
 
     def fit_button_show(self):
@@ -578,6 +612,8 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[FIT_BTN_PLACEHOLDER].layout().setContentsMargins(0, 0, 0, 0)
 
     def style_start_button(self):
+        #TODO
+        GUIStyles.set_start_btn_style(self.control_inputs["read_bin_button"])
         if self.mode == MODE_STOPPED:
             self.control_inputs["start_button"].setText("START")
             GUIStyles.set_start_btn_style(self.control_inputs["start_button"])
@@ -650,7 +686,10 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["calibration_label"].hide()
             self.control_inputs[SETTINGS_HARMONIC].hide()
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
-            self.control_inputs[LOAD_REF_BTN].show()
+            if self.reader_mode:
+                self.control_inputs[LOAD_REF_BTN].hide()
+            else:
+                self.control_inputs[LOAD_REF_BTN].show()    
             self.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
             channels_grid = self.widgets[CHANNELS_GRID]
             if self.harmonic_selector_shown:
@@ -675,6 +714,10 @@ class SpectroscopyWindow(QWidget):
         elif self.mode == MODE_RUNNING:
             self.acquisition_stopped = True
             self.stop_spectroscopy_experiment()
+            
+    #TODO
+    def on_read_bin_click(self):
+        ReadData.read_bin_data(self, self.tab_selected)
 
     def on_fit_btn_click(self):
         data = []
@@ -741,6 +784,15 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(not state)
         self.settings.setValue(SETTINGS_FREE_RUNNING, state)
         self.calc_exported_file_size()
+    
+    #TODO    
+    def on_reader_mode_changed(self, state):
+        self.reader_mode = state
+        self.settings.setValue(SETTINGS_READER_MODE, state)   
+        self.control_inputs["start_button"].setVisible(not state)
+        self.control_inputs["read_bin_button"].setVisible(state)
+        if self.tab_selected == TAB_PHASORS:
+            self.control_inputs[LOAD_REF_BTN].setVisible(not state)
 
     def on_bin_width_change(self, value):
         self.settings.setValue(SETTINGS_BIN_WIDTH, value)
@@ -885,7 +937,6 @@ class SpectroscopyWindow(QWidget):
             self.channel_checkboxes[i].setEnabled(enabled)
 
     def on_channel_selected(self, checked: bool, channel: int):
-
         self.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(self.plots_to_show))
         if checked:
             if channel not in self.selected_channels:
@@ -1672,8 +1723,9 @@ class SpectroscopyWindow(QWidget):
         k = 1000.0
         magnitude = int(floor(log(number, k)))
         return "%.2f%s" % (number / k ** magnitude, units[magnitude])
-
-    def update_plots2(self, channel_index, time_ns, curve):
+    
+    
+    def update_intensity_plots(self, channel_index, time_ns, curve):
         bin_width_micros = int(
             self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
         )
@@ -1696,45 +1748,58 @@ class SpectroscopyWindow(QWidget):
                         x = x[1:]
                         y = y[1:]
                 intensity_line.setData(x, y)
-        # Update decay plot
-        decay_curve = self.decay_curves[channel_index]
+                
+    
+    def update_spectroscopy_plots(self, x, y, channel_index, decay_curve):
         time_shift = (
             0
             if channel_index not in self.time_shifts
             else self.time_shifts[channel_index]
-        )
-        if decay_curve is not None:
-            x, y = decay_curve.getData()
-            if self.tab_selected == TAB_PHASORS:
-                decay_curve.setData(x, curve + y)
-            elif self.tab_selected == TAB_SPECTROSCOPY or self.tab_selected == TAB_FITTING:
-                last_cached_decay_value = self.cached_decay_values[channel_index]
-                self.cached_decay_values[channel_index] = (
+        ) 
+        # Handle linear/logarithmic mode
+        decay_widget = self.decay_widgets[channel_index] 
+        if (
+                channel_index not in self.lin_log_mode
+                or self.lin_log_mode[channel_index] == "LIN"
+        ):
+            decay_widget.showGrid(x=False, y=False, alpha=0.3)
+            decay_curve.setData(
+                x, np.roll(y, time_shift)
+            )
+            self.set_plot_y_range(decay_widget, "LIN")
+        else:
+            decay_widget.showGrid(x=False, y=True, alpha=0.3)
+            sum_decay = y
+            log_values, ticks, _ = (
+                SpectroscopyLinLogControl.calculate_log_ticks(sum_decay)
+            )
+            decay_curve.setData(x, np.roll(log_values, time_shift))
+            axis = decay_widget.getAxis("left")
+            axis.setTicks([ticks])
+            self.set_plot_y_range(
+                decay_widget, self.lin_log_mode[channel_index]
+            )                                  
+
+    def update_plots2(self, channel_index, time_ns, curve, reader_mode = False):
+        if not reader_mode:
+            #Update intensity plots
+            self.update_intensity_plots(channel_index, time_ns, curve)
+        decay_curve = self.decay_curves[channel_index] 
+        if decay_curve is not None:   
+            # Update decay plot
+            if reader_mode:
+                x, y = time_ns, curve
+            else:
+                x, y = decay_curve.getData()
+                if self.tab_selected == TAB_PHASORS:
+                    decay_curve.setData(x, curve + y)
+                elif self.tab_selected == TAB_SPECTROSCOPY or self.tab_selected == TAB_FITTING:  
+                    last_cached_decay_value = self.cached_decay_values[channel_index]
+                    self.cached_decay_values[channel_index] = (
                         np.array(curve) + last_cached_decay_value
-                )
-                # Handle linear/logarithmic mode
-                decay_widget = self.decay_widgets[channel_index]
-                if (
-                        channel_index not in self.lin_log_mode
-                        or self.lin_log_mode[channel_index] == "LIN"
-                ):
-                    decay_widget.showGrid(x=False, y=False, alpha=0.3)
-                    decay_curve.setData(
-                        x, np.roll(self.cached_decay_values[channel_index], time_shift)
-                    )
-                    self.set_plot_y_range(decay_widget, "LIN")
-                else:
-                    decay_widget.showGrid(x=False, y=True, alpha=0.3)
-                    sum_decay = self.cached_decay_values[channel_index]
-                    log_values, ticks, _ = (
-                        SpectroscopyLinLogControl.calculate_log_ticks(sum_decay)
-                    )
-                    decay_curve.setData(x, np.roll(log_values, time_shift))
-                    axis = decay_widget.getAxis("left")
-                    axis.setTicks([ticks])
-                    self.set_plot_y_range(
-                        decay_widget, self.lin_log_mode[channel_index]
-                    )
+                    )  
+                    y = self.cached_decay_values[channel_index]
+            self.update_spectroscopy_plots(x, y, channel_index, decay_curve)        
         QApplication.processEvents()
         time.sleep(0.01)
 
