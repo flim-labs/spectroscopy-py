@@ -1,7 +1,6 @@
 import os
 import json
 from datetime import datetime
-import shutil
 from PyQt6.QtWidgets import QFileDialog
 from laserblood_settings import LASER_TYPES
 from settings import DEFAULT_BIN_WIDTH, SETTINGS_BIN_WIDTH, SETTINGS_TAU_NS
@@ -56,37 +55,6 @@ class FileUtils:
         laser_key, filter_key = FileUtils.get_laser_info_slug(window, filter_wavelength_input)  
         return laser_key, filter_key
 
-    @staticmethod
-    def save_spectroscopy_file(new_filename, dest_path, window):
-        source_file = FileUtils.get_recent_spectroscopy_file()
-        if not source_file:
-            return
-        try:
-            dest_file_name = FileUtils.rename_bin_file(source_file, new_filename, window)
-            destination_file = os.path.join(dest_path, dest_file_name)
-            shutil.copy2(source_file, destination_file)
-            window.exported_data_file_paths["spectroscopy"] = destination_file
-        except Exception as e:
-            print("Error saving spectroscopy file")
-            
-    @staticmethod        
-    def save_phasor_files(spectroscopy_new_filename, phasors_new_filename, dest_path, window):
-        spectroscopy_ref_source_file = FileUtils.get_recent_spectroscopy_file()
-        phasors_source_file = FileUtils.get_recent_phasors_file()
-        if not spectroscopy_ref_source_file or not phasors_source_file:
-            return
-        try:
-            dest_spectroscopy_file_name = FileUtils.rename_bin_file(spectroscopy_ref_source_file, spectroscopy_new_filename, window)
-            destination_spectroscopy_file = os.path.join(dest_path, dest_spectroscopy_file_name)
-            shutil.copy2(spectroscopy_ref_source_file, destination_spectroscopy_file)
-            dest_phasors_file_name = FileUtils.rename_bin_file(phasors_source_file, phasors_new_filename, window)
-            destination_phasors_file = os.path.join(dest_path, dest_phasors_file_name)
-            shutil.copy2(phasors_source_file, destination_phasors_file)
-            window.exported_data_file_paths["phasors"] = destination_phasors_file
-            window.exported_data_file_paths["spectroscopy_phasors_ref"] = destination_spectroscopy_file    
-        except Exception as e:
-            print("Error saving phasors file")
-            
             
     @staticmethod
     def save_laserblood_metadata_json(filename, dest_path, window):
@@ -96,12 +64,10 @@ class FileUtils:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         new_filename = f"{filename}_{laser_key}_{filter_key}_{timestamp}.laserblood_metadata.json"
         file_path = os.path.join(dest_path, new_filename)
-        window.exported_data_file_paths["laserblood_metadata"] = file_path
-        try:
-            with open(file_path, 'w') as json_file:
-                json.dump(parsed_data, json_file, indent=4)
-        except Exception as e:
-            print("Error saving laserblood metadata file")
+        with open(file_path, 'w') as json_file:
+            json.dump(parsed_data, json_file, indent=4)
+        return file_path    
+  
             
     @staticmethod
     def parse_metadata_output(app):    
