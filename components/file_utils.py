@@ -1,8 +1,5 @@
 import os
-import shutil
-from PyQt6.QtWidgets import QFileDialog, QMessageBox
-from components.box_message import BoxMessage
-from components.gui_styles import GUIStyles
+from PyQt6.QtWidgets import QFileDialog
 
 
 def directory_selector(window):
@@ -47,42 +44,4 @@ def rename_bin_file(source_file, new_filename):
     return dest_file_name
 
 
-def save_spectroscopy_file(new_filename, dest_path, window):
-    source_file = get_recent_spectroscopy_file()
-    if not source_file:
-        return
-    try:
-        dest_file_name = rename_bin_file(source_file, new_filename)
-        destination_file = os.path.join(dest_path, dest_file_name)
-        shutil.copy2(source_file, destination_file)
-        window.exported_data_file_paths["spectroscopy"] = destination_file
-    except Exception as e:
-        print("Error  saving spectroscopy file")
 
-
-def save_phasor_files(
-    spectroscopy_new_filename, phasors_new_filename, dest_path, window
-):
-    spectroscopy_ref_source_file = get_recent_spectroscopy_file()
-    phasors_source_file = get_recent_phasors_file()
-    if not spectroscopy_ref_source_file or not phasors_source_file:
-        return
-    try:
-        dest_spectroscopy_file_name = rename_bin_file(
-            spectroscopy_ref_source_file, spectroscopy_new_filename
-        )
-        destination_spectroscopy_file = os.path.join(
-            dest_path, dest_spectroscopy_file_name
-        )
-        shutil.copy2(spectroscopy_ref_source_file, destination_spectroscopy_file)
-        dest_phasors_file_name = rename_bin_file(
-            phasors_source_file, phasors_new_filename
-        )
-        destination_phasors_file = os.path.join(dest_path, dest_phasors_file_name)
-        shutil.copy2(phasors_source_file, destination_phasors_file)
-        window.exported_data_file_paths["phasors"] = destination_phasors_file
-        window.exported_data_file_paths["spectroscopy_phasors_ref"] = (
-            destination_spectroscopy_file
-        )
-    except Exception as e:
-        print("Error  saving spectroscopy file")

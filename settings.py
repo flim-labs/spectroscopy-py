@@ -90,17 +90,6 @@ REALTIME_ADJUSTMENT = REALTIME_MS * 1000
 DEFAULT_TICKS_LOG =  [0, 1, 2, 3, 4, 5, 6]
 DEFAULT_TICKS_LIN = [0, 10, 100, 1000, 10000, 100000, 1000000]
 
-
-
-SETTINGS_EXPORTED_DATA_PATHS = "exported_data_paths"
-DEFAULT_EXPORTED_DATA_PATHS = '{"folder": "","spectroscopy_filename": "","phasors_filename": "","spectroscopy_phasors_ref_filename": ""}'
-
-EXPORTED_DATA_FILE_PATHS = {
-    "spectroscopy": "",
-    "phasors": "",
-    "spectroscopy_phasors_ref": ""
-}
-
 PHASORS_RESOLUTIONS = ["16", "32", "64", "128", "256", "512"]
 SETTINGS_PHASORS_RESOLUTION = "phasors_resolution"
 DEFAULT_PHASORS_RESOLUTION = 2

@@ -1,7 +1,6 @@
 import os
-import shutil
 
-from PyQt6.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtWidgets import QMessageBox
 
 from components.box_message import BoxMessage
 from components.gui_styles import GUIStyles

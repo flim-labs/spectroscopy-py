@@ -31,7 +31,6 @@ from components.box_message import BoxMessage
 from components.buttons import CollapseButton
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
-from components.file_utils import save_phasor_files, save_spectroscopy_file
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
@@ -123,14 +122,7 @@ class SpectroscopyWindow(QWidget):
         self.show_bin_file_size_helper = self.write_data_gui
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
-
-        self.exported_data_settings = json.loads(
-            self.settings.value(
-                SETTINGS_EXPORTED_DATA_PATHS, DEFAULT_EXPORTED_DATA_PATHS
-            )
-        )
-        self.exported_data_file_paths = EXPORTED_DATA_FILE_PATHS
-
+     
         self.harmonic_selector_shown = False
         quantized_phasors = self.settings.value(
             SETTINGS_QUANTIZE_PHASORS, DEFAULT_QUANTIZE_PHASORS
@@ -677,7 +669,6 @@ class SpectroscopyWindow(QWidget):
     def on_start_button_click(self):
         if self.mode == MODE_STOPPED:
             self.acquisition_stopped = False
-            self.exported_data_file_paths = EXPORTED_DATA_FILE_PATHS
             if not (self.is_phasors()):
                 self.harmonic_selector_shown = False
             self.begin_spectroscopy_experiment()
@@ -835,6 +826,7 @@ class SpectroscopyWindow(QWidget):
             spacing=None,
             
         )
+        inp.setFixedHeight(40)
         inp.setStyleSheet(GUIStyles.set_input_select_style())
         widget_channel_type.setLayout(row_channel_type)
         self.control_inputs["channel_type"] = inp
