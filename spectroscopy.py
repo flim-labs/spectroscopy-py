@@ -35,12 +35,12 @@ from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
 from components.helpers import format_size
 from components.input_number_control import InputNumberControl, InputFloatControl
-from components.layout_utilities import draw_layout_separator
+from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
 from components.lin_log_control import SpectroscopyLinLogControl
 from components.link_widget import LinkWidget
 from components.logo_utilities import OverlayWidget, TitlebarIcon
 from components.plots_config import PlotsConfigPopup
-from components.read_data import ReadData
+from components.read_data import ReadData, ReadDataControls
 from components.resource_path import resource_path
 from components.select_control import SelectControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
@@ -66,6 +66,7 @@ class SpectroscopyWindow(QWidget):
         self.reference_file = None
         self.overlay2 = None
         self.acquisition_stopped = False
+        self.intensities_widgets = {}
         self.intensity_lines = {}
         self.phasors_charts = {}
         self.phasors_widgets = {}
@@ -122,11 +123,10 @@ class SpectroscopyWindow(QWidget):
         self.show_bin_file_size_helper = self.write_data_gui
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
-        
         #TODO
         reader_mode = self.settings.value(SETTINGS_READER_MODE, DEFAULT_READER_MODE)
         self.reader_mode = reader_mode == "true" or reader_mode == True
-     
+        
         self.harmonic_selector_shown = False
         quantized_phasors = self.settings.value(
             SETTINGS_QUANTIZE_PHASORS, DEFAULT_QUANTIZE_PHASORS
@@ -137,29 +137,24 @@ class SpectroscopyWindow(QWidget):
         self.phasors_resolution = int(
             self.settings.value(SETTINGS_PHASORS_RESOLUTION, DEFAULT_PHASORS_RESOLUTION)
         )
-
         self.get_selected_channels_from_settings()
-
         (self.top_bar, self.grid_layout) = self.init_ui()
-
         self.on_tab_selected(TAB_SPECTROSCOPY)
-
         # self.update_sync_in_button()
-
         self.generate_plots()
         self.all_phasors_points = self.get_empty_phasors_points()
-
         self.overlay = OverlayWidget(self)
         self.installEventFilter(self)
-
         self.pull_from_queue_timer = QTimer()
         self.pull_from_queue_timer.timeout.connect(self.pull_from_queue)
-
         self.fitting_config_popup = None
-
         self.calc_exported_file_size()
         
         self.phasors_harmonic_selected = 1
+        #TODO
+        self.control_inputs[SETTINGS_READER_MODE].toggled.connect(self.on_reader_mode_changed)
+        ReadDataControls.handle_widgets_visibility(self, self.reader_mode)
+        self.toggle_intensities_widgets_visibility() 
 
     @staticmethod
     def get_empty_phasors_points():
@@ -255,6 +250,21 @@ class SpectroscopyWindow(QWidget):
         tabs_layout.addWidget(self.control_inputs[TAB_FITTING])
         top_bar_header.addLayout(tabs_layout)
         top_bar_header.addStretch(1)
+                
+        # TODO                     
+        # READER MODE
+        reader_mode_switch_control = QHBoxLayout()
+        reader_mode_inp = SwitchControl(
+            active_color=PALETTE_RED_1,
+            checked=self.reader_mode,
+        )
+        reader_mode_switch_control.addWidget(QLabel("Reader mode:"))
+        reader_mode_switch_control.addSpacing(8)
+        reader_mode_switch_control.addWidget(reader_mode_inp)
+        top_bar_header.addLayout(reader_mode_switch_control)
+        self.control_inputs[SETTINGS_READER_MODE] = reader_mode_inp
+        top_bar_header.addSpacing(10)
+        
         info_link_widget, export_data_control = self.create_export_data_input()
         file_size_info_layout = self.create_file_size_info_row()
         top_bar_header.addWidget(info_link_widget)
@@ -338,6 +348,8 @@ class SpectroscopyWindow(QWidget):
 
     def create_control_inputs(self):
         controls_row = QHBoxLayout()
+        #TODO
+        controls_row.setContentsMargins(0,10,0,0)
         controls_row.addSpacing(10)
         _, inp = InputNumberControl.setup(
             "Bin width (µs):",
@@ -403,12 +415,14 @@ class SpectroscopyWindow(QWidget):
             quantize_phasors_switch_control
         )
         (
-            self.show_layout(quantize_phasors_switch_control)
+            show_layout(quantize_phasors_switch_control)
             if self.tab_selected == TAB_PHASORS
-            else self.hide_layout(quantize_phasors_switch_control)
+            else hide_layout(quantize_phasors_switch_control)
         )
         controls_row.addLayout(quantize_phasors_switch_control)
+        #TODO
         controls_row.addSpacing(20)
+        
         # PHASORS RESOLUTION
         phasors_resolution_container, inp, __ = SelectControl.setup(
             "Squares:",
@@ -420,9 +434,9 @@ class SpectroscopyWindow(QWidget):
         )
         inp.setStyleSheet(GUIStyles.set_input_select_style())
         (
-            self.show_layout(phasors_resolution_container)
+            show_layout(phasors_resolution_container)
             if (self.tab_selected == TAB_PHASORS and self.quantized_phasors)
-            else self.hide_layout(phasors_resolution_container)
+            else hide_layout(phasors_resolution_container)
         )
         self.control_inputs[SETTINGS_PHASORS_RESOLUTION] = inp
         self.control_inputs["phasors_resolution_container"] = (
@@ -481,21 +495,6 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[HARMONIC_SELECTOR] = inp
         label.hide()
         inp.hide()
-        
-        # TODO              
-        # READER MODE
-        reader_mode_switch_control = QVBoxLayout()
-        reader_mode_inp = SwitchControl(
-            active_color="#11468F",
-            checked=self.reader_mode,
-        )
-        reader_mode_switch_control.addWidget(QLabel("Reader mode:"))
-        reader_mode_switch_control.addSpacing(8)
-        reader_mode_switch_control.addWidget(reader_mode_inp)
-        controls_row.addLayout(reader_mode_switch_control)
-        self.control_inputs[SETTINGS_READER_MODE] = reader_mode_inp
-        controls_row.addSpacing(20)
-        
         
         save_button = QPushButton("LOAD REFERENCE")
         save_button.setFlat(True)
@@ -574,9 +573,9 @@ class SpectroscopyWindow(QWidget):
         controls_row.addWidget(start_button)
         controls_row.addWidget(read_bin_button)
         controls_row.addWidget(collapse_button)
-        controls_row.addSpacing(10)
         #TODO
-        reader_mode_inp.toggled.connect(self.on_reader_mode_changed)
+        self.widgets["collapse_button"] = collapse_button
+        controls_row.addSpacing(10)
         return controls_row
 
     def fit_button_show(self):
@@ -625,15 +624,17 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(False)
         self.tab_selected = tab_name
         self.control_inputs[self.tab_selected].setChecked(True)
+        #TODO
         self.fit_button_hide()     
         self.clear_plots()
         self.cached_decay_values.clear()
         self.generate_plots()
+        self.toggle_intensities_widgets_visibility()
 
         if tab_name == TAB_SPECTROSCOPY:
             self.hide_harmonic_selector()
-            self.hide_layout(self.control_inputs["phasors_resolution_container"])
-            self.hide_layout(self.control_inputs["quantize_phasors_container"])
+            hide_layout(self.control_inputs["phasors_resolution_container"])
+            hide_layout(self.control_inputs["quantize_phasors_container"])
             # hide tau input
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
@@ -655,8 +656,8 @@ class SpectroscopyWindow(QWidget):
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_FITTING:
             self.hide_harmonic_selector()          
-            self.hide_layout(self.control_inputs["phasors_resolution_container"])
-            self.hide_layout(self.control_inputs["quantize_phasors_container"])
+            hide_layout(self.control_inputs["phasors_resolution_container"])
+            hide_layout(self.control_inputs["quantize_phasors_container"])
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
             self.control_inputs["calibration"].hide()
@@ -673,13 +674,13 @@ class SpectroscopyWindow(QWidget):
         elif tab_name == TAB_PHASORS:
             
             (
-                self.show_layout(self.control_inputs["phasors_resolution_container"])
+                show_layout(self.control_inputs["phasors_resolution_container"])
                 if self.quantized_phasors
-                else self.hide_layout(
+                else hide_layout(
                     self.control_inputs["phasors_resolution_container"]
                 )
             )
-            self.show_layout(self.control_inputs["quantize_phasors_container"])
+            show_layout(self.control_inputs["quantize_phasors_container"])
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
             self.control_inputs["calibration"].hide()
@@ -789,10 +790,19 @@ class SpectroscopyWindow(QWidget):
     def on_reader_mode_changed(self, state):
         self.reader_mode = state
         self.settings.setValue(SETTINGS_READER_MODE, state)   
-        self.control_inputs["start_button"].setVisible(not state)
-        self.control_inputs["read_bin_button"].setVisible(state)
-        if self.tab_selected == TAB_PHASORS:
-            self.control_inputs[LOAD_REF_BTN].setVisible(not state)
+        self.clear_plots()  
+        self.generate_plots() 
+        self.toggle_intensities_widgets_visibility() 
+        ReadDataControls.handle_widgets_visibility(self, self.reader_mode)
+
+     
+     #TODO
+    def toggle_intensities_widgets_visibility(self):
+        if self.intensities_widgets:
+            for _, widget in self.intensities_widgets.items():
+                if widget and isinstance(widget, QWidget):
+                    widget.setVisible(not self.reader_mode)
+     
 
     def on_bin_width_change(self, value):
         self.settings.setValue(SETTINGS_BIN_WIDTH, value)
@@ -807,9 +817,9 @@ class SpectroscopyWindow(QWidget):
         self.quantized_phasors = value
         self.settings.setValue(SETTINGS_QUANTIZE_PHASORS, value)
         (
-            self.show_layout(self.control_inputs["phasors_resolution_container"])
+            show_layout(self.control_inputs["phasors_resolution_container"])
             if value
-            else self.hide_layout(self.control_inputs["phasors_resolution_container"])
+            else hide_layout(self.control_inputs["phasors_resolution_container"])
         )
         self.clear_plots()
         self.generate_plots(frequency_mhz)
@@ -1001,7 +1011,6 @@ class SpectroscopyWindow(QWidget):
         buttons_layout.addWidget(sync_out_10_button)
         self.sync_buttons.append((sync_out_10_button, "sync_out_10"))
         for button, name in self.sync_buttons:
-
             def on_toggle(toggled_name):
                 for b, n in self.sync_buttons:
                     b.set_selected(n == toggled_name)
@@ -1009,6 +1018,7 @@ class SpectroscopyWindow(QWidget):
 
             button.clicked.connect(lambda _, n=name: on_toggle(n))
             button.set_selected(self.selected_sync == name)
+        self.widgets["sync_buttons_layout"] = buttons_layout
         return buttons_layout
 
     def generate_plots(self, frequency_mhz=0.0):
@@ -1021,6 +1031,7 @@ class SpectroscopyWindow(QWidget):
             v_widget = QWidget()
             v_widget.setObjectName("chart_wrapper")
             if self.tab_selected == TAB_SPECTROSCOPY or self.tab_selected == TAB_FITTING:
+                intensity_widget_wrapper = QWidget()
                 h_layout = QHBoxLayout()
                 label = QLabel("No CPS")
                 label.setStyleSheet(
@@ -1062,7 +1073,11 @@ class SpectroscopyWindow(QWidget):
                 else:
                     intensity_plot_stretch = 4
                 h_layout.addWidget(intensity_widget, stretch=intensity_plot_stretch)
-                v_layout.addLayout(h_layout, 2)
+                #TODO
+                intensity_widget_wrapper.setLayout(h_layout)
+                self.intensities_widgets[channel] = intensity_widget_wrapper
+                v_layout.addWidget(intensity_widget_wrapper, 2)
+                #Spectroscopy
                 h_decay_layout = QHBoxLayout()
                 lin_log_widget = SpectroscopyLinLogControl(self, channel)
                 curve_widget = pg.PlotWidget()
@@ -1264,6 +1279,8 @@ class SpectroscopyWindow(QWidget):
                 self.settings.setValue(f"channel_{i}", "true")
 
     def clear_plots(self):
+        #TODO
+        self.intensities_widgets.clear()
         self.phasors_charts.clear()
         self.phasors_widgets.clear()
         self.decay_widgets.clear()
@@ -1879,17 +1896,6 @@ class SpectroscopyWindow(QWidget):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
         self.popup.show()
 
-    def hide_layout(self, layout):
-        for i in range(layout.count()):
-            widget = layout.itemAt(i).widget()
-            if widget:
-                widget.hide()
-
-    def show_layout(self, layout):
-        for i in range(layout.count()):
-            widget = layout.itemAt(i).widget()
-            if widget:
-                widget.show()
 
     def closeEvent(self, event):
         self.settings.setValue("size", self.size())

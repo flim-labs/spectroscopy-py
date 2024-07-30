@@ -63,11 +63,6 @@ DEFAULT_LIN_LOG_MODE = "{}"
 CHANNELS_GRID = "channels_grid"
 
 
-
-
-
-
-
 UNICODE_SUP = {
     "0": "\u2070",
     "1": "\u00B9",

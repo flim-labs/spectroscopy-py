@@ -3,31 +3,23 @@ import struct
 import numpy as np
 from components.box_message import BoxMessage
 from components.gui_styles import GUIStyles
-from settings import TAB_PHASORS, TAB_SPECTROSCOPY
+from settings import *
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 
 class ReadData:
-
     @staticmethod
     def read_bin_data(app, tab_active):
         if tab_active == TAB_SPECTROSCOPY:
             result = ReadData.read_bin(app, b"SP01", "Spectroscopy", ReadData.read_spectroscopy_data)
             if result:
-                times, channels_curves = result
-                ReadData.plot_spectroscopy_data(app, times, channels_curves)
-            else:
-                print("Error reading bin data or no data returned.")
+                times, channels_curves, laser_period_ns = result
+                ReadData.plot_spectroscopy_data(app, times, channels_curves, laser_period_ns)
         elif tab_active == TAB_PHASORS:
             pass  
-
         
     @staticmethod
-    def plot_spectroscopy_data(app, times, channels_curves):
-        app.clear_plots()
-        app.generate_plots()
-        frequency_mhz = app.get_frequency_mhz()
-        laser_period_ns = ReadData.mhz_to_ns(frequency_mhz)
+    def plot_spectroscopy_data(app, times, channels_curves, laser_period_ns):
         num_bins = 256
         x = np.linspace(0, laser_period_ns, num_bins)
         x_values = x / 1_000 
@@ -50,7 +42,9 @@ class ReadData:
                 "Bin files (*.bin)",
                 options=QFileDialog.Option.DontUseNativeDialog,
             )
-            if not file_name or not file_name.endswith(".bin"):
+            if not file_name:
+                return
+            if not (file_name.endswith(".bin")):
                 BoxMessage.setup(
                     "Invalid extension",
                     "Invalid extension. File should be a .bin",
@@ -85,6 +79,7 @@ class ReadData:
             (json_length,) = struct.unpack("I", file.read(4))
             json_data = file.read(json_length).decode("utf-8")
             metadata = json.loads(json_data)
+            laser_period_ns = metadata["laser_period_ns"]
             channel_curves = {channel: [] for channel in range(len(metadata["channels"]))}
             times = []
             number_of_channels = len(metadata["channels"])
@@ -103,7 +98,7 @@ class ReadData:
                     curve = struct.unpack(channel_values_unpack_string, data)
                     channel_curves[i].append(np.array(curve))
             
-            return times, channel_curves
+            return times, channel_curves, laser_period_ns
         except Exception as e:
             print(f"Error reading spectroscopy data: {e}")
             BoxMessage.setup(
@@ -113,10 +108,27 @@ class ReadData:
                 GUIStyles.set_msg_box_style(),
             )
             return None
-        
+
+
+
+class ReadDataControls:
     @staticmethod
-    def mhz_to_ns(frequency_mhz):
-        frequency_hz = frequency_mhz * 1e6
-        period_s = 1 / frequency_hz
-        period_ns = period_s * 1e9
-        return period_ns               
+    def handle_widgets_visibility(app, read_mode):
+        app.control_inputs["start_button"].setVisible(not read_mode)
+        app.control_inputs["read_bin_button"].setVisible(read_mode)
+        app.widgets[TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
+        app.widgets["collapse_button"].setVisible(not read_mode)
+        app.control_inputs[SETTINGS_BIN_WIDTH].setEnabled(not read_mode)
+        app.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(not read_mode)
+        app.control_inputs[SETTINGS_FREE_RUNNING].setEnabled(not read_mode)
+        app.control_inputs[SETTINGS_CALIBRATION_TYPE].setEnabled(not read_mode)
+        app.control_inputs["tau"].setEnabled(not read_mode)
+        app.control_inputs[SETTINGS_TIME_SPAN].setEnabled(not read_mode)
+        app.control_inputs[SETTINGS_HARMONIC].setEnabled(not read_mode)
+        if app.tab_selected == TAB_PHASORS:
+            app.control_inputs[LOAD_REF_BTN].setVisible(not read_mode)
+                 
+    
+        
+class ReadDataPopup:
+    pass
