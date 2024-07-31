@@ -1,3 +1,4 @@
+from copy import deepcopy
 from functools import partial
 import json
 import os
@@ -786,8 +787,10 @@ class SpectroscopyWindow(QWidget):
     
     #TODO    
     def on_reader_mode_changed(self, state):
-        self.reader_mode = state
-        self.settings.setValue(SETTINGS_READER_MODE, state)   
+        self.settings.setValue(SETTINGS_READER_MODE, state) 
+        if not state:
+            self.reader_data = DEFAULT_READER_DATA
+        self.reader_mode = state  
         self.clear_plots()  
         self.generate_plots() 
         self.toggle_intensities_widgets_visibility() 
@@ -913,6 +916,7 @@ class SpectroscopyWindow(QWidget):
         grid.addWidget(plots_config_btn, alignment=Qt.AlignmentFlag.AlignBottom)
         self.widgets[CHANNELS_GRID] = grid
         return grid
+    
 
     def controls_set_enabled(self, enabled: bool):
         for key in self.control_inputs:

@@ -74,6 +74,7 @@ class GUIStyles:
                 border: 1px solid {color_border};
                 font-family: "Montserrat";
                 color: white;
+                padding: 8px;
                 letter-spacing: 0.1em;
                 min-width: {min_width};
                 border-radius: 4px;

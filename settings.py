@@ -1,3 +1,6 @@
+from copy import deepcopy
+
+
 VERSION = "1.3"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
@@ -76,7 +79,7 @@ UNICODE_SUP = {
 
 REALTIME_MS = 50
 REALTIME_ADJUSTMENT = REALTIME_MS * 1000
-DEFAULT_TICKS_LOG =  [0, 1, 2, 3, 4, 5, 6]
+DEFAULT_TICKS_LOG = [0, 1, 2, 3, 4, 5, 6]
 DEFAULT_TICKS_LIN = [0, 10, 100, 1000, 10000, 100000, 1000000]
 
 PHASORS_RESOLUTIONS = ["16", "32", "64", "128", "256", "512"]
@@ -92,21 +95,18 @@ SETTINGS_READER_MODE = "reader"
 DEFAULT_READER_MODE = False
 READER_DATA = {
     "spectroscopy": {
-        "file": "",
+        "files": {"spectroscopy": ""},
         "plots": [],
         "metadata": {},
-        "data": {}
+        "data": {},
     },
-     "phasors": {
-        "file": "",
+    "phasors": {
+        "files": {"spectroscopy": "", "phasors": ""},
         "plots": [],
         "metadata": {},
-        "data": {}
+        "data": {},
     },
-      "fitting": {
-        "file": "",
-        "plots": [],
-        "metadata": {},
-        "data": {}
-    }
+    "fitting": {"files": {"fitting": ""}, "plots": [], "metadata": {}, "data": {}},
 }
+
+DEFAULT_READER_DATA = deepcopy(READER_DATA)

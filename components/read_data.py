@@ -1,5 +1,7 @@
+from functools import partial
 import json
 import os
+import re
 import struct
 import numpy as np
 from components.box_message import BoxMessage
@@ -18,29 +20,40 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QGridLayout,
-    QCheckBox
+    QCheckBox,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QColor, QIcon
 from components.logo_utilities import TitlebarIcon
+
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
 
 
 class ReadData:
     @staticmethod
-    def read_bin_data(window, app, tab_active):
-        if tab_active == TAB_SPECTROSCOPY:
+    def read_bin_data(window, app, tab_selected, file_type):
+        active_tab = ReadData.get_data_type(tab_selected)
+        if file_type == "spectroscopy":
             result = ReadData.read_bin(
                 window, app, b"SP01", "Spectroscopy", ReadData.read_spectroscopy_data
             )
             if result:
-                file_name, times, channels_curves, metadata = result
-                app.reader_data["spectroscopy"]["data"]["times"] = times
-                app.reader_data["spectroscopy"]["data"]["channels_curves"] = channels_curves
-                app.reader_data["spectroscopy"]["metadata"] = metadata   
-                app.reader_data["spectroscopy"]["file"] = file_name  
-       
+                file_name, file_type, times, channels_curves, metadata = result
+                app.reader_data[active_tab]["plots"] = []
+                app.reader_data[active_tab]["data"]["times"] = times
+                app.reader_data[active_tab]["data"]["channels_curves"] = channels_curves
+                app.reader_data[active_tab]["metadata"] = metadata
+                app.reader_data[active_tab]["files"][file_type] = file_name
+
+    @staticmethod
+    def get_data_type(active_tab):
+        if active_tab == TAB_SPECTROSCOPY:
+            return "spectroscopy"
+        elif active_tab == TAB_PHASORS:
+            return "phasors"
+        else:
+            return "fitting"
 
     @staticmethod
     def plot_spectroscopy_data(app, times, channels_curves, laser_period_ns):
@@ -122,8 +135,8 @@ class ReadData:
                         return times, channel_curves
                     curve = struct.unpack(channel_values_unpack_string, data)
                     channel_curves[i].append(np.array(curve))
-
-            return file_name, times, channel_curves, metadata
+            file_type = "spectroscopy"
+            return file_name, file_type, times, channel_curves, metadata
         except Exception as e:
             print(f"Error reading spectroscopy data: {e}")
             BoxMessage.setup(
@@ -151,15 +164,16 @@ class ReadDataControls:
         app.control_inputs[SETTINGS_HARMONIC].setEnabled(not read_mode)
         if app.tab_selected == TAB_PHASORS:
             app.control_inputs[LOAD_REF_BTN].setVisible(not read_mode)
-            
+
     @staticmethod
     def handle_plots_config(app, file_type):
         file_metadata = app.reader_data[file_type]["metadata"]
         if "channels" in file_metadata and file_metadata["channels"] is not None:
             selected_channel = file_metadata["channels"]
-            selected_channel.sort()  
-            app.selected_channels = selected_channel  
+            selected_channel.sort()
+            app.selected_channels = selected_channel
             app.plots_to_show = app.reader_data[file_type]["plots"]
+
 
 class ReaderPopup(QWidget):
     def __init__(self, window, tab_selected):
@@ -168,21 +182,27 @@ class ReaderPopup(QWidget):
         self.tab_selected = tab_selected
         self.widgets = {}
         self.layouts = {}
-        self.file_type = self.get_file_type()
+        self.channels_checkboxes = []
+        self.data_type = ReadData.get_data_type(self.tab_selected)
         self.setWindowTitle("Read data")
         TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self, bg=QColor(20, 20, 20))
         self.layout = QVBoxLayout()
         self.layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # PLOT BUTTON ROW
+        plot_btn_row = self.create_plot_btn_layout()
         # LOAD FILE ROW
         load_file_row = self.init_file_load_ui()
         self.layout.addSpacing(10)
-        self.layout.addLayout(load_file_row)
-        #LOAD CHANNELS GRID
+        self.layout.insertLayout(1, load_file_row)
+        # LOAD CHANNELS GRID
         self.layout.addSpacing(20)
         channels_layout = self.init_channels_layout()
         if channels_layout is not None:
-            self.layout.addLayout(channels_layout)  
+            self.layout.insertLayout(2, channels_layout)
+
+        self.layout.addSpacing(20)
+        self.layout.insertLayout(3, plot_btn_row)
         self.setLayout(self.layout)
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.app.widgets[READER_POPUP] = self
@@ -190,36 +210,59 @@ class ReaderPopup(QWidget):
 
     def init_file_load_ui(self):
         v_box = QVBoxLayout()
-        input_desc = QLabel(f"LOAD A {self.file_type.upper()} FILE:")
-        input_desc.setStyleSheet("font-size: 16px")
-        control_row = QHBoxLayout()
-        _,input = InputTextControl.setup(
-            label="",
-            placeholder="Load .bin file",
-            event_callback=self.on_loaded_file_change,
-            text=self.app.reader_data[self.file_type]["file"],
-        )
-        input.setStyleSheet(GUIStyles.set_input_text_style())
-        self.widgets["load_file_input"] = input
-        load_file_btn = QPushButton()
-        load_file_btn.setIcon(QIcon(resource_path("assets/folder-white.png")))
-        load_file_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        GUIStyles.set_start_btn_style(load_file_btn)
-        load_file_btn.setFixedHeight(36)
-        load_file_btn.clicked.connect(self.on_load_file_btn_clicked)
-        control_row.addWidget(input)
-        control_row.addWidget(load_file_btn)
-        v_box.addWidget(input_desc)
-        v_box.addSpacing(10)
-        v_box.addLayout(control_row)
+        files = self.app.reader_data[self.data_type]["files"]
+        for file_type, file_path in files.items():
+            if file_type == "phasors" and self.data_type == "phasors":
+                input_desc = QLabel(f"LOAD RELATED {file_type.upper()} FILE:")
+            else:
+                input_desc = QLabel(f"LOAD A {file_type.upper()} FILE:")
+            input_desc.setStyleSheet("font-size: 16px")
+            control_row = QHBoxLayout()
+            _, input = InputTextControl.setup(
+                label="",
+                placeholder="Load .bin file",
+                event_callback=lambda text: self.on_loaded_file_change(text, file_type),
+                text=file_path,
+            )
+            input.setStyleSheet(GUIStyles.set_input_text_style())
+            widget_key = f"load_{file_type}_input"
+            self.widgets[widget_key] = input
+            load_file_btn = QPushButton()
+            load_file_btn.setIcon(QIcon(resource_path("assets/folder-white.png")))
+            load_file_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            GUIStyles.set_start_btn_style(load_file_btn)
+            load_file_btn.setFixedHeight(36)
+            load_file_btn.clicked.connect(
+                partial(self.on_load_file_btn_clicked, file_type)
+            )
+            control_row.addWidget(input)
+            control_row.addWidget(load_file_btn)
+            v_box.addWidget(input_desc)
+            v_box.addSpacing(10)
+            v_box.addLayout(control_row)
+            v_box.addSpacing(10)
         return v_box
 
     def init_channels_layout(self):
-        file_metadata = self.app.reader_data[self.file_type]["metadata"]
-        plots_to_show = self.app.reader_data[self.file_type]["plots"]
+        self.channels_checkboxes.clear()
+        file_metadata = self.app.reader_data[self.data_type]["metadata"]
+        plots_to_show = self.app.reader_data[self.data_type]["plots"]
         if "channels" in file_metadata and file_metadata["channels"] is not None:
             selected_channels = file_metadata["channels"]
             selected_channels.sort()
+            self.app.selected_channels = selected_channels
+            for i, ch in enumerate(self.app.channel_checkboxes):
+                ch.set_checked(i in self.app.selected_channels)
+            self.app.set_selected_channels_to_settings()
+            if len(plots_to_show) == 0:
+                plots_to_show = selected_channels[:4]
+            self.app.plots_to_show = plots_to_show
+            self.app.settings.setValue(
+                SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
+            )
+            self.app.clear_plots()
+            self.app.generate_plots()
+            self.app.toggle_intensities_widgets_visibility()
             channels_layout = QVBoxLayout()
             desc = QLabel("CHOOSE MAX 4 PLOTS TO DISPLAY:")
             desc.setStyleSheet("font-size: 16px")
@@ -232,56 +275,106 @@ class ReaderPopup(QWidget):
                     checkbox.setEnabled(False)
                 grid.addWidget(checkbox_wrapper)
             channels_layout.addWidget(desc)
-            channels_layout.addSpacing(10)   
-            channels_layout.addLayout(grid) 
+            channels_layout.addSpacing(10)
+            channels_layout.addLayout(grid)
             self.layouts["ch_layout"] = channels_layout
             return channels_layout
         else:
             return None
-                            
+
+    def create_plot_btn_layout(self):
+        row_btn = QHBoxLayout()
+        plot_btn = QPushButton("PLOT DATA")
+        plot_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        plot_btn.setObjectName("btn")
+        GUIStyles.set_stop_btn_style(plot_btn)
+        plot_btn.setFixedHeight(40)
+        plot_btn.setFixedWidth(200)
+        plots_to_show = self.app.reader_data[self.data_type]["plots"]
+        plot_btn.setEnabled(len(plots_to_show) > 0)
+        plot_btn.clicked.connect(self.on_plot_data_btn_clicked)
+        self.widgets["plot_btn"] = plot_btn
+        row_btn.addStretch(1)
+        row_btn.addWidget(plot_btn)
+        return row_btn
+
     def remove_channels_grid(self):
         if "ch_layout" in self.layouts:
-            clear_layout(self.layouts["ch_layout"]) 
-            del self.layouts["ch_layout"]       
-            
-    def set_checkboxes(self, text):    
+            clear_layout(self.layouts["ch_layout"])
+            del self.layouts["ch_layout"]
+
+    def set_checkboxes(self, text):
         checkbox_wrapper = QWidget()
         checkbox_wrapper.setObjectName(f"simple_checkbox_wrapper")
         row = QHBoxLayout()
         checkbox = QCheckBox(text)
-        checkbox.setStyleSheet(GUIStyles.set_simple_checkbox_style(color = PALETTE_BLUE_1))
+        checkbox.setStyleSheet(
+            GUIStyles.set_simple_checkbox_style(color=PALETTE_BLUE_1)
+        )
         checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
-        checkbox.toggled.connect(lambda state, checkbox=checkbox: self.on_channel_toggled(state, checkbox))
+        checkbox.toggled.connect(
+            lambda state, checkbox=checkbox: self.on_channel_toggled(state, checkbox)
+        )
         row.addWidget(checkbox)
         checkbox_wrapper.setLayout(row)
         checkbox_wrapper.setStyleSheet(GUIStyles.checkbox_wrapper_style())
-        return checkbox, checkbox_wrapper   
-    
-    
-    def on_channel_toggled(self, state, checkbox):
-        pass   
-            
+        return checkbox, checkbox_wrapper
 
-    def on_loaded_file_change(self, text):
-        self.app.reader_data[self.file_type]["file"] = text
-        
-    def on_load_file_btn_clicked(self):
-        ReadData.read_bin_data(self, self.app, self.tab_selected)
-        file_name = self.app.reader_data[self.file_type]["file"]
-        if len(file_name) > 0:
-            self.widgets["load_file_input"].setText(file_name) 
-            self.remove_channels_grid()
-            channels_layout = self.init_channels_layout()  
-            if channels_layout is not None:
-                self.layout.addLayout(channels_layout) 
-                
-    def get_file_type(self):
-        if self.tab_selected == TAB_SPECTROSCOPY:
-            return "spectroscopy"
-        elif self.tab_selected == TAB_PHASORS:
-            return "phasors"
+    def on_channel_toggled(self, state, checkbox):
+        label_text = checkbox.text()
+        ch_index = self.extract_channel_from_label(label_text)
+        if state:
+            if ch_index not in self.app.plots_to_show:
+                self.app.plots_to_show.append(ch_index)
         else:
-            return "fitting"
+            if ch_index in self.app.plots_to_show:
+                self.app.plots_to_show.remove(ch_index)
+        self.app.plots_to_show.sort()
+        self.app.settings.setValue(
+            SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
+        )
+        self.app.reader_data[self.data_type]["plots"] = self.app.plots_to_show
+        if len(self.app.plots_to_show) >= 4:
+            for checkbox in self.channels_checkboxes:
+                if checkbox.text() != label_text and not checkbox.isChecked():
+                    checkbox.setEnabled(False)
+        else:
+            for checkbox in self.channels_checkboxes:
+                checkbox.setEnabled(True)
+        if "plot_btn" in self.widgets:
+            plot_btn_enabled = len(self.app.plots_to_show) > 0
+            self.widgets["plot_btn"].setEnabled(plot_btn_enabled)
+        self.app.clear_plots()
+        self.app.cached_decay_values.clear()
+        self.app.generate_plots()
+        self.app.toggle_intensities_widgets_visibility()
+
+    def on_loaded_file_change(self, text, file_type):
+        self.app.reader_data[self.data_type]["files"][file_type] = text
+
+    def on_load_file_btn_clicked(self, file_type):
+        ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
+        file_name = self.app.reader_data[self.data_type]["files"][file_type]
+        if len(file_name) > 0:
+            widget_key = f"load_{file_type}_input"
+            self.widgets[widget_key].setText(file_name)
+            self.remove_channels_grid()
+            channels_layout = self.init_channels_layout()
+            if channels_layout is not None:
+                self.layout.insertLayout(2, channels_layout)
+
+    def on_plot_data_btn_clicked(self):
+        data = self.app.reader_data[self.data_type]["data"]
+        metadata = self.app.reader_data[self.data_type]["metadata"]
+        laser_period_ns = (
+            metadata["laser_period_ns"]
+            if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None
+            else 25
+        )
+        if "times" in data and "channels_curves" in data:
+            ReadData.plot_spectroscopy_data(self.app, data["times"], data["channels_curves"], laser_period_ns)
+            self.close()
+ 
 
     def center_window(self):
         self.setMinimumWidth(500)
@@ -289,6 +382,12 @@ class ReaderPopup(QWidget):
         screen_geometry = QApplication.primaryScreen().availableGeometry().center()
         window_geometry.moveCenter(screen_geometry)
         self.move(window_geometry.topLeft())
+
+    def extract_channel_from_label(self, text):
+        ch = re.search(r"\d+", text).group()
+        ch_num = int(ch)
+        ch_num_index = ch_num - 1
+        return ch_num_index
 
 
 class ReaderMetadataPopup(QWidget):
