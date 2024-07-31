@@ -55,6 +55,8 @@ project_root = os.path.abspath(os.path.join(current_path))
 class SpectroscopyWindow(QWidget):
     def __init__(self):
         super().__init__()
+        #TODO
+        self.reader_data = READER_DATA
 
         self.update_plots_enabled = False
         self.settings = self.init_settings()
@@ -152,7 +154,6 @@ class SpectroscopyWindow(QWidget):
         self.calc_exported_file_size()
         self.phasors_harmonic_selected = 1
         #TODO
-        self.reader_data = READER_DATA
         self.control_inputs[SETTINGS_READER_MODE].toggled.connect(self.on_reader_mode_changed)
         ReadDataControls.handle_widgets_visibility(self, self.reader_mode)
         self.toggle_intensities_widgets_visibility() 
@@ -560,6 +561,19 @@ class SpectroscopyWindow(QWidget):
         start_button.setVisible(not self.reader_mode)
         self.control_inputs["start_button"] = start_button
         
+        # BIN METADATA BUTTON
+        bin_metadata_button = QPushButton()
+        bin_metadata_button.setIcon(QIcon(resource_path("assets/metadata-icon.png")))
+        bin_metadata_button.setIconSize(QSize(30, 30))
+        bin_metadata_button.setStyleSheet("background-color: white; padding: 0 14px;")
+        bin_metadata_button.setFixedHeight(55)
+        bin_metadata_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.control_inputs["bin_metadata_button"] = bin_metadata_button
+        bin_metadata_button.clicked.connect(self.open_reader_metadata_popup)
+        data_type = ReadData.get_data_type(self.tab_selected)
+        bin_metadata_btn_visible = self.reader_mode and len(self.reader_data[data_type]["metadata"]) != 0
+        bin_metadata_button.setVisible(bin_metadata_btn_visible)
+        
         #READ BIN BUTTON
         read_bin_button = QPushButton("READ")
         read_bin_button.setObjectName("btn")
@@ -573,6 +587,7 @@ class SpectroscopyWindow(QWidget):
         
         collapse_button = CollapseButton(self.widgets[TOP_COLLAPSIBLE_WIDGET])
         controls_row.addWidget(start_button)
+        controls_row.addWidget(bin_metadata_button)
         controls_row.addWidget(read_bin_button)
         controls_row.addWidget(collapse_button)
         #TODO

@@ -151,6 +151,15 @@ class ReadData:
 class ReadDataControls:
     @staticmethod
     def handle_widgets_visibility(app, read_mode):
+        data_type = ReadData.get_data_type(app.tab_selected)
+        if not read_mode:
+            app.control_inputs["bin_metadata_button"].setVisible(False)
+        else:
+            read_bin_button_visible = len(app.reader_data[data_type]["metadata"]) != 0
+            if read_bin_button_visible:
+                app.control_inputs["bin_metadata_button"].setVisible(True) 
+            else: 
+                app.control_inputs["bin_metadata_button"].setVisible(False)          
         app.control_inputs["start_button"].setVisible(not read_mode)
         app.control_inputs["read_bin_button"].setVisible(read_mode)
         app.widgets[TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
@@ -164,6 +173,7 @@ class ReadDataControls:
         app.control_inputs[SETTINGS_HARMONIC].setEnabled(not read_mode)
         if app.tab_selected == TAB_PHASORS:
             app.control_inputs[LOAD_REF_BTN].setVisible(not read_mode)
+            
 
     @staticmethod
     def handle_plots_config(app, file_type):
@@ -216,7 +226,7 @@ class ReaderPopup(QWidget):
                 input_desc = QLabel(f"LOAD RELATED {file_type.upper()} FILE:")
             else:
                 input_desc = QLabel(f"LOAD A {file_type.upper()} FILE:")
-            input_desc.setStyleSheet("font-size: 16px")
+            input_desc.setStyleSheet("font-size: 16px; font-family: Montserrat")
             control_row = QHBoxLayout()
             _, input = InputTextControl.setup(
                 label="",
@@ -255,7 +265,7 @@ class ReaderPopup(QWidget):
                 ch.set_checked(i in self.app.selected_channels)
             self.app.set_selected_channels_to_settings()
             if len(plots_to_show) == 0:
-                plots_to_show = selected_channels[:4]
+                plots_to_show = selected_channels[:2]
             self.app.plots_to_show = plots_to_show
             self.app.settings.setValue(
                 SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
@@ -265,7 +275,7 @@ class ReaderPopup(QWidget):
             self.app.toggle_intensities_widgets_visibility()
             channels_layout = QVBoxLayout()
             desc = QLabel("CHOOSE MAX 4 PLOTS TO DISPLAY:")
-            desc.setStyleSheet("font-size: 16px")
+            desc.setStyleSheet("font-size: 16px, font-family: Montserrat")
             grid = QGridLayout()
             for ch in selected_channels:
                 checkbox, checkbox_wrapper = self.set_checkboxes(f"Channel {ch + 1}")
@@ -356,6 +366,7 @@ class ReaderPopup(QWidget):
         ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
         file_name = self.app.reader_data[self.data_type]["files"][file_type]
         if len(file_name) > 0:
+            self.app.control_inputs["bin_metadata_button"].setVisible(True) 
             widget_key = f"load_{file_type}_input"
             self.widgets[widget_key].setText(file_name)
             self.remove_channels_grid()
@@ -394,11 +405,76 @@ class ReaderMetadataPopup(QWidget):
     def __init__(self, window, tab_selected):
         super().__init__()
         self.app = window
-        self.setWindowTitle("File metadata")
+        self.tab_selected = tab_selected
+        self.data_type = ReadData.get_data_type(self.tab_selected)
+        self.setWindowTitle(f"{self.data_type.capitalize()} file metadata")
         TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self, bg=QColor(20, 20, 20))
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # METADATA TABLE
+        self.metadata_table = self.create_metadata_table()
+        layout.addSpacing(10)
+        layout.addLayout(self.metadata_table)
+        layout.addSpacing(10)
         self.setLayout(layout)
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.app.widgets[READER_METADATA_POPUP] = self
+        
+        
+    def get_metadata_keys_dict(self):
+        return {
+            "channels": "Enabled Channels",
+            "bin_width_micros": "Bin width (μs)",
+            "acquisition_time_millis": "Acquisition time (s)",
+            "laser_period_ns": "Laser period (ns)",
+            "harmonics": "Harmonics",
+            "tau_ns": "Tau (ns)"
+        }    
+        
+    def create_metadata_table(self):
+        metadata_keys = self.get_metadata_keys_dict()
+        metadata = self.app.reader_data[self.data_type]["metadata"]
+        file = self.app.reader_data[self.data_type]["files"][self.data_type]
+        v_box = QVBoxLayout()
+        if metadata:
+            title = QLabel(f"{self.data_type.upper()} FILE METADATA")
+            title.setStyleSheet("font-size: 16px; font-family: Montserrat")
+            def get_key_label_style(bg_color):
+                return f"width: 200px; font-size: 14px; border: 1px solid  {bg_color}; padding: 8px; color: white; background-color: {bg_color}"
+            def get_value_label_style(bg_color):
+                return f"width: 500px; font-size: 14px; border: 1px solid  {bg_color}; padding: 8px; color: white"
+         
+            v_box.addWidget(title)
+            v_box.addSpacing(10)
+            h_box = QHBoxLayout()        
+            h_box.setContentsMargins(0,0,0,0)
+            h_box.setSpacing(0)
+            key_label = QLabel("File")  
+            key_label.setStyleSheet(get_key_label_style("#DA1212")) 
+            value_label = QLabel(file) 
+            value_label.setStyleSheet(get_value_label_style("#DA1212")) 
+            h_box.addWidget(key_label) 
+            h_box.addWidget(value_label) 
+            v_box.addLayout(h_box)
+            for key, value in metadata_keys.items():
+                if key in metadata:
+                    metadata_value = str(metadata[key])
+                    if key == "channels":
+                        metadata_value = ", ".join(["Channel " + str(ch + 1) for ch in metadata[key]])
+                    if key == "acquisition_time_millis":
+                        metadata_value =  str(metadata[key] / 1000) 
+                h_box = QHBoxLayout()  
+                h_box.setContentsMargins(0,0,0,0)
+                h_box.setSpacing(0)      
+                key_label = QLabel(value)   
+                value_label = QLabel(metadata_value) 
+                key_label.setStyleSheet(get_key_label_style("#11468F")) 
+                value_label.setStyleSheet(get_value_label_style("#11468F")) 
+                h_box.addWidget(key_label) 
+                h_box.addWidget(value_label) 
+                v_box.addLayout(h_box) 
+        return v_box          
+            
+        
+ 
