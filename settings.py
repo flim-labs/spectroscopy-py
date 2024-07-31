@@ -30,8 +30,6 @@ DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
 SETTINGS_WRITE_DATA = "write_data"
 DEFAULT_WRITE_DATA = True
 SETTINGS_TIME_SHIFTS = "time_shift"
-SETTINGS_READER_MODE = "reader"
-DEFAULT_READER_MODE = False
 
 FIT_BTN = "fit_button"
 FIT_BTN_PLACEHOLDER = "fit_button_placeholder"
@@ -86,3 +84,29 @@ SETTINGS_PHASORS_RESOLUTION = "phasors_resolution"
 DEFAULT_PHASORS_RESOLUTION = 2
 SETTINGS_QUANTIZE_PHASORS = "quantize_phasors"
 DEFAULT_QUANTIZE_PHASORS = True
+
+
+READER_POPUP = "reader_popup"
+READER_METADATA_POPUP = "reader_metadata_popup"
+SETTINGS_READER_MODE = "reader"
+DEFAULT_READER_MODE = False
+READER_DATA = {
+    "spectroscopy": {
+        "file": "",
+        "plots": [],
+        "metadata": {},
+        "data": {}
+    },
+     "phasors": {
+        "file": "",
+        "plots": [],
+        "metadata": {},
+        "data": {}
+    },
+      "fitting": {
+        "file": "",
+        "plots": [],
+        "metadata": {},
+        "data": {}
+    }
+}

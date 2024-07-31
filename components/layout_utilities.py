@@ -23,7 +23,6 @@ def draw_layout_separator(line_width=1, color="#282828", vertical_space=10):
     return container_widget
 
 
-
 def hide_layout(layout):
     for i in range(layout.count()):
         item = layout.itemAt(i)
@@ -39,3 +38,17 @@ def show_layout(layout):
             item.widget().show()
         elif item.layout():
             show_layout(item.layout())
+            
+            
+def clear_layout(layout):
+    if layout is not None:
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+            else:
+                sub_layout = item.layout()
+                if sub_layout is not None:
+                    clear_layout(sub_layout)
+        layout.deleteLater()

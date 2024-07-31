@@ -40,7 +40,7 @@ from components.lin_log_control import SpectroscopyLinLogControl
 from components.link_widget import LinkWidget
 from components.logo_utilities import OverlayWidget, TitlebarIcon
 from components.plots_config import PlotsConfigPopup
-from components.read_data import ReadData, ReadDataControls
+from components.read_data import ReadData, ReadDataControls, ReaderMetadataPopup, ReaderPopup
 from components.resource_path import resource_path
 from components.select_control import SelectControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
@@ -149,12 +149,13 @@ class SpectroscopyWindow(QWidget):
         self.pull_from_queue_timer.timeout.connect(self.pull_from_queue)
         self.fitting_config_popup = None
         self.calc_exported_file_size()
-        
         self.phasors_harmonic_selected = 1
         #TODO
+        self.reader_data = READER_DATA
         self.control_inputs[SETTINGS_READER_MODE].toggled.connect(self.on_reader_mode_changed)
         ReadDataControls.handle_widgets_visibility(self, self.reader_mode)
         self.toggle_intensities_widgets_visibility() 
+        
 
     @staticmethod
     def get_empty_phasors_points():
@@ -565,7 +566,7 @@ class SpectroscopyWindow(QWidget):
         read_bin_button.setFixedHeight(55)
         read_bin_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.control_inputs["read_bin_button"] = read_bin_button
-        read_bin_button.clicked.connect(self.on_read_bin_click)
+        read_bin_button.clicked.connect(self.open_reader_popup)
         read_bin_button.setVisible(self.reader_mode)
         self.style_start_button()
         
@@ -716,9 +717,6 @@ class SpectroscopyWindow(QWidget):
             self.acquisition_stopped = True
             self.stop_spectroscopy_experiment()
             
-    #TODO
-    def on_read_bin_click(self):
-        ReadData.read_bin_data(self, self.tab_selected)
 
     def on_fit_btn_click(self):
         data = []
@@ -1895,6 +1893,14 @@ class SpectroscopyWindow(QWidget):
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
         self.popup.show()
+    
+    #TODO    
+    def open_reader_popup(self):    
+        self.popup = ReaderPopup(self, tab_selected=self.tab_selected)
+        self.popup.show()  
+    def open_reader_metadata_popup(self):    
+        self.popup = ReaderMetadataPopup(self, tab_selected=self.tab_selected)
+        self.popup.show()           
 
 
     def closeEvent(self, event):
@@ -1902,6 +1908,11 @@ class SpectroscopyWindow(QWidget):
         self.settings.setValue("pos", self.pos())
         if PLOTS_CONFIG_POPUP in self.widgets:
             self.widgets[PLOTS_CONFIG_POPUP].close()
+        #TODO    
+        if READER_POPUP in self.widgets:
+            self.widgets[READER_POPUP].close()              
+        if READER_METADATA_POPUP in self.widgets:
+            self.widgets[READER_METADATA_POPUP].close()  
         event.accept()
 
     def eventFilter(self, source, event):
