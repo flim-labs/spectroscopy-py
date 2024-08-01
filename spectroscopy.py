@@ -74,8 +74,9 @@ class SpectroscopyWindow(QWidget):
         self.reference_file = None
         self.overlay2 = None
         self.acquisition_stopped = False
+        #TODO
         self.intensities_widgets = {}
-        self.intensity_lines = {}
+        self.intensity_lines = INTENSITY_LINES
         self.phasors_charts = {}
         self.phasors_widgets = {}
         self.phasors_coords = {}
@@ -84,10 +85,9 @@ class SpectroscopyWindow(QWidget):
         self.quantization_images = {}
         self.cps_widgets = {}
         self.cps_counts = {}
-        self.decay_curves = {}
+        self.decay_curves = DECAY_CURVES
         self.decay_widgets = {}
-        self.cached_decay_values = {}
-        self.cached_decay_x_values = np.array([])
+        self.cached_decay_values = CACHED_DECAY_VALUES
         self.spectroscopy_axis_x = np.arange(1)
         self.lin_log_switches = {}
         default_time_shifts = self.settings.value(
@@ -166,6 +166,7 @@ class SpectroscopyWindow(QWidget):
         )
         ReadDataControls.handle_widgets_visibility(self, self.reader_mode)
         self.toggle_intensities_widgets_visibility()
+        self.refresh_reader_popup_plots = False
 
     @staticmethod
     def get_empty_phasors_points():
@@ -586,7 +587,7 @@ class SpectroscopyWindow(QWidget):
         bin_metadata_button.setVisible(bin_metadata_btn_visible)
 
         # READ BIN BUTTON
-        read_bin_button = QPushButton("READ")
+        read_bin_button = QPushButton("READ/PLOT")
         read_bin_button.setObjectName("btn")
         read_bin_button.setFlat(True)
         read_bin_button.setFixedHeight(55)
@@ -656,8 +657,7 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(True)
         # TODO
         self.fit_button_hide()
-        self.clear_plots()
-        self.cached_decay_values.clear()
+        self.clear_plots(deep_clear=False)
         self.generate_plots()
         self.toggle_intensities_widgets_visibility()
         if tab_name == TAB_SPECTROSCOPY:
@@ -755,7 +755,7 @@ class SpectroscopyWindow(QWidget):
         ]
 
         for channel, channel_index in enumerate(channels_shown):
-            x, y = self.decay_curves[channel_index].getData()
+            x, y = self.decay_curves[self.tab_selected][channel_index].getData()
             data.append(
                 {
                     "x": x,
@@ -995,7 +995,6 @@ class SpectroscopyWindow(QWidget):
         self.plots_to_show.sort()
         self.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(self.plots_to_show))
         self.set_selected_channels_to_settings()
-        self.cached_decay_values.clear()
         self.clear_plots()
         self.generate_plots()
         self.calc_exported_file_size()
@@ -1054,6 +1053,49 @@ class SpectroscopyWindow(QWidget):
             button.set_selected(self.selected_sync == name)
         self.widgets["sync_buttons_layout"] = buttons_layout
         return buttons_layout
+    
+    def initialize_intensity_plot_data(self, channel):
+        if self.tab_selected in self.intensity_lines:
+            if channel in self.intensity_lines[self.tab_selected]:
+                x,y = self.intensity_lines[self.tab_selected][channel].getData()
+                return x,y
+        x = np.arange(1)                
+        y = x * 0 
+        return x,y   
+    
+    
+    def initialize_decay_curves(self, channel, frequency_mhz):
+        def get_default_x():
+            if frequency_mhz != 0.0:
+                period = 1_000 / frequency_mhz
+                x = np.linspace(0, period, 256)
+            else:    
+                x = np.arange(1) 
+            return x      
+        decay_curves = self.decay_curves[self.tab_selected]
+        if self.tab_selected in [TAB_SPECTROSCOPY, TAB_FITTING]:
+            cached_decay_values = self.cached_decay_values[self.tab_selected]
+            if channel in cached_decay_values and channel in decay_curves:
+                x, _ = decay_curves[channel].getData()
+                y = cached_decay_values[channel]
+                return x,y
+            else:
+                x =get_default_x()
+                if (channel not in self.lin_log_mode or self.lin_log_mode[channel] == "LIN"):
+                    y = x * 0
+                else:
+                    y = (np.linspace(0, 100000000, 256) if frequency_mhz != 0.0 else np.array([0]))  
+                return x,y          
+        else:
+            if channel not in decay_curves:
+                x = get_default_x()
+                y = x * 0
+                return x,y
+            else: 
+                x, y = decay_curves[channel].getData()
+                return x,y
+                    
+        
 
     def generate_plots(self, frequency_mhz=0.0):
         self.lin_log_switches.clear()
@@ -1096,10 +1138,9 @@ class SpectroscopyWindow(QWidget):
                 intensity_widget.setBackground("#141414")
                 # remove margins
                 intensity_widget.plotItem.setContentsMargins(0, 0, 0, 0)
-                x = np.arange(1)
-                y = x * 0
+                x,y = self.initialize_intensity_plot_data(channel)
                 intensity_plot = intensity_widget.plot(x, y, pen="#1E90FF", pen_width=2)
-                self.intensity_lines[channel] = intensity_plot
+                self.intensity_lines[self.tab_selected][channel] = intensity_plot
                 h_layout.addWidget(label, stretch=1)
                 if len(self.plots_to_show) == 1:
                     intensity_plot_stretch = 6
@@ -1122,24 +1163,13 @@ class SpectroscopyWindow(QWidget):
                 curve_widget.setLabel("bottom", "Time", units="ns")
                 curve_widget.setTitle(f"Channel {channel + 1} decay")
                 curve_widget.setBackground("#0a0a0a")
-                if frequency_mhz != 0.0:
-                    period = 1_000 / frequency_mhz
-                    x = np.linspace(0, period, 256)
-                else:
-                    x = np.arange(1)
-                self.spectroscopy_axis_x = x
-                y = x * 0
+                x, y = self.initialize_decay_curves(channel, frequency_mhz)
                 if (
                     channel not in self.lin_log_mode
                     or self.lin_log_mode[channel] == "LIN"
                 ):
                     static_curve = curve_widget.plot(x, y, pen="#f72828", pen_width=2)
                 else:
-                    y = (
-                        np.linspace(0, 100000000, 256)
-                        if frequency_mhz != 0.0
-                        else np.array([0])
-                    )
                     log_values, ticks, _ = (
                         SpectroscopyLinLogControl.calculate_log_ticks(y)
                     )
@@ -1152,8 +1182,7 @@ class SpectroscopyWindow(QWidget):
                     self.set_plot_y_range(curve_widget, self.lin_log_mode[channel])
                 curve_widget.plotItem.getAxis("left").enableAutoSIPrefix(False)
                 curve_widget.plotItem.getAxis("bottom").enableAutoSIPrefix(False)
-                self.cached_decay_values[channel] = np.array([0])
-                self.decay_curves[channel] = static_curve
+                self.decay_curves[self.tab_selected][channel] = static_curve
                 self.decay_widgets[channel] = curve_widget
                 time_shift_layout = SpectroscopyTimeShift(self, channel)
                 v_decay_layout = QVBoxLayout()
@@ -1181,14 +1210,9 @@ class SpectroscopyWindow(QWidget):
                 curve_widget.setLabel("left", "Photon counts", units="")
                 curve_widget.setLabel("bottom", "Time", units="ns")
                 curve_widget.setTitle(f"Channel {channel + 1} decay")
-                if frequency_mhz != 0.0:
-                    period = 1_000 / frequency_mhz
-                    x = np.linspace(0, period, 256)
-                else:
-                    x = np.arange(1)
-                y = x * 0
+                x, y = self.initialize_decay_curves(channel, frequency_mhz)
                 static_curve = curve_widget.plot(x, y, pen="#f72828", pen_width=2)
-                self.decay_curves[channel] = static_curve
+                self.decay_curves[self.tab_selected][channel] = static_curve
                 self.decay_widgets[channel] = curve_widget
                 h_layout.addWidget(label, stretch=1)
                 h_layout.addWidget(curve_widget, stretch=1)
@@ -1320,8 +1344,9 @@ class SpectroscopyWindow(QWidget):
         for ch in self.plots_to_show:
             if ch in self.phasors_charts:
                 self.phasors_charts[ch].setData([], [])
+                
 
-    def clear_plots(self):
+    def clear_plots(self, deep_clear = True):
         # TODO
         self.intensities_widgets.clear()
         self.phasors_charts.clear()
@@ -1332,20 +1357,25 @@ class SpectroscopyWindow(QWidget):
         self.quantization_images.clear()
         self.cps_widgets.clear()
         self.cps_counts.clear()
-        self.intensity_lines.clear()
-        self.decay_curves.clear()
-        self.cached_decay_x_values = np.array([])
-        if "time_shift_sliders" in self.control_inputs:
-            self.control_inputs["time_shift_sliders"].clear()
-        if "time_shift_inputs" in self.control_inputs:
-            self.control_inputs["time_shift_inputs"].clear()
-        for i in reversed(range(self.grid_layout.count())):
-            widget = self.grid_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-            layout = self.grid_layout.itemAt(i).layout()
-            if layout is not None:
-                self.clear_layout_tree(layout)
+        if deep_clear:
+            self.intensity_lines = deepcopy(DEFAULT_INTENSITY_LINES)
+            self.decay_curves = deepcopy(DEFAULT_DECAY_CURVES)
+            self.cached_decay_values = deepcopy(DEFAULT_CACHED_DECAY_VALUES)
+            self.clear_phasors_points()
+            for ch in self.plots_to_show:
+                if self.tab_selected != TAB_PHASORS:
+                    self.cached_decay_values[self.tab_selected][ch] = np.array([0])
+            if "time_shift_sliders" in self.control_inputs:
+                self.control_inputs["time_shift_sliders"].clear()
+            if "time_shift_inputs" in self.control_inputs:
+                self.control_inputs["time_shift_inputs"].clear()    
+            for i in reversed(range(self.grid_layout.count())):
+                widget = self.grid_layout.itemAt(i).widget()
+                if widget is not None:
+                    widget.deleteLater()
+                layout = self.grid_layout.itemAt(i).layout()
+                if layout is not None:
+                    self.clear_layout_tree(layout)
 
     def clear_layout_tree(self, layout: QLayout):
         if layout is not None:
@@ -1457,7 +1487,6 @@ class SpectroscopyWindow(QWidget):
                 self.plots_to_show_already_appear = True
                 return
         self.clear_plots()
-        self.cached_decay_values.clear()
         self.generate_plots(frequency_mhz)
         acquisition_time_millis = (
             None
@@ -1810,23 +1839,24 @@ class SpectroscopyWindow(QWidget):
         )
         adjustment = REALTIME_ADJUSTMENT / bin_width_micros
         curve = tuple(x / adjustment for x in curve)
-        if channel_index in self.intensity_lines:
-            intensity_line = self.intensity_lines[channel_index]
-            if intensity_line is not None:
-                x, y = intensity_line.getData()
-                # Initialize or append data
-                if x is None or (len(x) == 1 and x[0] == 0):
-                    x = np.array([time_ns / 1_000_000_000])
-                    y = np.array([np.sum(curve)])
-                else:
-                    x = np.append(x, time_ns / 1_000_000_000)
-                    y = np.append(y, np.sum(curve))
-                # Trim data based on time span
-                if len(x) > 2:
-                    while x[-1] - x[0] > self.cached_time_span_seconds:
-                        x = x[1:]
-                        y = y[1:]
-                intensity_line.setData(x, y)
+        if self.tab_selected in self.intensity_lines:
+            if channel_index in self.intensity_lines[self.tab_selected]:
+                intensity_line = self.intensity_lines[self.tab_selected][channel_index]
+                if intensity_line is not None:
+                    x, y = intensity_line.getData()
+                    # Initialize or append data
+                    if x is None or (len(x) == 1 and x[0] == 0):
+                        x = np.array([time_ns / 1_000_000_000])
+                        y = np.array([np.sum(curve)])
+                    else:
+                        x = np.append(x, time_ns / 1_000_000_000)
+                        y = np.append(y, np.sum(curve))
+                    # Trim data based on time span
+                    if len(x) > 2:
+                        while x[-1] - x[0] > self.cached_time_span_seconds:
+                            x = x[1:]
+                            y = y[1:]
+                    intensity_line.setData(x, y)
 
     def update_spectroscopy_plots(self, x, y, channel_index, decay_curve):
         time_shift = (
@@ -1858,7 +1888,7 @@ class SpectroscopyWindow(QWidget):
         if not reader_mode:
             # Update intensity plots
             self.update_intensity_plots(channel_index, time_ns, curve)
-        decay_curve = self.decay_curves[channel_index]
+        decay_curve = self.decay_curves[self.tab_selected][channel_index]
         if decay_curve is not None:
             if reader_mode:
                 x, y = time_ns, curve
@@ -1867,11 +1897,11 @@ class SpectroscopyWindow(QWidget):
                 if self.tab_selected == TAB_PHASORS:
                     decay_curve.setData(x, curve + y)
                 elif self.tab_selected in (TAB_SPECTROSCOPY, TAB_FITTING):
-                    last_cached_decay_value = self.cached_decay_values[channel_index]
-                    self.cached_decay_values[channel_index] = (
+                    last_cached_decay_value = self.cached_decay_values[self.tab_selected][channel_index]
+                    self.cached_decay_values[self.tab_selected][channel_index] = (
                         np.array(curve) + last_cached_decay_value
                     )
-                    y = self.cached_decay_values[channel_index]
+                    y = self.cached_decay_values[self.tab_selected][channel_index]
             if self.tab_selected in (TAB_SPECTROSCOPY, TAB_FITTING):
                 self.update_spectroscopy_plots(x, y, channel_index, decay_curve)
             else:

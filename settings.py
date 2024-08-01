@@ -112,3 +112,22 @@ READER_DATA = {
 }
 
 DEFAULT_READER_DATA = deepcopy(READER_DATA)
+
+
+INTENSITY_LINES = {
+            TAB_SPECTROSCOPY: {},
+            TAB_FITTING: {}
+        }
+
+DEFAULT_INTENSITY_LINES = deepcopy(INTENSITY_LINES)
+DECAY_CURVES =  {
+            TAB_SPECTROSCOPY: {},
+            TAB_PHASORS: {},
+            TAB_FITTING: {},
+        }
+DEFAULT_DECAY_CURVES = deepcopy(DECAY_CURVES)
+CACHED_DECAY_VALUES =  {
+            TAB_SPECTROSCOPY: {},
+            TAB_FITTING: {},
+        }
+DEFAULT_CACHED_DECAY_VALUES = deepcopy(CACHED_DECAY_VALUES)

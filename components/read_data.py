@@ -79,17 +79,31 @@ class ReadData:
         for channel, curves in channels_curves.items():
             if channel in app.plots_to_show:
                 y_values = np.sum(curves, axis=0)
-                app.cached_decay_values[channel] = y_values
+                if app.tab_selected != TAB_PHASORS:
+                    app.cached_decay_values[app.tab_selected][channel] = y_values
                 app.update_plots2(channel, x_values, y_values, reader_mode=True)
 
     @staticmethod
-    def plot_phasors_data(app, data):
+    def plot_phasors_data(app, data, harmonics):
+        app.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
+        if harmonics > 1:
+            app.harmonic_selector_shown = True
+            app.show_harmonic_selector(
+                harmonics
+                )
         for i, (channel, harmonics) in enumerate(data.items(), start=1):
             if channel in app.plots_to_show:
                 for harmonic, values in harmonics.items():
                     if harmonic == 1:
                         app.draw_points_in_phasors(channel, harmonic, values)
                     app.all_phasors_points[channel][harmonic].extend(values)
+        if app.quantized_phasors:              
+            app.quantize_phasors(
+                        app.phasors_harmonic_selected,
+                        bins=int(PHASORS_RESOLUTIONS[app.phasors_resolution]),
+                    )
+        else:        
+            app.on_quantize_phasors_changed(False)            
 
     @staticmethod
     def are_phasors_and_spectroscopy_ref_from_same_acquisition(
@@ -308,6 +322,7 @@ class ReaderPopup(QWidget):
         self.widgets = {}
         self.layouts = {}
         self.channels_checkboxes = []
+        self.channels_checkbox_first_toggle = True
         self.data_type = ReadData.get_data_type(self.tab_selected)
         self.setWindowTitle("Read data")
         TitlebarIcon.setup(self)
@@ -473,10 +488,11 @@ class ReaderPopup(QWidget):
         if "plot_btn" in self.widgets:
             plot_btn_enabled = len(self.app.plots_to_show) > 0
             self.widgets["plot_btn"].setEnabled(plot_btn_enabled)
-        self.app.clear_plots()
-        self.app.cached_decay_values.clear()
+        self.app.clear_plots()            
         self.app.generate_plots()
         self.app.toggle_intensities_widgets_visibility()
+
+  
 
     def on_loaded_file_change(self, text, file_type):
         if text != self.app.reader_data[self.data_type]["files"][file_type]:
@@ -496,8 +512,9 @@ class ReaderPopup(QWidget):
             channels_layout = self.init_channels_layout()
             if channels_layout is not None:
                 self.layout.insertLayout(2, channels_layout)
-
-    def on_plot_data_btn_clicked(self):
+                
+    
+    def plot_data(self):
         spectroscopy_data = (
             self.app.reader_data[self.data_type]["data"]
             if self.data_type == "spectroscopy"
@@ -515,9 +532,12 @@ class ReaderPopup(QWidget):
             )
         if self.data_type == 'phasors':
             phasors_data = self.app.reader_data[self.data_type]["data"]["phasors_data"]
-            ReadData.plot_phasors_data(self.app, phasors_data)  
-        self.close()                  
+            ReadData.plot_phasors_data(self.app, phasors_data, metadata["harmonics"])              
 
+    def on_plot_data_btn_clicked(self):
+        self.plot_data()
+        self.close()  
+   
     def center_window(self):
         self.setMinimumWidth(500)
         window_geometry = self.frameGeometry()
