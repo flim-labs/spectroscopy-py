@@ -35,42 +35,32 @@ class ReadData:
     @staticmethod
     def read_bin_data(window, app, tab_selected, file_type):
         active_tab = ReadData.get_data_type(tab_selected)
-        if file_type == "spectroscopy":
-            result = ReadData.read_bin(
-                window,
-                app,
-                b"SP01",
-                "Spectroscopy",
-                ReadData.read_spectroscopy_data,
-                active_tab,
-            )
+        file_info = {
+            "spectroscopy": (b"SP01", "Spectroscopy", ReadData.read_spectroscopy_data),
+            "phasors": (b"SPF1", "Phasors", ReadData.read_phasors_data)
+        }
+        if file_type in file_info:
+            result = ReadData.read_bin(window, app, *file_info[file_type], active_tab)
             if result:
-                file_name, file_type, times, channels_curves, metadata = result
+                file_name, file_type, *data, metadata = result
                 app.reader_data[active_tab]["plots"] = []
                 app.reader_data[active_tab]["metadata"] = metadata
                 app.reader_data[active_tab]["files"][file_type] = file_name
-                if active_tab == 'spectroscopy':
-                    app.reader_data[active_tab]["data"]["times"] = times
-                    app.reader_data[active_tab]["data"]["channels_curves"] = channels_curves                
-                if active_tab == "phasors":
-                    app.reader_data[active_tab]["spectroscopy_metadata"] = metadata
-        elif file_type == "phasors":
-            result = ReadData.read_bin(
-                window,
-                app,
-                b"SPF1",
-                "Phasors",
-                ReadData.read_phasors_data,
-                active_tab,
-            )
-            if result:
-                file_name, file_type, phasors_data, metadata = result
-                app.reader_data[active_tab]["plots"] = []
-                app.reader_data[active_tab]["data"] = phasors_data
-                app.reader_data[active_tab]["metadata"] = metadata
-                app.reader_data[active_tab]["files"][file_type] = file_name
-                app.reader_data[active_tab]["phasors_metadata"] = metadata
+                if file_type == "spectroscopy":
+                    times, channels_curves = data
+                    app.reader_data[active_tab]["data"] = {"times": times, "channels_curves": channels_curves}
                     
+                    if active_tab == "phasors":
+                        app.reader_data[active_tab]["spectroscopy_metadata"] = metadata
+                        app.reader_data[active_tab]["data"]["spectroscopy_data"] = {
+                            "times": times, 
+                            "channels_curves": channels_curves
+                        }
+                elif file_type == "phasors":
+                    phasors_data = data[0]
+                    app.reader_data[active_tab]["data"]["phasors_data"] = phasors_data
+                    app.reader_data[active_tab]["phasors_metadata"] = metadata
+
 
     @staticmethod
     def get_data_type(active_tab):
@@ -91,6 +81,15 @@ class ReadData:
                 y_values = np.sum(curves, axis=0)
                 app.cached_decay_values[channel] = y_values
                 app.update_plots2(channel, x_values, y_values, reader_mode=True)
+
+    @staticmethod
+    def plot_phasors_data(app, data):
+        for i, (channel, harmonics) in enumerate(data.items(), start=1):
+            if channel in app.plots_to_show:
+                for harmonic, values in harmonics.items():
+                    if harmonic == 1:
+                        app.draw_points_in_phasors(channel, harmonic, values)
+                    app.all_phasors_points[channel][harmonic].extend(values)
 
     @staticmethod
     def are_phasors_and_spectroscopy_ref_from_same_acquisition(
@@ -126,9 +125,6 @@ class ReadData:
                 )
                 return False
         return True
-        
-   
-
 
     @staticmethod
     def read_bin(window, app, magic_bytes, file_type, read_data_cb, tab_selected):
@@ -183,11 +179,11 @@ class ReadData:
             if tab_selected == "phasors":
                 files_from_same_acquisition = (
                     ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
-                            app, file_name, file_type.lower(), metadata
-                        )
+                        app, file_name, file_type.lower(), metadata
                     )
+                )
                 if not files_from_same_acquisition:
-                    return None   
+                    return None
             channel_curves = {
                 channel: [] for channel in range(len(metadata["channels"]))
             }
@@ -218,7 +214,6 @@ class ReadData:
                 GUIStyles.set_msg_box_style(),
             )
             return None
-        
 
     @staticmethod
     def read_phasors_data(file, file_name, file_type, tab_selected, app):
@@ -228,17 +223,17 @@ class ReadData:
             json_data = file.read(json_length).decode("utf-8")
             metadata = json.loads(json_data)
             files_from_same_acquisition = (
-                    ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
-                            app, file_name, file_type.lower(), metadata
-                        )
-                    )
+                ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
+                    app, file_name, file_type.lower(), metadata
+                )
+            )
             if not files_from_same_acquisition:
-                    return None   
+                return None
             while True:
                 bytes_read = file.read(32)
                 if not bytes_read:
-                    break  
-                try:            
+                    break
+                try:
                     time_ns, channel_name, harmonic_name, g, s = struct.unpack(
                         "QIIdd", bytes_read
                     )
@@ -250,12 +245,12 @@ class ReadData:
                         QMessageBox.Icon.Warning,
                         GUIStyles.set_msg_box_style(),
                     )
-                    break 
-                if channel_name not in phasors_data:                            
+                    break
+                if channel_name not in phasors_data:
                     phasors_data[channel_name] = {}
-                if harmonic_name not in phasors_data[channel_name]:                    
-                    phasors_data[channel_name][harmonic_name] = []        
-                phasors_data[channel_name][harmonic_name].append((g, s))     
+                if harmonic_name not in phasors_data[channel_name]:
+                    phasors_data[channel_name][harmonic_name] = []
+                phasors_data[channel_name][harmonic_name].append((g, s))
             file_type = "phasors"
             return file_name, file_type, phasors_data, metadata
         except Exception as e:
@@ -266,7 +261,7 @@ class ReadData:
                 QMessageBox.Icon.Warning,
                 GUIStyles.set_msg_box_style(),
             )
-            return None    
+            return None
 
 
 class ReadDataControls:
@@ -348,14 +343,17 @@ class ReaderPopup(QWidget):
                 input_desc = QLabel(f"LOAD A {file_type.upper()} FILE:")
             input_desc.setStyleSheet("font-size: 16px; font-family: Montserrat")
             control_row = QHBoxLayout()
+
             def on_change(file_type=file_type):
                 def callback(text):
                     self.on_loaded_file_change(text, file_type)
+
                 return callback
+
             _, input = InputTextControl.setup(
                 label="",
                 placeholder="Load .bin file",
-                 event_callback=on_change(),
+                event_callback=on_change(),
                 text=file_path,
             )
             input.setStyleSheet(GUIStyles.set_input_text_style())
@@ -484,12 +482,12 @@ class ReaderPopup(QWidget):
         if text != self.app.reader_data[self.data_type]["files"][file_type]:
             self.app.clear_plots()
             self.app.generate_plots()
-            self.app.toggle_intensities_widgets_visibility()  
+            self.app.toggle_intensities_widgets_visibility()
         self.app.reader_data[self.data_type]["files"][file_type] = text
 
     def on_load_file_btn_clicked(self, file_type):
         ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
-        file_name = self.app.reader_data[self.data_type]["files"][file_type] 
+        file_name = self.app.reader_data[self.data_type]["files"][file_type]
         if len(file_name) > 0:
             self.app.control_inputs["bin_metadata_button"].setVisible(True)
             widget_key = f"load_{file_type}_input"
@@ -498,21 +496,27 @@ class ReaderPopup(QWidget):
             channels_layout = self.init_channels_layout()
             if channels_layout is not None:
                 self.layout.insertLayout(2, channels_layout)
-    
 
     def on_plot_data_btn_clicked(self):
-        data = self.app.reader_data[self.data_type]["data"]
+        spectroscopy_data = (
+            self.app.reader_data[self.data_type]["data"]
+            if self.data_type == "spectroscopy"
+            else self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]
+        )
         metadata = self.app.reader_data[self.data_type]["metadata"]
         laser_period_ns = (
             metadata["laser_period_ns"]
             if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None
             else 25
         )
-        if "times" in data and "channels_curves" in data:
+        if "times" in spectroscopy_data and "channels_curves" in spectroscopy_data:
             ReadData.plot_spectroscopy_data(
-                self.app, data["times"], data["channels_curves"], laser_period_ns
+                self.app, spectroscopy_data["times"], spectroscopy_data["channels_curves"], laser_period_ns
             )
-            self.close()
+        if self.data_type == 'phasors':
+            phasors_data = self.app.reader_data[self.data_type]["data"]["phasors_data"]
+            ReadData.plot_phasors_data(self.app, phasors_data)  
+        self.close()                  
 
     def center_window(self):
         self.setMinimumWidth(500)

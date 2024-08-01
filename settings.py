@@ -106,7 +106,7 @@ READER_DATA = {
         "phasors_metadata": {},
         "plots": [],
         "metadata": {},
-        "data": {},
+        "data": {"phasors_data": {}, "spectroscopy_data": {}},
     },
     "fitting": {"files": {"fitting": ""}, "plots": [], "metadata": {}, "data": {}},
 }
