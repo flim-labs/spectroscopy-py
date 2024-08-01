@@ -44,4 +44,12 @@ def rename_bin_file(source_file, new_filename):
     return dest_file_name
 
 
+def compare_file_timestamps(file_path1, file_path2):
+    ctime1 = os.path.getctime(file_path1)
+    ctime2 = os.path.getctime(file_path2)
+    time_diff = abs(ctime1 - ctime2)
+    return time_diff
+        
+ 
+
 

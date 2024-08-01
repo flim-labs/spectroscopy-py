@@ -5,6 +5,7 @@ import re
 import struct
 import numpy as np
 from components.box_message import BoxMessage
+from components.file_utils import compare_file_timestamps
 from components.gui_styles import GUIStyles
 from components.input_text_control import InputTextControl
 from components.layout_utilities import clear_layout
@@ -36,15 +37,40 @@ class ReadData:
         active_tab = ReadData.get_data_type(tab_selected)
         if file_type == "spectroscopy":
             result = ReadData.read_bin(
-                window, app, b"SP01", "Spectroscopy", ReadData.read_spectroscopy_data
+                window,
+                app,
+                b"SP01",
+                "Spectroscopy",
+                ReadData.read_spectroscopy_data,
+                active_tab,
             )
             if result:
                 file_name, file_type, times, channels_curves, metadata = result
                 app.reader_data[active_tab]["plots"] = []
-                app.reader_data[active_tab]["data"]["times"] = times
-                app.reader_data[active_tab]["data"]["channels_curves"] = channels_curves
                 app.reader_data[active_tab]["metadata"] = metadata
                 app.reader_data[active_tab]["files"][file_type] = file_name
+                if active_tab == 'spectroscopy':
+                    app.reader_data[active_tab]["data"]["times"] = times
+                    app.reader_data[active_tab]["data"]["channels_curves"] = channels_curves                
+                if active_tab == "phasors":
+                    app.reader_data[active_tab]["spectroscopy_metadata"] = metadata
+        elif file_type == "phasors":
+            result = ReadData.read_bin(
+                window,
+                app,
+                b"SPF1",
+                "Phasors",
+                ReadData.read_phasors_data,
+                active_tab,
+            )
+            if result:
+                file_name, file_type, phasors_data, metadata = result
+                app.reader_data[active_tab]["plots"] = []
+                app.reader_data[active_tab]["data"] = phasors_data
+                app.reader_data[active_tab]["metadata"] = metadata
+                app.reader_data[active_tab]["files"][file_type] = file_name
+                app.reader_data[active_tab]["phasors_metadata"] = metadata
+                    
 
     @staticmethod
     def get_data_type(active_tab):
@@ -67,7 +93,45 @@ class ReadData:
                 app.update_plots2(channel, x_values, y_values, reader_mode=True)
 
     @staticmethod
-    def read_bin(window, app, magic_bytes, file_type, read_data_cb):
+    def are_phasors_and_spectroscopy_ref_from_same_acquisition(
+        app, file, file_type, metadata
+    ):
+        reader_data = app.reader_data["phasors"]
+        file_type_to_compare = "spectroscopy" if file_type == "phasors" else "phasors"
+        metadata_to_compare = (
+            "spectroscopy_metadata" if file_type == "phasors" else "phasors_metadata"
+        )
+        if len(reader_data["files"][file_type_to_compare]) > 0:
+            if set(metadata["channels"]) != set(
+                reader_data[metadata_to_compare]["channels"]
+            ):
+                BoxMessage.setup(
+                    "Channels mismatch",
+                    f"Active channels mismatching in Phasors file and Spectroscopy reference. Files are not from the same acquisition",
+                    QMessageBox.Icon.Warning,
+                    GUIStyles.set_msg_box_style(),
+                )
+                return False
+            if (
+                compare_file_timestamps(
+                    reader_data["files"][file_type_to_compare], file
+                )
+                > 120
+            ):
+                BoxMessage.setup(
+                    "Files creation time distance too large",
+                    f"Creation time distance of Phasors and Spectroscopy reference too large. The files do not come from the same acquisition",
+                    QMessageBox.Icon.Warning,
+                    GUIStyles.set_msg_box_style(),
+                )
+                return False
+        return True
+        
+   
+
+
+    @staticmethod
+    def read_bin(window, app, magic_bytes, file_type, read_data_cb, tab_selected):
         try:
             dialog = QFileDialog()
             dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
@@ -99,7 +163,7 @@ class ReadData:
                         GUIStyles.set_msg_box_style(),
                     )
                     return None
-                return read_data_cb(f, file_name)
+                return read_data_cb(f, file_name, file_type, tab_selected, app)
 
         except Exception as e:
             BoxMessage.setup(
@@ -111,11 +175,19 @@ class ReadData:
             return None
 
     @staticmethod
-    def read_spectroscopy_data(file, file_name):
+    def read_spectroscopy_data(file, file_name, file_type, tab_selected, app):
         try:
             (json_length,) = struct.unpack("I", file.read(4))
             json_data = file.read(json_length).decode("utf-8")
             metadata = json.loads(json_data)
+            if tab_selected == "phasors":
+                files_from_same_acquisition = (
+                    ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
+                            app, file_name, file_type.lower(), metadata
+                        )
+                    )
+                if not files_from_same_acquisition:
+                    return None   
             channel_curves = {
                 channel: [] for channel in range(len(metadata["channels"]))
             }
@@ -146,6 +218,55 @@ class ReadData:
                 GUIStyles.set_msg_box_style(),
             )
             return None
+        
+
+    @staticmethod
+    def read_phasors_data(file, file_name, file_type, tab_selected, app):
+        phasors_data = {}
+        try:
+            (json_length,) = struct.unpack("I", file.read(4))
+            json_data = file.read(json_length).decode("utf-8")
+            metadata = json.loads(json_data)
+            files_from_same_acquisition = (
+                    ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
+                            app, file_name, file_type.lower(), metadata
+                        )
+                    )
+            if not files_from_same_acquisition:
+                    return None   
+            while True:
+                bytes_read = file.read(32)
+                if not bytes_read:
+                    break  
+                try:            
+                    time_ns, channel_name, harmonic_name, g, s = struct.unpack(
+                        "QIIdd", bytes_read
+                    )
+                except struct.error as e:
+                    print(f"Error unpacking phasors_data: {e}")
+                    BoxMessage.setup(
+                        "Error unpacking file",
+                        "Error unpacking Phasors file data",
+                        QMessageBox.Icon.Warning,
+                        GUIStyles.set_msg_box_style(),
+                    )
+                    break 
+                if channel_name not in phasors_data:                            
+                    phasors_data[channel_name] = {}
+                if harmonic_name not in phasors_data[channel_name]:                    
+                    phasors_data[channel_name][harmonic_name] = []        
+                phasors_data[channel_name][harmonic_name].append((g, s))     
+            file_type = "phasors"
+            return file_name, file_type, phasors_data, metadata
+        except Exception as e:
+            print(f"Error reading phasors data: {e}")
+            BoxMessage.setup(
+                "Error reading file",
+                "Error reading Phasors file",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
+            return None    
 
 
 class ReadDataControls:
@@ -157,9 +278,9 @@ class ReadDataControls:
         else:
             read_bin_button_visible = len(app.reader_data[data_type]["metadata"]) != 0
             if read_bin_button_visible:
-                app.control_inputs["bin_metadata_button"].setVisible(True) 
-            else: 
-                app.control_inputs["bin_metadata_button"].setVisible(False)          
+                app.control_inputs["bin_metadata_button"].setVisible(True)
+            else:
+                app.control_inputs["bin_metadata_button"].setVisible(False)
         app.control_inputs["start_button"].setVisible(not read_mode)
         app.control_inputs["read_bin_button"].setVisible(read_mode)
         app.widgets[TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
@@ -173,7 +294,6 @@ class ReadDataControls:
         app.control_inputs[SETTINGS_HARMONIC].setEnabled(not read_mode)
         if app.tab_selected == TAB_PHASORS:
             app.control_inputs[LOAD_REF_BTN].setVisible(not read_mode)
-            
 
     @staticmethod
     def handle_plots_config(app, file_type):
@@ -228,10 +348,14 @@ class ReaderPopup(QWidget):
                 input_desc = QLabel(f"LOAD A {file_type.upper()} FILE:")
             input_desc.setStyleSheet("font-size: 16px; font-family: Montserrat")
             control_row = QHBoxLayout()
+            def on_change(file_type=file_type):
+                def callback(text):
+                    self.on_loaded_file_change(text, file_type)
+                return callback
             _, input = InputTextControl.setup(
                 label="",
                 placeholder="Load .bin file",
-                event_callback=lambda text: self.on_loaded_file_change(text, file_type),
+                 event_callback=on_change(),
                 text=file_path,
             )
             input.setStyleSheet(GUIStyles.set_input_text_style())
@@ -270,9 +394,6 @@ class ReaderPopup(QWidget):
             self.app.settings.setValue(
                 SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
             )
-            self.app.clear_plots()
-            self.app.generate_plots()
-            self.app.toggle_intensities_widgets_visibility()
             channels_layout = QVBoxLayout()
             desc = QLabel("CHOOSE MAX 4 PLOTS TO DISPLAY:")
             desc.setStyleSheet("font-size: 16px, font-family: Montserrat")
@@ -360,19 +481,24 @@ class ReaderPopup(QWidget):
         self.app.toggle_intensities_widgets_visibility()
 
     def on_loaded_file_change(self, text, file_type):
+        if text != self.app.reader_data[self.data_type]["files"][file_type]:
+            self.app.clear_plots()
+            self.app.generate_plots()
+            self.app.toggle_intensities_widgets_visibility()  
         self.app.reader_data[self.data_type]["files"][file_type] = text
 
     def on_load_file_btn_clicked(self, file_type):
         ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
-        file_name = self.app.reader_data[self.data_type]["files"][file_type]
+        file_name = self.app.reader_data[self.data_type]["files"][file_type] 
         if len(file_name) > 0:
-            self.app.control_inputs["bin_metadata_button"].setVisible(True) 
+            self.app.control_inputs["bin_metadata_button"].setVisible(True)
             widget_key = f"load_{file_type}_input"
             self.widgets[widget_key].setText(file_name)
             self.remove_channels_grid()
             channels_layout = self.init_channels_layout()
             if channels_layout is not None:
                 self.layout.insertLayout(2, channels_layout)
+    
 
     def on_plot_data_btn_clicked(self):
         data = self.app.reader_data[self.data_type]["data"]
@@ -383,9 +509,10 @@ class ReaderPopup(QWidget):
             else 25
         )
         if "times" in data and "channels_curves" in data:
-            ReadData.plot_spectroscopy_data(self.app, data["times"], data["channels_curves"], laser_period_ns)
+            ReadData.plot_spectroscopy_data(
+                self.app, data["times"], data["channels_curves"], laser_period_ns
+            )
             self.close()
- 
 
     def center_window(self):
         self.setMinimumWidth(500)
@@ -420,8 +547,7 @@ class ReaderMetadataPopup(QWidget):
         self.setLayout(layout)
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.app.widgets[READER_METADATA_POPUP] = self
-        
-        
+
     def get_metadata_keys_dict(self):
         return {
             "channels": "Enabled Channels",
@@ -429,9 +555,9 @@ class ReaderMetadataPopup(QWidget):
             "acquisition_time_millis": "Acquisition time (s)",
             "laser_period_ns": "Laser period (ns)",
             "harmonics": "Harmonics",
-            "tau_ns": "Tau (ns)"
-        }    
-        
+            "tau_ns": "Tau (ns)",
+        }
+
     def create_metadata_table(self):
         metadata_keys = self.get_metadata_keys_dict()
         metadata = self.app.reader_data[self.data_type]["metadata"]
@@ -440,41 +566,42 @@ class ReaderMetadataPopup(QWidget):
         if metadata:
             title = QLabel(f"{self.data_type.upper()} FILE METADATA")
             title.setStyleSheet("font-size: 16px; font-family: Montserrat")
+
             def get_key_label_style(bg_color):
                 return f"width: 200px; font-size: 14px; border: 1px solid  {bg_color}; padding: 8px; color: white; background-color: {bg_color}"
+
             def get_value_label_style(bg_color):
                 return f"width: 500px; font-size: 14px; border: 1px solid  {bg_color}; padding: 8px; color: white"
-         
+
             v_box.addWidget(title)
             v_box.addSpacing(10)
-            h_box = QHBoxLayout()        
-            h_box.setContentsMargins(0,0,0,0)
+            h_box = QHBoxLayout()
+            h_box.setContentsMargins(0, 0, 0, 0)
             h_box.setSpacing(0)
-            key_label = QLabel("File")  
-            key_label.setStyleSheet(get_key_label_style("#DA1212")) 
-            value_label = QLabel(file) 
-            value_label.setStyleSheet(get_value_label_style("#DA1212")) 
-            h_box.addWidget(key_label) 
-            h_box.addWidget(value_label) 
+            key_label = QLabel("File")
+            key_label.setStyleSheet(get_key_label_style("#DA1212"))
+            value_label = QLabel(file)
+            value_label.setStyleSheet(get_value_label_style("#DA1212"))
+            h_box.addWidget(key_label)
+            h_box.addWidget(value_label)
             v_box.addLayout(h_box)
             for key, value in metadata_keys.items():
                 if key in metadata:
                     metadata_value = str(metadata[key])
                     if key == "channels":
-                        metadata_value = ", ".join(["Channel " + str(ch + 1) for ch in metadata[key]])
+                        metadata_value = ", ".join(
+                            ["Channel " + str(ch + 1) for ch in metadata[key]]
+                        )
                     if key == "acquisition_time_millis":
-                        metadata_value =  str(metadata[key] / 1000) 
-                h_box = QHBoxLayout()  
-                h_box.setContentsMargins(0,0,0,0)
-                h_box.setSpacing(0)      
-                key_label = QLabel(value)   
-                value_label = QLabel(metadata_value) 
-                key_label.setStyleSheet(get_key_label_style("#11468F")) 
-                value_label.setStyleSheet(get_value_label_style("#11468F")) 
-                h_box.addWidget(key_label) 
-                h_box.addWidget(value_label) 
-                v_box.addLayout(h_box) 
-        return v_box          
-            
-        
- 
+                        metadata_value = str(metadata[key] / 1000)
+                h_box = QHBoxLayout()
+                h_box.setContentsMargins(0, 0, 0, 0)
+                h_box.setSpacing(0)
+                key_label = QLabel(value)
+                value_label = QLabel(metadata_value)
+                key_label.setStyleSheet(get_key_label_style("#11468F"))
+                value_label.setStyleSheet(get_value_label_style("#11468F"))
+                h_box.addWidget(key_label)
+                h_box.addWidget(value_label)
+                v_box.addLayout(h_box)
+        return v_box
