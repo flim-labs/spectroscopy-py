@@ -580,10 +580,7 @@ class SpectroscopyWindow(QWidget):
         bin_metadata_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.control_inputs["bin_metadata_button"] = bin_metadata_button
         bin_metadata_button.clicked.connect(self.open_reader_metadata_popup)
-        data_type = ReadData.get_data_type(self.tab_selected)
-        bin_metadata_btn_visible = (
-            self.reader_mode and len(self.reader_data[data_type]["metadata"]) != 0
-        )
+        bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self)
         bin_metadata_button.setVisible(bin_metadata_btn_visible)
 
         # READ BIN BUTTON
@@ -655,11 +652,16 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(False)
         self.tab_selected = tab_name
         self.control_inputs[self.tab_selected].setChecked(True)
+        bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self)
+        self.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
         # TODO
         self.fit_button_hide()
-        self.clear_plots(deep_clear=False)
-        self.generate_plots()
-        self.toggle_intensities_widgets_visibility()
+        if not self.reader_mode:
+            self.clear_plots(deep_clear=False)
+            self.generate_plots()
+            self.toggle_intensities_widgets_visibility()
+        else:    
+            ReadDataControls.plot_data_on_tab_change(self)
         if tab_name == TAB_SPECTROSCOPY:
             self.hide_harmonic_selector()
             hide_layout(self.control_inputs["phasors_resolution_container"])
@@ -1335,16 +1337,23 @@ class SpectroscopyWindow(QWidget):
             if ch in self.phasors_charts:
                 self.phasors_charts[ch].setData([], [])
                 
+    def clear_phasors_quantize_features(self, feature):
+        for ch in feature:
+            if ch in self.phasors_widgets:
+                self.phasors_widgets[ch].removeItem(feature[ch])   
+         
 
     def clear_plots(self, deep_clear = True):
         # TODO
+        self.clear_phasors_quantize_features(self.phasors_colorbars)
+        self.clear_phasors_quantize_features(self.quantization_images)
+        self.quantization_images.clear()
+        self.phasors_colorbars.clear()
         self.intensities_widgets.clear()
         self.phasors_charts.clear()
         self.phasors_widgets.clear()
         self.decay_widgets.clear()
         self.phasors_coords.clear()
-        self.phasors_colorbars.clear()
-        self.quantization_images.clear()
         self.cps_widgets.clear()
         self.cps_counts.clear()
         if deep_clear:

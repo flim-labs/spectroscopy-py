@@ -37,45 +37,71 @@ class ReadData:
         active_tab = ReadData.get_data_type(tab_selected)
         file_info = {
             "spectroscopy": (b"SP01", "Spectroscopy", ReadData.read_spectroscopy_data),
-            "phasors": (b"SPF1", "Phasors", ReadData.read_phasors_data)
+            "phasors": (b"SPF1", "Phasors", ReadData.read_phasors_data),
         }
-        if file_type in file_info:
-            result = ReadData.read_bin(window, app, *file_info[file_type], active_tab)
-            if result:
-                file_name, file_type, *data, metadata = result
-                app.reader_data[active_tab]["plots"] = []
-                app.reader_data[active_tab]["metadata"] = metadata
-                app.reader_data[active_tab]["files"][file_type] = file_name
-                if file_type == "spectroscopy":
-                    times, channels_curves = data
-                    app.reader_data[active_tab]["data"] = {"times": times, "channels_curves": channels_curves}
-                    
-                    if active_tab == "phasors":
-                        app.reader_data[active_tab]["spectroscopy_metadata"] = metadata
-                        app.reader_data[active_tab]["data"]["spectroscopy_data"] = {
-                            "times": times, 
-                            "channels_curves": channels_curves
-                        }
-                elif file_type == "phasors":
-                    phasors_data = data[0]
-                    app.reader_data[active_tab]["data"]["phasors_data"] = phasors_data
-                    app.reader_data[active_tab]["phasors_metadata"] = metadata
-
+        if file_type not in file_info:
+            return
+        result = ReadData.read_bin(window, app, *file_info[file_type], active_tab)
+        if not result:
+            return
+        file_name, file_type, *data, metadata = result
+        app.reader_data[active_tab]["plots"] = []
+        app.reader_data[active_tab]["metadata"] = metadata
+        app.reader_data[active_tab]["files"][file_type] = file_name
+        if file_type == "spectroscopy":
+            times, channels_curves = data
+            app.reader_data[active_tab]["data"] = {
+                "times": times,
+                "channels_curves": channels_curves,
+            }
+            if active_tab == "phasors":
+                app.reader_data[active_tab]["spectroscopy_metadata"] = metadata
+                app.reader_data[active_tab]["data"]["spectroscopy_data"] = {
+                    "times": times,
+                    "channels_curves": channels_curves,
+                }
+        elif file_type == "phasors":
+            phasors_data = data[0]
+            app.reader_data[active_tab]["data"]["phasors_data"] = phasors_data
+            app.reader_data[active_tab]["phasors_metadata"] = metadata
 
     @staticmethod
     def get_data_type(active_tab):
-        if active_tab == TAB_SPECTROSCOPY:
-            return "spectroscopy"
-        elif active_tab == TAB_PHASORS:
-            return "phasors"
-        else:
-            return "fitting"
+        return {TAB_SPECTROSCOPY: "spectroscopy", TAB_PHASORS: "phasors"}.get(
+            active_tab, "fitting"
+        )
+
+    @staticmethod
+    def plot_data(app):
+        data_type = ReadData.get_data_type(app.tab_selected)
+        spectroscopy_data = (
+            app.reader_data[data_type]["data"]
+            if data_type == "spectroscopy"
+            else app.reader_data[data_type]["data"]["spectroscopy_data"]
+        )
+        metadata = app.reader_data[data_type]["metadata"]
+        laser_period_ns = (
+            metadata["laser_period_ns"]
+            if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None
+            else 25
+        )
+        if "times" in spectroscopy_data and "channels_curves" in spectroscopy_data and not(metadata == {}):
+            ReadData.plot_spectroscopy_data(
+                app,
+                spectroscopy_data["times"],
+                spectroscopy_data["channels_curves"],
+                laser_period_ns,
+            )
+        if data_type == "phasors":
+            phasors_data = app.reader_data[data_type]["data"]["phasors_data"]
+            if not(metadata == {}):
+                ReadData.plot_phasors_data(app, phasors_data, metadata["harmonics"])
+            
 
     @staticmethod
     def plot_spectroscopy_data(app, times, channels_curves, laser_period_ns):
         num_bins = 256
-        x = np.linspace(0, laser_period_ns, num_bins)
-        x_values = x / 1_000
+        x_values = np.linspace(0, laser_period_ns, num_bins) / 1_000
         for channel, curves in channels_curves.items():
             if channel in app.plots_to_show:
                 y_values = np.sum(curves, axis=0)
@@ -86,24 +112,23 @@ class ReadData:
     @staticmethod
     def plot_phasors_data(app, data, harmonics):
         app.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
-        if harmonics > 1:
+        harmonics_length = len(harmonics) if isinstance(harmonics, list) else harmonics
+        if harmonics_length > 1:
             app.harmonic_selector_shown = True
-            app.show_harmonic_selector(
-                harmonics
-                )
-        for i, (channel, harmonics) in enumerate(data.items(), start=1):
+            app.show_harmonic_selector(harmonics)
+        for channel, channel_data in data.items():
             if channel in app.plots_to_show:
-                for harmonic, values in harmonics.items():
+                for harmonic, values in channel_data.items():
                     if harmonic == 1:
                         app.draw_points_in_phasors(channel, harmonic, values)
                     app.all_phasors_points[channel][harmonic].extend(values)
-        if app.quantized_phasors:              
+        if app.quantized_phasors:
             app.quantize_phasors(
-                        app.phasors_harmonic_selected,
-                        bins=int(PHASORS_RESOLUTIONS[app.phasors_resolution]),
-                    )
-        else:        
-            app.on_quantize_phasors_changed(False)            
+                app.phasors_harmonic_selected,
+                bins=int(PHASORS_RESOLUTIONS[app.phasors_resolution]),
+            )
+        else:
+            app.on_quantize_phasors_changed(False)
 
     @staticmethod
     def are_phasors_and_spectroscopy_ref_from_same_acquisition(
@@ -114,15 +139,14 @@ class ReadData:
         metadata_to_compare = (
             "spectroscopy_metadata" if file_type == "phasors" else "phasors_metadata"
         )
-        if len(reader_data["files"][file_type_to_compare]) > 0:
+
+        if reader_data["files"].get(file_type_to_compare):
             if set(metadata["channels"]) != set(
                 reader_data[metadata_to_compare]["channels"]
             ):
-                BoxMessage.setup(
+                ReadData.show_warning_message(
                     "Channels mismatch",
-                    f"Active channels mismatching in Phasors file and Spectroscopy reference. Files are not from the same acquisition",
-                    QMessageBox.Icon.Warning,
-                    GUIStyles.set_msg_box_style(),
+                    "Active channels mismatching in Phasors file and Spectroscopy reference. Files are not from the same acquisition",
                 )
                 return False
             if (
@@ -131,101 +155,80 @@ class ReadData:
                 )
                 > 120
             ):
-                BoxMessage.setup(
+                ReadData.show_warning_message(
                     "Files creation time distance too large",
-                    f"Creation time distance of Phasors and Spectroscopy reference too large. The files do not come from the same acquisition",
-                    QMessageBox.Icon.Warning,
-                    GUIStyles.set_msg_box_style(),
+                    "Creation time distance of Phasors and Spectroscopy reference too large. The files do not come from the same acquisition",
                 )
                 return False
         return True
 
     @staticmethod
-    def read_bin(window, app, magic_bytes, file_type, read_data_cb, tab_selected):
-        try:
-            dialog = QFileDialog()
-            dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
-            dialog.setNameFilter("Bin files (*.bin)")
-            file_name, _ = dialog.getOpenFileName(
-                window,
-                f"Load {file_type} file",
-                "",
-                "Bin files (*.bin)",
-                options=QFileDialog.Option.DontUseNativeDialog,
-            )
-            if not file_name:
-                return
-            if not (file_name.endswith(".bin")):
-                BoxMessage.setup(
-                    "Invalid extension",
-                    "Invalid extension. File should be a .bin",
-                    QMessageBox.Icon.Warning,
-                    GUIStyles.set_msg_box_style(),
-                )
-                return None
+    def show_warning_message(title, message):
+        BoxMessage.setup(
+            title, message, QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style()
+        )
 
+    @staticmethod
+    def read_bin(window, app, magic_bytes, file_type, read_data_cb, tab_selected):
+        dialog = QFileDialog()
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        dialog.setNameFilter("Bin files (*.bin)")
+        file_name, _ = dialog.getOpenFileName(
+            window,
+            f"Load {file_type} file",
+            "",
+            "Bin files (*.bin)",
+            options=QFileDialog.Option.DontUseNativeDialog,
+        )
+        if not file_name or not file_name.endswith(".bin"):
+            ReadData.show_warning_message(
+                "Invalid extension", "Invalid extension. File should be a .bin"
+            )
+            return None
+
+        try:
             with open(file_name, "rb") as f:
                 if f.read(4) != magic_bytes:
-                    BoxMessage.setup(
+                    ReadData.show_warning_message(
                         "Invalid file",
                         f"Invalid file. The file is not a valid {file_type} file.",
-                        QMessageBox.Icon.Warning,
-                        GUIStyles.set_msg_box_style(),
                     )
                     return None
                 return read_data_cb(f, file_name, file_type, tab_selected, app)
-
-        except Exception as e:
-            BoxMessage.setup(
-                "Error reading file",
-                "Error reading .bin file",
-                QMessageBox.Icon.Warning,
-                GUIStyles.set_msg_box_style(),
+        except Exception:
+            ReadData.show_warning_message(
+                "Error reading file", f"Error reading {file_type} file"
             )
             return None
 
     @staticmethod
     def read_spectroscopy_data(file, file_name, file_type, tab_selected, app):
         try:
-            (json_length,) = struct.unpack("I", file.read(4))
-            json_data = file.read(json_length).decode("utf-8")
-            metadata = json.loads(json_data)
+            json_length = struct.unpack("I", file.read(4))[0]
+            metadata = json.loads(file.read(json_length).decode("utf-8"))
             if tab_selected == "phasors":
-                files_from_same_acquisition = (
-                    ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
-                        app, file_name, file_type.lower(), metadata
-                    )
-                )
-                if not files_from_same_acquisition:
+                if not ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
+                    app, file_name, file_type.lower(), metadata
+                ):
                     return None
-            channel_curves = {
-                channel: [] for channel in range(len(metadata["channels"]))
-            }
+            channel_curves = {i: [] for i in range(len(metadata["channels"]))}
             times = []
             number_of_channels = len(metadata["channels"])
-            channel_values_unpack_string = "I" * 256
             while True:
                 data = file.read(8)
                 if not data:
                     break
-                (time,) = struct.unpack("d", data)
+                time = struct.unpack("d", data)[0]
                 times.append(time / 1_000_000_000)
-
                 for i in range(number_of_channels):
                     data = file.read(4 * 256)
                     if len(data) < 4 * 256:
                         return times, channel_curves
-                    curve = struct.unpack(channel_values_unpack_string, data)
-                    channel_curves[i].append(np.array(curve))
-            file_type = "spectroscopy"
-            return file_name, file_type, times, channel_curves, metadata
-        except Exception as e:
-            print(f"Error reading spectroscopy data: {e}")
-            BoxMessage.setup(
-                "Error reading file",
-                "Error reading Spectroscopy file",
-                QMessageBox.Icon.Warning,
-                GUIStyles.set_msg_box_style(),
+                    channel_curves[i].append(np.array(struct.unpack("I" * 256, data)))
+            return file_name, "spectroscopy", times, channel_curves, metadata
+        except Exception:
+            ReadData.show_warning_message(
+                "Error reading file", "Error reading Spectroscopy file"
             )
             return None
 
@@ -233,15 +236,11 @@ class ReadData:
     def read_phasors_data(file, file_name, file_type, tab_selected, app):
         phasors_data = {}
         try:
-            (json_length,) = struct.unpack("I", file.read(4))
-            json_data = file.read(json_length).decode("utf-8")
-            metadata = json.loads(json_data)
-            files_from_same_acquisition = (
-                ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
-                    app, file_name, file_type.lower(), metadata
-                )
-            )
-            if not files_from_same_acquisition:
+            json_length = struct.unpack("I", file.read(4))[0]
+            metadata = json.loads(file.read(json_length).decode("utf-8"))
+            if not ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
+                app, file_name, file_type.lower(), metadata
+            ):
                 return None
             while True:
                 bytes_read = file.read(32)
@@ -251,45 +250,29 @@ class ReadData:
                     time_ns, channel_name, harmonic_name, g, s = struct.unpack(
                         "QIIdd", bytes_read
                     )
-                except struct.error as e:
-                    print(f"Error unpacking phasors_data: {e}")
-                    BoxMessage.setup(
-                        "Error unpacking file",
-                        "Error unpacking Phasors file data",
-                        QMessageBox.Icon.Warning,
-                        GUIStyles.set_msg_box_style(),
+                except struct.error:
+                    ReadData.show_warning_message(
+                        "Error unpacking file", "Error unpacking Phasors file data"
                     )
                     break
-                if channel_name not in phasors_data:
-                    phasors_data[channel_name] = {}
-                if harmonic_name not in phasors_data[channel_name]:
-                    phasors_data[channel_name][harmonic_name] = []
-                phasors_data[channel_name][harmonic_name].append((g, s))
-            file_type = "phasors"
-            return file_name, file_type, phasors_data, metadata
-        except Exception as e:
-            print(f"Error reading phasors data: {e}")
-            BoxMessage.setup(
-                "Error reading file",
-                "Error reading Phasors file",
-                QMessageBox.Icon.Warning,
-                GUIStyles.set_msg_box_style(),
+                phasors_data.setdefault(channel_name, {}).setdefault(
+                    harmonic_name, []
+                ).append((g, s))
+            return file_name, "phasors", phasors_data, metadata
+        except Exception:
+            ReadData.show_warning_message(
+                "Error reading file", "Error reading Phasors file"
             )
             return None
 
 
 class ReadDataControls:
+
     @staticmethod
     def handle_widgets_visibility(app, read_mode):
         data_type = ReadData.get_data_type(app.tab_selected)
-        if not read_mode:
-            app.control_inputs["bin_metadata_button"].setVisible(False)
-        else:
-            read_bin_button_visible = len(app.reader_data[data_type]["metadata"]) != 0
-            if read_bin_button_visible:
-                app.control_inputs["bin_metadata_button"].setVisible(True)
-            else:
-                app.control_inputs["bin_metadata_button"].setVisible(False)
+        bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(app)
+        app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
         app.control_inputs["start_button"].setVisible(not read_mode)
         app.control_inputs["read_bin_button"].setVisible(read_mode)
         app.widgets[TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
@@ -306,12 +289,31 @@ class ReadDataControls:
 
     @staticmethod
     def handle_plots_config(app, file_type):
-        file_metadata = app.reader_data[file_type]["metadata"]
-        if "channels" in file_metadata and file_metadata["channels"] is not None:
-            selected_channel = file_metadata["channels"]
-            selected_channel.sort()
-            app.selected_channels = selected_channel
-            app.plots_to_show = app.reader_data[file_type]["plots"]
+        file_metadata = app.reader_data[file_type].get("metadata", {})
+        if file_metadata.get("channels"):
+            app.selected_channels = sorted(file_metadata["channels"])
+            app.plots_to_show = app.reader_data[file_type].get("plots", [])
+
+    @staticmethod
+    def plot_data_on_tab_change(app):
+        file_type = ReadData.get_data_type(app.tab_selected)
+        if app.reader_mode:
+            ReadDataControls.handle_plots_config(app, file_type)
+            app.clear_plots()
+            app.generate_plots()
+            app.toggle_intensities_widgets_visibility()
+            ReadData.plot_data(app)
+            
+    
+    @staticmethod
+    def read_bin_metadata_enabled(app):
+        data_type = ReadData.get_data_type(app.tab_selected) 
+        metadata = app.reader_data[data_type]["metadata"]  
+        if data_type != 'phasors':
+            return not(metadata  == {}) and app.reader_mode
+        else:
+            phasors_file = app.reader_data[data_type]["files"]["phasors"] 
+            return not(metadata == {}) and not(phasors_file.strip() == "") and app.reader_mode
 
 
 class ReaderPopup(QWidget):
@@ -488,11 +490,9 @@ class ReaderPopup(QWidget):
         if "plot_btn" in self.widgets:
             plot_btn_enabled = len(self.app.plots_to_show) > 0
             self.widgets["plot_btn"].setEnabled(plot_btn_enabled)
-        self.app.clear_plots()            
+        self.app.clear_plots()
         self.app.generate_plots()
         self.app.toggle_intensities_widgets_visibility()
-
-  
 
     def on_loaded_file_change(self, text, file_type):
         if text != self.app.reader_data[self.data_type]["files"][file_type]:
@@ -505,39 +505,19 @@ class ReaderPopup(QWidget):
         ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
         file_name = self.app.reader_data[self.data_type]["files"][file_type]
         if len(file_name) > 0:
-            self.app.control_inputs["bin_metadata_button"].setVisible(True)
+            bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self.app)
+            self.app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
             widget_key = f"load_{file_type}_input"
             self.widgets[widget_key].setText(file_name)
             self.remove_channels_grid()
             channels_layout = self.init_channels_layout()
             if channels_layout is not None:
                 self.layout.insertLayout(2, channels_layout)
-                
-    
-    def plot_data(self):
-        spectroscopy_data = (
-            self.app.reader_data[self.data_type]["data"]
-            if self.data_type == "spectroscopy"
-            else self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]
-        )
-        metadata = self.app.reader_data[self.data_type]["metadata"]
-        laser_period_ns = (
-            metadata["laser_period_ns"]
-            if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None
-            else 25
-        )
-        if "times" in spectroscopy_data and "channels_curves" in spectroscopy_data:
-            ReadData.plot_spectroscopy_data(
-                self.app, spectroscopy_data["times"], spectroscopy_data["channels_curves"], laser_period_ns
-            )
-        if self.data_type == 'phasors':
-            phasors_data = self.app.reader_data[self.data_type]["data"]["phasors_data"]
-            ReadData.plot_phasors_data(self.app, phasors_data, metadata["harmonics"])              
 
     def on_plot_data_btn_clicked(self):
-        self.plot_data()
-        self.close()  
-   
+        ReadData.plot_data(self.app)
+        self.close()
+
     def center_window(self):
         self.setMinimumWidth(500)
         window_geometry = self.frameGeometry()
