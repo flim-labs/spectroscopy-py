@@ -846,32 +846,26 @@ class SpectroscopyWindow(QWidget):
         harmonic_value = int(self.control_inputs[HARMONIC_SELECTOR].currentText())
         self.quantized_phasors = value
         self.settings.setValue(SETTINGS_QUANTIZE_PHASORS, value)
-        (
-            show_layout(self.control_inputs["phasors_resolution_container"])
-            if value
-            else hide_layout(self.control_inputs["phasors_resolution_container"])
-        )
+        container = self.control_inputs["phasors_resolution_container"]
         if value:
-            self.quantize_phasors(
-                harmonic_value,
-                bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution]),
-            )
+            show_layout(container)
+            bins = int(PHASORS_RESOLUTIONS[self.phasors_resolution])
+            self.quantize_phasors(harmonic_value, bins)
         else:
-            for i, channel_index in enumerate(self.plots_to_show):
-                if (
-                    hasattr(self, "quantization_images")
-                    and channel_index in self.quantization_images
-                ):
-                    self.phasors_widgets[channel_index].removeItem(
-                        self.quantization_images[channel_index]
-                    )
+            hide_layout(container)
+            for channel_index in self.plots_to_show:
+                if channel_index in self.quantization_images:
+                    widget = self.phasors_widgets[channel_index]
+                    widget.removeItem(self.quantization_images[channel_index])
                     del self.quantization_images[channel_index]
-                if len(self.plots_to_show) <= len(self.all_phasors_points):
-                    self.draw_points_in_phasors(
-                        channel_index,
-                        harmonic_value,
-                        self.all_phasors_points[channel_index][harmonic_value],
-                    )
+                if channel_index in self.phasors_colorbars:
+                    widget.removeItem(self.phasors_colorbars[channel_index])
+                    del self.phasors_colorbars[channel_index]
+            if len(self.plots_to_show) <= len(self.all_phasors_points):
+                for channel_index in self.plots_to_show:
+                    points = self.all_phasors_points[channel_index][harmonic_value]
+                    self.draw_points_in_phasors(channel_index, harmonic_value, points)
+                    
 
     def on_phasors_resolution_changed(self, value):
         self.phasors_resolution = int(value)
@@ -881,6 +875,7 @@ class SpectroscopyWindow(QWidget):
             harmonic_value,
             bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution]),
         )
+        
 
     def on_calibration_change(self, value):
         self.settings.setValue(SETTINGS_CALIBRATION_TYPE, value)
@@ -1068,32 +1063,27 @@ class SpectroscopyWindow(QWidget):
         def get_default_x():
             if frequency_mhz != 0.0:
                 period = 1_000 / frequency_mhz
-                x = np.linspace(0, period, 256)
-            else:    
-                x = np.arange(1) 
-            return x      
+                return np.linspace(0, period, 256)
+            return np.arange(1)
         decay_curves = self.decay_curves[self.tab_selected]
         if self.tab_selected in [TAB_SPECTROSCOPY, TAB_FITTING]:
             cached_decay_values = self.cached_decay_values[self.tab_selected]
             if channel in cached_decay_values and channel in decay_curves:
                 x, _ = decay_curves[channel].getData()
                 y = cached_decay_values[channel]
-                return x,y
             else:
-                x =get_default_x()
-                if (channel not in self.lin_log_mode or self.lin_log_mode[channel] == "LIN"):
+                x = get_default_x()
+                if channel not in self.lin_log_mode or self.lin_log_mode[channel] == "LIN":
                     y = x * 0
                 else:
-                    y = (np.linspace(0, 100000000, 256) if frequency_mhz != 0.0 else np.array([0]))  
-                return x,y          
+                    y = np.linspace(0, 100_000_000, 256) if frequency_mhz != 0.0 else np.array([0])
         else:
-            if channel not in decay_curves:
+            if channel in decay_curves:
+                x, y = decay_curves[channel].getData()
+            else:
                 x = get_default_x()
                 y = x * 0
-                return x,y
-            else: 
-                x, y = decay_curves[channel].getData()
-                return x,y
+        return x, y
                     
         
 
