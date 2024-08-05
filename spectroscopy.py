@@ -929,7 +929,6 @@ class SpectroscopyWindow(QWidget):
             ch_wrapper.setFixedHeight(40)
             row = QHBoxLayout()
             from components.fancy_checkbox import FancyCheckbox
-
             fancy_checkbox = FancyCheckbox(text=f"Channel {i + 1}")
             fancy_checkbox.setStyleSheet(GUIStyles.set_checkbox_style())
             if self.selected_channels:
@@ -1270,6 +1269,8 @@ class SpectroscopyWindow(QWidget):
             self.phasors_coords[channel_index] = coord_text
         else:
             self.phasors_coords[channel_index] = coord_text
+        coord_text.setZValue(1)   
+        crosshair.setZValue(1) 
         self.phasors_widgets[channel_index].addItem(coord_text, ignoreBounds=True)
         self.phasors_widgets[channel_index].addItem(crosshair, ignoreBounds=True)
 
@@ -1730,6 +1731,7 @@ class SpectroscopyWindow(QWidget):
                 self.phasors_widgets[channel_index].removeItem(
                     self.phasors_colorbars[channel_index]
                 )
+            image_item.setZValue(-1)      
             self.phasors_widgets[channel_index].addItem(image_item, ignoreBounds=True)
             self.quantization_images[channel_index] = image_item
             if not all_zeros:

@@ -270,7 +270,6 @@ class ReadDataControls:
 
     @staticmethod
     def handle_widgets_visibility(app, read_mode):
-        data_type = ReadData.get_data_type(app.tab_selected)
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(app)
         app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
         app.control_inputs["start_button"].setVisible(not read_mode)
@@ -293,6 +292,8 @@ class ReadDataControls:
         if file_metadata.get("channels"):
             app.selected_channels = sorted(file_metadata["channels"])
             app.plots_to_show = app.reader_data[file_type].get("plots", [])
+            for i, checkbox in app.channel_checkboxes:
+                checkbox.set_checked(i in app.selected_channels)
 
     @staticmethod
     def plot_data_on_tab_change(app):
@@ -358,7 +359,7 @@ class ReaderPopup(QWidget):
                 input_desc = QLabel(f"LOAD RELATED {file_type.upper()} FILE:")
             else:
                 input_desc = QLabel(f"LOAD A {file_type.upper()} FILE:")
-            input_desc.setStyleSheet("font-size: 16px; font-family: Montserrat")
+            input_desc.setStyleSheet("font-size: 16px; font-family: 'Montserrat'")
             control_row = QHBoxLayout()
 
             def on_change(file_type=file_type):
@@ -411,7 +412,7 @@ class ReaderPopup(QWidget):
             )
             channels_layout = QVBoxLayout()
             desc = QLabel("CHOOSE MAX 4 PLOTS TO DISPLAY:")
-            desc.setStyleSheet("font-size: 16px, font-family: Montserrat")
+            desc.setStyleSheet("font-size: 16px; font-family: 'Montserrat'")
             grid = QGridLayout()
             for ch in selected_channels:
                 checkbox, checkbox_wrapper = self.set_checkboxes(f"Channel {ch + 1}")
@@ -569,7 +570,7 @@ class ReaderMetadataPopup(QWidget):
         v_box = QVBoxLayout()
         if metadata:
             title = QLabel(f"{self.data_type.upper()} FILE METADATA")
-            title.setStyleSheet("font-size: 16px; font-family: Montserrat")
+            title.setStyleSheet("font-size: 16px; font-family: 'Montserrat'")
 
             def get_key_label_style(bg_color):
                 return f"width: 200px; font-size: 14px; border: 1px solid  {bg_color}; padding: 8px; color: white; background-color: {bg_color}"
