@@ -131,6 +131,7 @@ class ReadData:
             )
         else:
             app.on_quantize_phasors_changed(False)
+        app.generate_phasors_cluster_center(app.phasors_harmonic_selected)    
 
     @staticmethod
     def are_phasors_and_spectroscopy_ref_from_same_acquisition(
