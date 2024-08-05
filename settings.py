@@ -91,8 +91,13 @@ DEFAULT_QUANTIZE_PHASORS = True
 
 READER_POPUP = "reader_popup"
 READER_METADATA_POPUP = "reader_metadata_popup"
-SETTINGS_READER_MODE = "reader"
-DEFAULT_READER_MODE = False
+
+SETTINGS_ACQUIRE_READ_MODE = "acquire_read_mode"
+DEFAULT_ACQUIRE_READ_MODE = "acquire"
+ACQUIRE_BUTTON = "acquire_button"
+READ_BUTTON = "read_button"
+
+
 READER_DATA = {
     "spectroscopy": {
         "files": {"spectroscopy": ""},

@@ -322,7 +322,7 @@ class ReadDataControls:
     @staticmethod
     def plot_data_on_tab_change(app):
         file_type = ReadData.get_data_type(app.tab_selected)
-        if app.reader_mode:
+        if app.acquire_read_mode == 'read':
             ReadDataControls.handle_plots_config(app, file_type)
             app.clear_plots()
             app.generate_plots(ReadData.get_frequency_mhz(app))
@@ -335,10 +335,10 @@ class ReadDataControls:
         data_type = ReadData.get_data_type(app.tab_selected) 
         metadata = app.reader_data[data_type]["metadata"]  
         if data_type != 'phasors':
-            return not(metadata  == {}) and app.reader_mode
+            return not(metadata  == {}) and app.acquire_read_mode == 'read'
         else:
             phasors_file = app.reader_data[data_type]["files"]["phasors"] 
-            return not(metadata == {}) and not(phasors_file.strip() == "") and app.reader_mode
+            return not(metadata == {}) and not(phasors_file.strip() == "") and app.acquire_read_mode == 'read'
 
 
 class ReaderPopup(QWidget):

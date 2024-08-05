@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import (
 )
 
 from components.box_message import BoxMessage
-from components.buttons import CollapseButton
+from components.buttons import CollapseButton, ReadAcquireModeButton
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
@@ -60,9 +60,7 @@ project_root = os.path.abspath(os.path.join(current_path))
 class SpectroscopyWindow(QWidget):
     def __init__(self):
         super().__init__()
-        # TODO
         self.reader_data = READER_DATA
-
         self.update_plots_enabled = False
         self.settings = self.init_settings()
         self.widgets = {}
@@ -74,7 +72,6 @@ class SpectroscopyWindow(QWidget):
         self.reference_file = None
         self.overlay2 = None
         self.acquisition_stopped = False
-        #TODO
         self.intensities_widgets = {}
         self.intensity_lines = INTENSITY_LINES
         self.phasors_charts = {}
@@ -133,10 +130,7 @@ class SpectroscopyWindow(QWidget):
         self.show_bin_file_size_helper = self.write_data_gui
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
-        # TODO
-        reader_mode = self.settings.value(SETTINGS_READER_MODE, DEFAULT_READER_MODE)
-        self.reader_mode = reader_mode == "true" or reader_mode == True
-
+        self.acquire_read_mode = self.settings.value(SETTINGS_ACQUIRE_READ_MODE, DEFAULT_ACQUIRE_READ_MODE)
         self.harmonic_selector_shown = False
         quantized_phasors = self.settings.value(
             SETTINGS_QUANTIZE_PHASORS, DEFAULT_QUANTIZE_PHASORS
@@ -160,11 +154,7 @@ class SpectroscopyWindow(QWidget):
         self.fitting_config_popup = None
         self.calc_exported_file_size()
         self.phasors_harmonic_selected = 1
-        # TODO
-        self.control_inputs[SETTINGS_READER_MODE].toggled.connect(
-            self.on_reader_mode_changed
-        )
-        ReadDataControls.handle_widgets_visibility(self, self.reader_mode)
+        ReadDataControls.handle_widgets_visibility(self, self.acquire_read_mode == 'read')
         self.toggle_intensities_widgets_visibility()
         self.refresh_reader_popup_plots = False
 
@@ -264,19 +254,9 @@ class SpectroscopyWindow(QWidget):
         tabs_layout.addWidget(self.control_inputs[TAB_FITTING])
         top_bar_header.addLayout(tabs_layout)
         top_bar_header.addStretch(1)
-
-        # TODO
-        # READER MODE
-        reader_mode_switch_control = QHBoxLayout()
-        reader_mode_inp = SwitchControl(
-            active_color=PALETTE_RED_1,
-            checked=self.reader_mode,
-        )
-        reader_mode_switch_control.addWidget(QLabel("Reader mode:"))
-        reader_mode_switch_control.addSpacing(8)
-        reader_mode_switch_control.addWidget(reader_mode_inp)
-        top_bar_header.addLayout(reader_mode_switch_control)
-        self.control_inputs[SETTINGS_READER_MODE] = reader_mode_inp
+        # ACQUIRE/READ MODE
+        read_acquire_button_row = ReadAcquireModeButton(self)
+        top_bar_header.addWidget(read_acquire_button_row)
         top_bar_header.addSpacing(10)
 
         info_link_widget, export_data_control = self.create_export_data_input()
@@ -362,7 +342,6 @@ class SpectroscopyWindow(QWidget):
 
     def create_control_inputs(self):
         controls_row = QHBoxLayout()
-        # TODO
         controls_row.setContentsMargins(0, 10, 0, 0)
         controls_row.addSpacing(10)
         _, inp = InputNumberControl.setup(
@@ -434,7 +413,6 @@ class SpectroscopyWindow(QWidget):
             else hide_layout(quantize_phasors_switch_control)
         )
         controls_row.addLayout(quantize_phasors_switch_control)
-        # TODO
         controls_row.addSpacing(20)
 
         # PHASORS RESOLUTION
@@ -558,8 +536,7 @@ class SpectroscopyWindow(QWidget):
         # if no fit button is present, it must no occupy space
         self.control_inputs[FIT_BTN_PLACEHOLDER].layout().setContentsMargins(0, 0, 0, 0)
         controls_row.addWidget(self.control_inputs[FIT_BTN_PLACEHOLDER])
-
-        # TODO
+        
         # START BUTTON
         start_button = QPushButton("START")
         start_button.setFixedWidth(150)
@@ -568,7 +545,7 @@ class SpectroscopyWindow(QWidget):
         start_button.setFixedHeight(55)
         start_button.setCursor(Qt.CursorShape.PointingHandCursor)
         start_button.clicked.connect(self.on_start_button_click)
-        start_button.setVisible(not self.reader_mode)
+        start_button.setVisible(self.acquire_read_mode == 'acquire')
         self.control_inputs["start_button"] = start_button
 
         # BIN METADATA BUTTON
@@ -591,7 +568,7 @@ class SpectroscopyWindow(QWidget):
         read_bin_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.control_inputs["read_bin_button"] = read_bin_button
         read_bin_button.clicked.connect(self.open_reader_popup)
-        read_bin_button.setVisible(self.reader_mode)
+        read_bin_button.setVisible(self.acquire_read_mode == 'read')
         self.style_start_button()
 
         collapse_button = CollapseButton(self.widgets[TOP_COLLAPSIBLE_WIDGET])
@@ -599,7 +576,6 @@ class SpectroscopyWindow(QWidget):
         controls_row.addWidget(bin_metadata_button)
         controls_row.addWidget(read_bin_button)
         controls_row.addWidget(collapse_button)
-        # TODO
         self.widgets["collapse_button"] = collapse_button
         controls_row.addSpacing(10)
         return controls_row
@@ -639,7 +615,6 @@ class SpectroscopyWindow(QWidget):
             )
 
     def style_start_button(self):
-        # TODO
         GUIStyles.set_start_btn_style(self.control_inputs["read_bin_button"])
         if self.mode == MODE_STOPPED:
             self.control_inputs["start_button"].setText("START")
@@ -654,9 +629,8 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(True)
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self)
         self.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
-        # TODO
         self.fit_button_hide()
-        if not self.reader_mode:
+        if self.acquire_read_mode == 'acquire':
             self.clear_plots(deep_clear=False)
             self.generate_plots()
             self.toggle_intensities_widgets_visibility()
@@ -716,7 +690,7 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs["calibration_label"].hide()
             self.control_inputs[SETTINGS_HARMONIC].hide()
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
-            if self.reader_mode:
+            if self.acquire_read_mode == 'read':
                 self.control_inputs[LOAD_REF_BTN].hide()
             else:
                 self.control_inputs[LOAD_REF_BTN].show()
@@ -817,24 +791,12 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(not state)
         self.settings.setValue(SETTINGS_FREE_RUNNING, state)
         self.calc_exported_file_size()
-
-    # TODO
-    def on_reader_mode_changed(self, state):
-        self.settings.setValue(SETTINGS_READER_MODE, state)
-        if not state:
-            self.reader_data = DEFAULT_READER_DATA
-        self.reader_mode = state
-        self.clear_plots()
-        self.generate_plots()
-        self.toggle_intensities_widgets_visibility()
-        ReadDataControls.handle_widgets_visibility(self, self.reader_mode)
-
-    # TODO
+   
     def toggle_intensities_widgets_visibility(self):
         if self.intensities_widgets:
             for _, widget in self.intensities_widgets.items():
                 if widget and isinstance(widget, QWidget):
-                    widget.setVisible(not self.reader_mode)
+                    widget.setVisible(self.acquire_read_mode == 'acquire')
 
     def on_bin_width_change(self, value):
         self.settings.setValue(SETTINGS_BIN_WIDTH, value)
@@ -1142,7 +1104,6 @@ class SpectroscopyWindow(QWidget):
                 else:
                     intensity_plot_stretch = 4
                 h_layout.addWidget(intensity_widget, stretch=intensity_plot_stretch)
-                # TODO
                 intensity_widget_wrapper.setLayout(h_layout)
                 self.intensities_widgets[channel] = intensity_widget_wrapper
                 v_layout.addWidget(intensity_widget_wrapper, 2)
@@ -1345,7 +1306,6 @@ class SpectroscopyWindow(QWidget):
          
 
     def clear_plots(self, deep_clear = True):
-        # TODO
         self.clear_phasors_quantize_features(self.phasors_colorbars)
         self.clear_phasors_quantize_features(self.quantization_images)
         self.quantization_images.clear()
@@ -1412,7 +1372,7 @@ class SpectroscopyWindow(QWidget):
             
 
     def get_current_frequency_mhz(self):
-        if self.reader_mode:
+        if self.acquire_read_mode == 'read':
             return ReadData.get_frequency_mhz(self)
         else:
             if self.selected_sync == "sync_in":
@@ -1449,7 +1409,7 @@ class SpectroscopyWindow(QWidget):
                 )
 
     def get_frequency_mhz(self):
-        if self.reader_mode:
+        if self.acquire_read_mode == 'read':
             return ReadData.get_frequency_mhz(self)
         else:
             if self.selected_sync == "sync_in":
@@ -1765,7 +1725,7 @@ class SpectroscopyWindow(QWidget):
             if (
                 len(selector_harmonics)
                 != self.control_inputs[SETTINGS_HARMONIC].value()
-                or self.reader_mode
+                or self.acquire_read_mode == 'read'
             ):
                 # clear the items
                 self.control_inputs[HARMONIC_SELECTOR].clear()
@@ -2000,7 +1960,6 @@ class SpectroscopyWindow(QWidget):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
         self.popup.show()
 
-    # TODO
     def open_reader_popup(self):
         self.popup = ReaderPopup(self, tab_selected=self.tab_selected)
         self.popup.show()
@@ -2014,7 +1973,6 @@ class SpectroscopyWindow(QWidget):
         self.settings.setValue("pos", self.pos())
         if PLOTS_CONFIG_POPUP in self.widgets:
             self.widgets[PLOTS_CONFIG_POPUP].close()
-        # TODO
         if READER_POPUP in self.widgets:
             self.widgets[READER_POPUP].close()
         if READER_METADATA_POPUP in self.widgets:
