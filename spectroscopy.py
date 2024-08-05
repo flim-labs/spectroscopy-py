@@ -1217,6 +1217,24 @@ class SpectroscopyWindow(QWidget):
                 col_length = 2
             v_widget.setStyleSheet(GUIStyles.chart_wrapper_style())
             self.grid_layout.addWidget(v_widget, i // col_length, i % col_length)
+            
+
+    def calculate_phasors_points_mean(self,channel_index, harmonic):
+        x = [p[0] for p in self.all_phasors_points[channel_index][harmonic]]
+        y = [p[1] for p in self.all_phasors_points[channel_index][harmonic]]
+        g_values = np.array(x)
+        s_values = np.array(y)
+        if (
+                g_values.size == 0
+                or s_values.size == 0
+                or np.all(np.isnan(g_values))
+                or np.all(np.isnan(s_values))
+            ):
+            return None, None
+        mean_g = np.nanmean(g_values)            
+        mean_s = np.nanmean(s_values)
+        return mean_g, mean_s
+                    
 
     def generate_phasors_cluster_center(self, harmonic):
         for i, channel_index in enumerate(self.plots_to_show):
@@ -1226,34 +1244,59 @@ class SpectroscopyWindow(QWidget):
                     self.phasors_widgets[channel_index].removeItem(
                         self.phasors_clusters_center[channel_index]
                     )
-            x = [p[0] for p in self.all_phasors_points[channel_index][harmonic]]
-            y = [p[1] for p in self.all_phasors_points[channel_index][harmonic]]
-            g_values = np.array(x)
-            s_values = np.array(y)
-            if (
-                g_values.size == 0
-                or s_values.size == 0
-                or np.all(np.isnan(g_values))
-                or np.all(np.isnan(s_values))
-            ):
-                continue
-            mean_g = np.nanmean(g_values)
-            mean_s = np.nanmean(s_values)
-            scatter = pg.ScatterPlotItem(
-                [mean_g],
-                [mean_s],
-                size=20,
-                pen={
-                    "color": "y",
-                    "width": 4,
-                },
-                symbol="x",
-            )
-            self.phasors_widgets[channel_index].addItem(scatter)
-            self.phasors_clusters_center[channel_index] = scatter
+                mean_g, mean_s = self.calculate_phasors_points_mean(channel_index, harmonic)
+                if mean_g is None or mean_s is None:
+                    continue
+                scatter = pg.ScatterPlotItem(
+                    [mean_g],
+                    [mean_s],
+                    size=20,
+                    pen={
+                        "color": "yellow",
+                        "width": 4,
+                    },
+                    symbol="x",
+                )
+                self.phasors_widgets[channel_index].addItem(scatter)
+                self.phasors_clusters_center[channel_index] = scatter
 
-    def generate_phasors_legend(self, channel_index, harmonic):
-        pass
+    def generate_phasors_legend(self, harmonic):
+        for i, channel_index in enumerate(self.plots_to_show):
+            if channel_index in self.phasors_widgets:
+                legend_in_list = channel_index in self.phasors_legends
+                if legend_in_list:
+                    self.phasors_widgets[channel_index].removeItem(
+                        self.phasors_legends[channel_index]
+                    )
+                mean_g, mean_s = self.calculate_phasors_points_mean(channel_index, harmonic)
+                if mean_g is None or mean_s is None:
+                    continue   
+                freq_mhz = self.get_frequency_mhz() 
+                tau_phi, tau_m = self.calculate_tau(mean_g, mean_s, freq_mhz, harmonic) 
+                if tau_m is None:
+                    legend_text = (
+                        '<div style="background-color: rgba(0, 0, 0, 0.1); padding: 20px; border-radius: 4px;'
+                        ' color: #FF3131; font-size: 18px; border: 1px solid white; text-align: left;">'
+                        f'G (mean)={round(mean_g, 2)}; '
+                        f'S (mean)={round(mean_s, 2)}; '
+                        f'𝜏ϕ={round(tau_phi, 2)} ns'
+                        '</div>'
+                    )
+                else:
+                    legend_text = (
+                        '<div style="background-color: rgba(0, 0, 0, 0.1);  padding: 20px; border-radius: 4px;'
+                        ' color: #FF3131; font-size: 18px;  border: 1px solid white; text-align: left;">'
+                        f'G (mean)={round(mean_g, 2)}; '
+                        f'S (mean)={round(mean_s, 2)}; '
+                        f'𝜏ϕ={round(tau_phi, 2)} ns; '
+                        f'𝜏m={round(tau_m, 2)} ns'
+                        '</div>'
+                    )
+                legend_item = pg.TextItem(html=legend_text)
+                legend_item.setPos(0.1, 0)
+                self.phasors_widgets[channel_index].addItem(legend_item)
+                self.phasors_legends[channel_index] = legend_item          
+                
 
     def generate_coords(self, channel_index):
         font = QFont()
@@ -1281,6 +1324,18 @@ class SpectroscopyWindow(QWidget):
         crosshair.setZValue(1)
         self.phasors_widgets[channel_index].addItem(coord_text, ignoreBounds=True)
         self.phasors_widgets[channel_index].addItem(crosshair, ignoreBounds=True)
+        
+        
+    def calculate_tau(self, g, s, freq_mhz, harmonic):
+        if freq_mhz == 0.0:
+            return None, None, None 
+        tau_phi = (1 / (2 * np.pi * freq_mhz * harmonic)) * (s / g) * 1e3
+        tau_m_component = (1 / (s**2 + g**2)) - 1
+        if tau_m_component < 0:
+            tau_m = None
+        else:
+            tau_m = (1 / (2 * np.pi * freq_mhz * harmonic)) * np.sqrt(tau_m_component) * 1e3
+        return tau_phi, tau_m        
 
     def on_phasors_mouse_moved(self, event, channel_index):
         for i, channel in enumerate(self.phasors_coords):
@@ -1301,11 +1356,10 @@ class SpectroscopyWindow(QWidget):
         harmonic = int(self.control_inputs[HARMONIC_SELECTOR].currentText())
         g = mouse_point.x()
         s = mouse_point.y()
-        if freq_mhz == 0.0:
+        tau_phi, tau_m = self.calculate_tau(g, s, freq_mhz, harmonic)
+        if tau_phi is None:
             return
-        tau_phi = (1 / (2 * np.pi * freq_mhz * harmonic)) * (s / g) * 1e3
-        tau_m_component = (1 / (s**2 + g**2)) - 1
-        if tau_m_component < 0:
+        if tau_m is None:
             text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns")
             text.setHtml(
                 '<div style="background-color: rgba(0, 0, 0, 0.5);">{}</div>'.format(
@@ -1313,9 +1367,6 @@ class SpectroscopyWindow(QWidget):
                 )
             )
         else:
-            tau_m = (
-                (1 / (2 * np.pi * freq_mhz * harmonic)) * np.sqrt(tau_m_component) * 1e3
-            )
             text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏m={round(tau_m, 2)} ns")
             text.setHtml(
                 '<div style="background-color: rgba(0, 0, 0, 0.5);">{}</div>'.format(
@@ -1960,6 +2011,7 @@ class SpectroscopyWindow(QWidget):
                     )
         if self.acquire_read_mode == 'read':            
             self.generate_phasors_cluster_center(self.harmonic_selector_value)
+            self.generate_phasors_legend(self.harmonic_selector_value)
 
     def stop_spectroscopy_experiment(self):
         print("Stopping spectroscopy")
