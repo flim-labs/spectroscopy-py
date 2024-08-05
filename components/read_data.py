@@ -7,6 +7,7 @@ import numpy as np
 from components.box_message import BoxMessage
 from components.file_utils import compare_file_timestamps
 from components.gui_styles import GUIStyles
+from components.helpers import ns_to_mhz
 from components.input_text_control import InputTextControl
 from components.layout_utilities import clear_layout
 from components.resource_path import resource_path
@@ -111,6 +112,7 @@ class ReadData:
 
     @staticmethod
     def plot_phasors_data(app, data, harmonics):
+        app.all_phasors_points = app.get_empty_phasors_points()
         app.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
         harmonics_length = len(harmonics) if isinstance(harmonics, list) else harmonics
         if harmonics_length > 1:
@@ -121,7 +123,7 @@ class ReadData:
                 for harmonic, values in channel_data.items():
                     if harmonic == 1:
                         app.draw_points_in_phasors(channel, harmonic, values)
-                    app.all_phasors_points[channel][harmonic].extend(values)
+                    app.all_phasors_points[channel][harmonic].extend(values)          
         if app.quantized_phasors:
             app.quantize_phasors(
                 app.phasors_harmonic_selected,
@@ -265,6 +267,28 @@ class ReadData:
             )
             return None
 
+    @staticmethod
+    def get_phasors_frequency_mhz(app):
+        metadata = app.reader_data["phasors"]["phasors_metadata"]
+        if "laser_period_ns" in metadata:
+            return ns_to_mhz(metadata["laser_period_ns"]) 
+        return 0.0
+    
+    @staticmethod
+    def get_spectroscopy_frequency_mhz(app):
+       metadata = app.reader_data["spectroscopy"]["metadata"]
+       if "laser_period_ns" in metadata:
+            return ns_to_mhz(metadata["laser_period_ns"]) 
+       return 0.0
+   
+    @staticmethod
+    def get_frequency_mhz(app):
+        if app.tab_selected == TAB_SPECTROSCOPY:
+            return ReadData.get_spectroscopy_frequency_mhz(app) 
+        elif app.tab_selected == TAB_PHASORS:
+            return ReadData.get_phasors_frequency_mhz(app) 
+        else: 
+            return 0.0       
 
 class ReadDataControls:
 
@@ -292,7 +316,7 @@ class ReadDataControls:
         if file_metadata.get("channels"):
             app.selected_channels = sorted(file_metadata["channels"])
             app.plots_to_show = app.reader_data[file_type].get("plots", [])
-            for i, checkbox in app.channel_checkboxes:
+            for i, checkbox in enumerate(app.channel_checkboxes):
                 checkbox.set_checked(i in app.selected_channels)
 
     @staticmethod
@@ -301,7 +325,7 @@ class ReadDataControls:
         if app.reader_mode:
             ReadDataControls.handle_plots_config(app, file_type)
             app.clear_plots()
-            app.generate_plots()
+            app.generate_plots(ReadData.get_frequency_mhz(app))
             app.toggle_intensities_widgets_visibility()
             ReadData.plot_data(app)
             

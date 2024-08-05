@@ -1376,6 +1376,7 @@ class SpectroscopyWindow(QWidget):
                 layout = self.grid_layout.itemAt(i).layout()
                 if layout is not None:
                     self.clear_layout_tree(layout)
+                    
 
     def clear_layout_tree(self, layout: QLayout):
         if layout is not None:
@@ -1408,13 +1409,17 @@ class SpectroscopyWindow(QWidget):
             )
             self.bin_file_size = format_size(file_size_MB * 1024 * 1024)
             self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
+            
 
     def get_current_frequency_mhz(self):
-        if self.selected_sync == "sync_in":
-            frequency_mhz = self.sync_in_frequency_mhz
+        if self.reader_mode:
+            return ReadData.get_frequency_mhz(self)
         else:
-            frequency_mhz = int(self.selected_sync.split("_")[-1])
-        return frequency_mhz
+            if self.selected_sync == "sync_in":
+                frequency_mhz = self.sync_in_frequency_mhz
+            else:
+                frequency_mhz = int(self.selected_sync.split("_")[-1])
+            return frequency_mhz
 
     def export_data(self):
         if not self.write_data:
@@ -1444,11 +1449,15 @@ class SpectroscopyWindow(QWidget):
                 )
 
     def get_frequency_mhz(self):
-        if self.selected_sync == "sync_in":
-            frequency_mhz = self.sync_in_frequency_mhz
+        if self.reader_mode:
+            return ReadData.get_frequency_mhz(self)
         else:
-            frequency_mhz = int(self.selected_sync.split("_")[-1])
-        return frequency_mhz
+            if self.selected_sync == "sync_in":
+                frequency_mhz = self.sync_in_frequency_mhz
+            else:
+                frequency_mhz = int(self.selected_sync.split("_")[-1])
+            return frequency_mhz
+        
 
     def begin_spectroscopy_experiment(self):
         bin_width_micros = int(
@@ -1736,6 +1745,7 @@ class SpectroscopyWindow(QWidget):
             self.quantization_images[channel_index] = image_item
             if not all_zeros:
                 self.generate_colorbar(channel_index, h_min, h_max)
+            self.clear_phasors_points()    
 
     def generate_colorbar(self, channel_index, min_value, max_value):
         colorbar = pg.GradientLegend((10, 100), (10, 100))
@@ -1755,6 +1765,7 @@ class SpectroscopyWindow(QWidget):
             if (
                 len(selector_harmonics)
                 != self.control_inputs[SETTINGS_HARMONIC].value()
+                or self.reader_mode
             ):
                 # clear the items
                 self.control_inputs[HARMONIC_SELECTOR].clear()
@@ -1763,6 +1774,7 @@ class SpectroscopyWindow(QWidget):
                 self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(
                     self.phasors_harmonic_selected - 1
                 )
+      
 
     def hide_harmonic_selector(self):
         self.control_inputs[HARMONIC_SELECTOR].hide()
