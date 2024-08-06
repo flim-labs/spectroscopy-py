@@ -147,16 +147,14 @@ class PlotsConfigPopup(QWidget):
             start_btn_enabled = len(self.app.plots_to_show) > 0
             self.start_btn.setEnabled(start_btn_enabled)
         self.app.clear_plots()   
-        self.app.cached_decay_values.clear()
         self.app.generate_plots() 
-
-
+        
                            
     def start_acquisition(self):
         self.close()
         self.app.begin_spectroscopy_experiment()
-       
-
+        
+        
     def extract_channel_from_label(self,text):
         ch = re.search(r'\d+', text).group()  
         ch_num = int(ch) 

@@ -74,6 +74,7 @@ class GUIStyles:
                 border: 1px solid {color_border};
                 font-family: "Montserrat";
                 color: white;
+                padding: 8px;
                 letter-spacing: 0.1em;
                 min-width: {min_width};
                 border-radius: 4px;
@@ -440,6 +441,27 @@ class GUIStyles:
                 font-family: Montserrat;
                 font-size: 13px;
             }
-        """
-                         
-                       
+        """   
+            
+    @staticmethod
+    def acquire_read_btn_style():
+        return f"""
+            QPushButton {{
+                font-family: "Montserrat";
+                letter-spacing: 0.1em;
+                padding: 10px 12px;
+                font-size: 14px;
+                font-weight: bold;;
+                min-width: 60px;
+            }}
+            QPushButton#acquire_btn{{ 
+                border-top-left-radius: 3px;
+                border-bottom-left-radius: 3px;   
+            }}
+            QPushButton#read_btn{{  
+                border-top-right-radius: 3px;
+                border-bottom-right-radius: 3px;
+                
+            }}
+        """               
+                        

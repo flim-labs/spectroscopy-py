@@ -6,7 +6,6 @@ from laserblood_settings import LASER_TYPES
 from settings import DEFAULT_BIN_WIDTH, SETTINGS_BIN_WIDTH, SETTINGS_TAU_NS
 
 class FileUtils:
-
     @staticmethod
     def directory_selector(window):
         folder_path = QFileDialog.getExistingDirectory(window, "Select Directory")
@@ -118,7 +117,16 @@ class FileUtils:
             laser_key = next((d["KEY"] for d in LASER_TYPES if d["LABEL"].strip() == laser_type.strip()), "")
             filter_key = filter_type.strip().replace(" ", "").replace("/", "_") 
             laser_key = laser_key.strip().replace(" ", "").replace("/", "_")  
-            return laser_key, filter_key      
+            return laser_key, filter_key     
+         
+                
+    @staticmethod
+    def compare_file_timestamps(file_path1, file_path2):
+        ctime1 = os.path.getctime(file_path1)
+        ctime2 = os.path.getctime(file_path2)
+        time_diff = abs(ctime1 - ctime2)
+        return time_diff
+                    
                 
                 
                 
@@ -129,5 +137,12 @@ class FileUtils:
 
     
 
+
+
+
+
+
+
+ 
 
 

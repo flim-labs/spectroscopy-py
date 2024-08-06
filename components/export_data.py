@@ -1,3 +1,4 @@
+
 import datetime
 import os
 import shutil
@@ -32,7 +33,8 @@ class ExportData:
             )
             if not new_spectroscopy_file_path:
                 return
-            ExportData.save_spectroscopy_reference(save_name, save_dir, app)
+            if app.control_inputs["calibration"].currentIndex() == 1:
+                ExportData.save_spectroscopy_reference(save_name, save_dir, app)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
                 app, save_name, save_dir
             )
@@ -145,3 +147,7 @@ class ExportData:
             return new_file_path, save_dir, save_name
         else:
             return None, None, None
+
+
+
+
