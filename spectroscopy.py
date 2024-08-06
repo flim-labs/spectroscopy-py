@@ -702,10 +702,12 @@ class SpectroscopyWindow(QWidget):
                 self.control_inputs[LOAD_REF_BTN].show()
             self.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
             channels_grid = self.widgets[CHANNELS_GRID]
+            self.generate_phasors_cluster_center(self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1)   
+            self.generate_phasors_legend(self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1)
             if self.harmonic_selector_shown:
                 if self.quantized_phasors:
                     self.quantize_phasors(
-                        self.phasors_harmonic_selected,
+                        self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1,
                         bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution]),
                     )
                 else:
@@ -2007,11 +2009,9 @@ class SpectroscopyWindow(QWidget):
                         self.harmonic_selector_value,
                         self.all_phasors_points[channel_index][
                             self.harmonic_selector_value
-                        ],
-                    )
-        if self.acquire_read_mode == 'read':            
-            self.generate_phasors_cluster_center(self.harmonic_selector_value)
-            self.generate_phasors_legend(self.harmonic_selector_value)
+                        ],)          
+        self.generate_phasors_cluster_center(self.harmonic_selector_value)    
+        self.generate_phasors_legend(self.harmonic_selector_value)
 
     def stop_spectroscopy_experiment(self):
         print("Stopping spectroscopy")
@@ -2046,6 +2046,8 @@ class SpectroscopyWindow(QWidget):
                 self.quantize_phasors(
                     1, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
                 )
+                self.generate_phasors_cluster_center(1)   
+                self.generate_phasors_legend(1)    
         if harmonic_selected > 1:
             self.harmonic_selector_shown = True
         if is_export_data_active:
@@ -2057,6 +2059,7 @@ class SpectroscopyWindow(QWidget):
             )
         if self.tab_selected == TAB_FITTING:
             self.fit_button_show()
+        
 
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
