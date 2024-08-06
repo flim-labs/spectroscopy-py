@@ -1024,13 +1024,13 @@ class SpectroscopyWindow(QWidget):
         y = x * 0
         return x, y
 
+
     def initialize_decay_curves(self, channel, frequency_mhz):
         def get_default_x():
             if frequency_mhz != 0.0:
                 period = 1_000 / frequency_mhz
                 return np.linspace(0, period, 256)
             return np.arange(1)
-
         decay_curves = self.decay_curves[self.tab_selected]
         if self.tab_selected in [TAB_SPECTROSCOPY, TAB_FITTING]:
             cached_decay_values = self.cached_decay_values[self.tab_selected]
@@ -1271,6 +1271,8 @@ class SpectroscopyWindow(QWidget):
                     continue   
                 freq_mhz = self.get_frequency_mhz() 
                 tau_phi, tau_m = self.calculate_tau(mean_g, mean_s, freq_mhz, harmonic) 
+                if tau_phi is None:
+                    return
                 if tau_m is None:
                     legend_text = (
                         '<div style="background-color: rgba(0, 0, 0, 0.1); padding: 20px; border-radius: 4px;'

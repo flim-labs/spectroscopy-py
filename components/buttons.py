@@ -131,7 +131,7 @@ class ReadAcquireModeButton(QWidget):
         self.app.acquire_read_mode = 'acquire' if checked else 'read'
         self.app.settings.setValue(SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode)
         self.set_buttons_styles()
-        self.app.reader_data = DEFAULT_READER_DATA
+        self.app.reader_data = deepcopy(DEFAULT_READER_DATA)
         self.app.clear_plots()
         self.app.generate_plots()
         self.app.toggle_intensities_widgets_visibility()
