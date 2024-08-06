@@ -1326,7 +1326,7 @@ class SpectroscopyWindow(QWidget):
         
     def calculate_tau(self, g, s, freq_mhz, harmonic):
         if freq_mhz == 0.0:
-            return None, None, None 
+            return None, None 
         tau_phi = (1 / (2 * np.pi * freq_mhz * harmonic)) * (s / g) * 1e3
         tau_m_component = (1 / (s**2 + g**2)) - 1
         if tau_m_component < 0:
