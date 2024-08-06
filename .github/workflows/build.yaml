@@ -27,5 +27,5 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: $GITHUB_REPOSITORY $GITHUB_SHA .exe (not signed)
+        name: "$GITHUB_REPOSITORY $GITHUB_SHA .exe (not signed)"
         path: D:\a\spectroscopy-py\spectroscopy-py\dist
