@@ -57,20 +57,21 @@ class SpectroscopyTimeShift(QWidget):
             self.app.control_inputs["time_shift_inputs"][self.channel].setValue(value)
         else:
             self.app.control_inputs["time_shift_sliders"][self.channel].setValue(value)
-        if self.channel in self.app.decay_curves:
-            decay_curve = self.app.decay_curves[self.channel]
-            x, y = decay_curve.getData()
-            if x is not None and y is not None:
-                cached_decay_curve = self.app.cached_decay_values[channel]
-                decay_widget = self.app.decay_widgets[channel]
-                if lin_log_mode == 'LIN':
-                    ticks, y_data = SpectroscopyLinLogControl.calculate_lin_mode(cached_decay_curve)
-                    decay_widget.showGrid(x=False, y=False)
-                else:
-                    ticks, y_data, _ = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_curve)
-                    decay_widget.showGrid(x=False, y=True, alpha=0.3)     
-                decay_widget.getAxis("left").setTicks([ticks])    
-                y = np.roll(y_data, value)
-                decay_curve.setData(x, y)
-                self.app.set_plot_y_range(decay_widget, lin_log_mode)
+        if self.app.tab_selected in self.app.decay_curves: 
+            if self.channel in self.app.decay_curves[self.app.tab_selected]:
+                decay_curve = self.app.decay_curves[self.app.tab_selected][self.channel]
+                x, y = decay_curve.getData()
+                if x is not None and y is not None:
+                    cached_decay_curve = self.app.cached_decay_values[self.app.tab_selected][channel]
+                    decay_widget = self.app.decay_widgets[channel]
+                    if lin_log_mode == 'LIN':
+                        ticks, y_data = SpectroscopyLinLogControl.calculate_lin_mode(cached_decay_curve)
+                        decay_widget.showGrid(x=False, y=False)
+                    else:
+                        ticks, y_data, _ = SpectroscopyLinLogControl.calculate_log_mode(cached_decay_curve)
+                        decay_widget.showGrid(x=False, y=True, alpha=0.3)     
+                    decay_widget.getAxis("left").setTicks([ticks])    
+                    y = np.roll(y_data, value)
+                    decay_curve.setData(x, y)
+                    self.app.set_plot_y_range(decay_widget, lin_log_mode)
         self.app.settings.setValue(SETTINGS_TIME_SHIFTS, json.dumps(self.app.time_shifts))

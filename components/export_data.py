@@ -30,7 +30,8 @@ class ExportData:
             )
             if not new_spectroscopy_file_path:
                 return
-            ExportData.save_spectroscopy_reference(save_name, save_dir)
+            if app.control_inputs["calibration"].currentIndex() == 1:
+                ExportData.save_spectroscopy_reference(save_name, save_dir)
             file_paths = {"spectroscopy": new_spectroscopy_file_path}
             ExportData.download_scripts(file_paths, save_name, save_dir, "spectroscopy")
         except Exception as e:

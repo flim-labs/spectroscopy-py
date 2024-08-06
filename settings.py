@@ -1,3 +1,6 @@
+from copy import deepcopy
+
+
 VERSION = "1.3"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
@@ -60,17 +63,6 @@ DEFAULT_LIN_LOG_MODE = "{}"
 
 CHANNELS_GRID = "channels_grid"
 
-DOWNLOAD_BUTTON = "download_button"
-DOWNLOAD_MENU = "download_menu"
-
-SPECTROSCOPY_SCRIPT_ACTION_PY = "spectroscopy_script_action_py"
-PHASORS_SCRIPT_ACTION_PY = "phasors_script_action_py"
-SPECTROSCOPY_SCRIPT_ACTION_M = "spectroscopy_script_action_m"
-PHASORS_SCRIPT_ACTION_M = "phasors_script_action_m"
-
-EXPORT_DATA_SETTINGS_BUTTON = "export_data_settings_button"
-EXPORT_DATA_SETTINGS_POPUP = "export_data_settings_popup"
-
 
 UNICODE_SUP = {
     "0": "\u2070",
@@ -87,7 +79,7 @@ UNICODE_SUP = {
 
 REALTIME_MS = 50
 REALTIME_ADJUSTMENT = REALTIME_MS * 1000
-DEFAULT_TICKS_LOG =  [0, 1, 2, 3, 4, 5, 6]
+DEFAULT_TICKS_LOG = [0, 1, 2, 3, 4, 5, 6]
 DEFAULT_TICKS_LIN = [0, 10, 100, 1000, 10000, 100000, 1000000]
 
 PHASORS_RESOLUTIONS = ["16", "32", "64", "128", "256", "512"]
@@ -95,3 +87,52 @@ SETTINGS_PHASORS_RESOLUTION = "phasors_resolution"
 DEFAULT_PHASORS_RESOLUTION = 2
 SETTINGS_QUANTIZE_PHASORS = "quantize_phasors"
 DEFAULT_QUANTIZE_PHASORS = True
+
+
+READER_POPUP = "reader_popup"
+READER_METADATA_POPUP = "reader_metadata_popup"
+
+SETTINGS_ACQUIRE_READ_MODE = "acquire_read_mode"
+DEFAULT_ACQUIRE_READ_MODE = "acquire"
+ACQUIRE_BUTTON = "acquire_button"
+READ_BUTTON = "read_button"
+
+
+READER_DATA = {
+    "spectroscopy": {
+        "files": {"spectroscopy": ""},
+        "plots": [],
+        "metadata": {},
+        "data": {},
+    },
+    "phasors": {
+        "files": {"spectroscopy": "", "phasors": ""},
+        "spectroscopy_metadata": {},
+        "phasors_metadata": {},
+        "plots": [],
+        "metadata": {},
+        "data": {"phasors_data": {}, "spectroscopy_data": {}},
+    },
+    "fitting": {"files": {"fitting": ""}, "plots": [], "metadata": {}, "data": {}},
+}
+
+DEFAULT_READER_DATA = deepcopy(READER_DATA)
+
+
+INTENSITY_LINES = {
+            TAB_SPECTROSCOPY: {},
+            TAB_FITTING: {}
+        }
+
+DEFAULT_INTENSITY_LINES = deepcopy(INTENSITY_LINES)
+DECAY_CURVES =  {
+            TAB_SPECTROSCOPY: {},
+            TAB_PHASORS: {},
+            TAB_FITTING: {},
+        }
+DEFAULT_DECAY_CURVES = deepcopy(DECAY_CURVES)
+CACHED_DECAY_VALUES =  {
+            TAB_SPECTROSCOPY: {},
+            TAB_FITTING: {},
+        }
+DEFAULT_CACHED_DECAY_VALUES = deepcopy(CACHED_DECAY_VALUES)
