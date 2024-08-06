@@ -1,4 +1,5 @@
 import datetime
+from functools import partial
 import json
 import os
 import queue
@@ -27,10 +28,9 @@ from PyQt6.QtWidgets import (
 )
 
 from components.box_message import BoxMessage
-from components.buttons import CollapseButton, DownloadButton
-from components.export_data_settings import ExportDataSettingsPopup
+from components.buttons import CollapseButton
+from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
-from components.file_utils import save_phasor_files, save_spectroscopy_file
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
@@ -122,14 +122,7 @@ class SpectroscopyWindow(QWidget):
         self.show_bin_file_size_helper = self.write_data_gui
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
-
-        self.exported_data_settings = json.loads(
-            self.settings.value(
-                SETTINGS_EXPORTED_DATA_PATHS, DEFAULT_EXPORTED_DATA_PATHS
-            )
-        )
-        self.exported_data_file_paths = EXPORTED_DATA_FILE_PATHS
-
+     
         self.harmonic_selector_shown = False
         quantized_phasors = self.settings.value(
             SETTINGS_QUANTIZE_PHASORS, DEFAULT_QUANTIZE_PHASORS
@@ -258,10 +251,8 @@ class SpectroscopyWindow(QWidget):
         tabs_layout.addWidget(self.control_inputs[TAB_FITTING])
         top_bar_header.addLayout(tabs_layout)
         top_bar_header.addStretch(1)
-        download_button = DownloadButton(self)
         info_link_widget, export_data_control = self.create_export_data_input()
         file_size_info_layout = self.create_file_size_info_row()
-        top_bar_header.addWidget(download_button)
         top_bar_header.addWidget(info_link_widget)
         top_bar_header.addLayout(export_data_control)
         export_data_control.addSpacing(10)
@@ -326,23 +317,9 @@ class SpectroscopyWindow(QWidget):
             active_color=PALETTE_BLUE_1, width=70, height=30, checked=export_data_active
         )
         inp.toggled.connect(self.on_export_data_changed)
-        export_data_settings_btn = QPushButton()
-        export_data_settings_btn.setIcon(
-            QIcon(resource_path("assets/settings-blue.png"))
-        )
-        export_data_settings_btn.setFixedWidth(40)
-        export_data_settings_btn.setFixedHeight(40)
-        export_data_settings_btn.setStyleSheet("background-color: white")
-        export_data_settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        export_data_settings_btn.setVisible(export_data_active)
-        self.control_inputs[EXPORT_DATA_SETTINGS_BUTTON] = export_data_settings_btn
-        export_data_settings_btn.clicked.connect(self.open_export_data_settings_popup)
-
         export_data_control.addWidget(export_data_label)
         export_data_control.addSpacing(8)
         export_data_control.addWidget(inp)
-        export_data_control.addSpacing(8)
-        export_data_control.addWidget(export_data_settings_btn)
         export_data_control.addSpacing(8)
         return info_link_widget, export_data_control
 
@@ -524,27 +501,7 @@ class SpectroscopyWindow(QWidget):
         )
         self.control_inputs[LOAD_REF_BTN] = save_button
         controls_row.addWidget(save_button)
-
-        save_button = QPushButton("SAVE")
-        save_button.setFlat(True)
-        save_button.setFixedHeight(55)
-        save_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        save_button.setHidden(True)
-        save_button.clicked.connect(self.on_save_reference)
-        save_button.setStyleSheet(
-            """
-        QPushButton {
-            background-color: #1E90FF;
-            color: white;
-            border-radius: 5px;
-            padding: 5px 12px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        """
-        )
-        self.control_inputs["save"] = save_button
-        controls_row.addWidget(save_button)
+    
         export_button = QPushButton("EXPORT")
         export_button.setFlat(True)
         export_button.setSizePolicy(
@@ -629,20 +586,16 @@ class SpectroscopyWindow(QWidget):
             GUIStyles.set_stop_btn_style(self.control_inputs["start_button"])
 
     def on_tab_selected(self, tab_name):
-        export_data_active = self.write_data_gui
         self.control_inputs[self.tab_selected].setChecked(False)
         self.tab_selected = tab_name
         self.control_inputs[self.tab_selected].setChecked(True)
-        self.fit_button_hide()
-        
-        self.control_inputs["save"].setHidden(True)       
+        self.fit_button_hide()     
         self.clear_plots()
         self.cached_decay_values.clear()
         self.generate_plots()
 
         if tab_name == TAB_SPECTROSCOPY:
             self.hide_harmonic_selector()
-            self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.hide_layout(self.control_inputs["phasors_resolution_container"])
             self.hide_layout(self.control_inputs["quantize_phasors_container"])
             # hide tau input
@@ -668,7 +621,6 @@ class SpectroscopyWindow(QWidget):
             self.hide_harmonic_selector()          
             self.hide_layout(self.control_inputs["phasors_resolution_container"])
             self.hide_layout(self.control_inputs["quantize_phasors_container"])
-            self.control_inputs[DOWNLOAD_BUTTON].setVisible(False)
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
             self.control_inputs["calibration"].hide()
@@ -692,7 +644,6 @@ class SpectroscopyWindow(QWidget):
                 )
             )
             self.show_layout(self.control_inputs["quantize_phasors_container"])
-            self.control_inputs[DOWNLOAD_BUTTON].setVisible(export_data_active)
             self.control_inputs["tau_label"].hide()
             self.control_inputs["tau"].hide()
             self.control_inputs["calibration"].hide()
@@ -701,7 +652,6 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
             self.control_inputs[LOAD_REF_BTN].show()
             self.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
-            self.control_inputs["save"].setHidden(True)
             channels_grid = self.widgets[CHANNELS_GRID]
             if self.harmonic_selector_shown:
                 if self.quantized_phasors:
@@ -719,15 +669,12 @@ class SpectroscopyWindow(QWidget):
     def on_start_button_click(self):
         if self.mode == MODE_STOPPED:
             self.acquisition_stopped = False
-            self.exported_data_file_paths = EXPORTED_DATA_FILE_PATHS
-            self.control_inputs["save"].setHidden(True)
             if not (self.is_phasors()):
                 self.harmonic_selector_shown = False
             self.begin_spectroscopy_experiment()
         elif self.mode == MODE_RUNNING:
             self.acquisition_stopped = True
             self.stop_spectroscopy_experiment()
-            DownloadButton.change_download_script_options(self)
 
     def on_fit_btn_click(self):
         data = []
@@ -779,35 +726,6 @@ class SpectroscopyWindow(QWidget):
             )
             if file_name:
                 self.reference_file = file_name
-
-    def on_save_reference(self):   
-        if self.tab_selected == TAB_SPECTROSCOPY:
-            # read all lines from .pid file
-            with open(".pid", "r") as f:
-                lines = f.readlines()
-                reference_file = lines[0].split("=")[1].strip()
-            path = self.exported_data_settings["folder"]
-            file_name = self.exported_data_settings["spectroscopy_filename"]
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            full_path = os.path.join(path, f"{file_name}_{timestamp}.reference.json")
-            os.makedirs(os.path.dirname(full_path), exist_ok=True)
-            try:
-                with open(reference_file, "r") as f:
-                    with open(full_path, "w") as f2:
-                        f2.write(f.read())
-                BoxMessage.setup(  
-                "Save reference",
-                "Reference file saved successfully!",
-                QMessageBox.Icon.Information,
-                GUIStyles.set_msg_box_style(),
-            )        
-            except Exception as e:
-                BoxMessage.setup(
-                    "Error",
-                    "Error saving reference file",
-                    QMessageBox.Icon.Warning,
-                    GUIStyles.set_msg_box_style(),
-                )
 
     def get_free_running_state(self):
         return self.control_inputs[SETTINGS_FREE_RUNNING].isChecked()
@@ -882,8 +800,6 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
 
     def on_export_data_changed(self, state):
-        self.control_inputs[DOWNLOAD_BUTTON].setVisible(state)
-        self.control_inputs[EXPORT_DATA_SETTINGS_BUTTON].setVisible(state)
         self.settings.setValue(SETTINGS_WRITE_DATA, state)
         self.write_data_gui = state
         self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
@@ -910,6 +826,7 @@ class SpectroscopyWindow(QWidget):
             spacing=None,
             
         )
+        inp.setFixedHeight(40)
         inp.setStyleSheet(GUIStyles.set_input_select_style())
         widget_channel_type.setLayout(row_channel_type)
         self.control_inputs["channel_type"] = inp
@@ -1419,11 +1336,6 @@ class SpectroscopyWindow(QWidget):
                 GUIStyles.set_msg_box_style(),
             )
             return
-        if self.write_data_gui:
-            if not ExportDataSettingsPopup.exported_data_settings_valid(self):
-                popup = ExportDataSettingsPopup(self, start_acquisition=True)
-                popup.show()
-                return
         if self.tab_selected == TAB_SPECTROSCOPY or self.tab_selected == TAB_FITTING:
             open_config_plots_popup = len(self.selected_channels) > 4
             if open_config_plots_popup and not self.plots_to_show_already_appear:
@@ -1874,7 +1786,6 @@ class SpectroscopyWindow(QWidget):
         is_export_data_active = self.write_data_gui
         SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, True)
         self.top_bar_set_enabled(True)
-        DownloadButton.change_download_script_options(self)
         QApplication.processEvents()
         if self.is_reference_phasors():
             # read reference file from .pid file
@@ -1882,7 +1793,6 @@ class SpectroscopyWindow(QWidget):
                 lines = f.readlines()
                 reference_file = lines[0].split("=")[1]
             self.reference_file = reference_file
-            self.control_inputs["save"].setHidden(False)
             print(f"Last reference file: {reference_file}")
         harmonic_selected = int(
             self.settings.value(SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT)
@@ -1894,33 +1804,14 @@ class SpectroscopyWindow(QWidget):
                 )
         if harmonic_selected > 1:
             self.harmonic_selector_shown = True
-        if is_export_data_active:
-            QTimer.singleShot(500, self.save_bin_files)
+        if is_export_data_active:        
+            QTimer.singleShot(300, partial(ExportData.save_acquisition_data, self, active_tab=self.tab_selected))   
         if self.tab_selected == TAB_FITTING:
             self.fit_button_show()
-    
-
-    def save_bin_files(self):
-        if self.tab_selected == TAB_SPECTROSCOPY:
-            save_spectroscopy_file(
-                self.exported_data_settings["spectroscopy_filename"],
-                self.exported_data_settings["folder"],
-                self,
-            )
-        if self.tab_selected == TAB_PHASORS:
-            save_phasor_files(
-                self.exported_data_settings["spectroscopy_phasors_ref_filename"],
-                self.exported_data_settings["phasors_filename"],
-                self.exported_data_settings["folder"],
-                self,
-            )
+ 
 
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
-        self.popup.show()
-
-    def open_export_data_settings_popup(self):
-        self.popup = ExportDataSettingsPopup(self, start_acquisition=False)
         self.popup.show()
 
     def hide_layout(self, layout):
@@ -1940,8 +1831,6 @@ class SpectroscopyWindow(QWidget):
         self.settings.setValue("pos", self.pos())
         if PLOTS_CONFIG_POPUP in self.widgets:
             self.widgets[PLOTS_CONFIG_POPUP].close()
-        if EXPORT_DATA_SETTINGS_POPUP in self.widgets:
-            self.widgets[EXPORT_DATA_SETTINGS_POPUP].close()
         event.accept()
 
     def eventFilter(self, source, event):

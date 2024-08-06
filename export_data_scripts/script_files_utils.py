@@ -1,7 +1,6 @@
 import os
-import shutil
 
-from PyQt6.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtWidgets import QMessageBox
 
 from components.box_message import BoxMessage
 from components.gui_styles import GUIStyles
@@ -17,41 +16,74 @@ phasors_py_script_path = resource_path("export_data_scripts/phasors_py_script_fo
 phasors_m_script_path = resource_path("export_data_scripts/phasors_m_script_for_export.m")  
 
 class ScriptFileUtils:
+    
     @classmethod
-    def export_script_file(cls, bin_file_paths, file_extension, content_modifier):
-        file_name, _ = QFileDialog.getSaveFileName(
-            None, "Save File", "", f"All Files (*.{file_extension})"
-        )
-        if not file_name:
-            return
+    def export_scripts(cls, bin_file_paths, file_name, directory, script_type):
         try:
-            copied_files = {}
-            for key, bin_file_path in bin_file_paths.items():
-                bin_file_name = os.path.join(
-                    os.path.dirname(file_name),
-                    f"{os.path.splitext(os.path.basename(file_name))[0]}_{key}.bin"
-                ).replace("\\", "/")
-
-                if bin_file_path:
-                    shutil.copy(bin_file_path, bin_file_name)
-                    copied_files[key] = bin_file_name
-
-            # write script file
-            is_phasors = 'phasors' in bin_file_path
-            content = cls.read_file_content(content_modifier["source_file"])
-            new_content = cls.manipulate_file_content(content, copied_files, is_phasors)
-            cls.write_file(file_name, new_content)
-
-            # write requirements file only for python export
-            if content_modifier["requirements"]:
-                requirement_path, requirements_content = cls.create_requirements_file(
-                    file_name, content_modifier["requirements"]
-                )
-                cls.write_file(requirement_path, requirements_content)
-
-            cls.show_success_message(file_name)
+            if script_type == 'spectroscopy':
+                python_modifier, matlab_modifier = cls.get_spectroscopy_content_modifiers()
+                cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
+                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
+            else:
+                python_modifier, matlab_modifier = cls.get_phasors_content_modifiers()   
+                cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
+                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
+                
+            cls.show_success_message(file_name)                
         except Exception as e:
             cls.show_error_message(str(e))
+
+    @classmethod
+    def write_new_scripts_content(cls, content_modifier, bin_file_paths, file_name, directory, file_extension, script_type):
+        is_phasors = script_type == "phasors"
+        content = cls.read_file_content(content_modifier["source_file"])
+        new_content = cls.manipulate_file_content(content, bin_file_paths, is_phasors)
+        script_file_name = f"{file_name}_{script_type}_script.{file_extension}"
+        script_file_path = os.path.join(directory, script_file_name)
+        cls.write_file(script_file_path, new_content)
+        if content_modifier["requirements"]:
+            requirements_file_name = "requirements.txt"
+            requirements_file_path = os.path.join(directory, requirements_file_name)
+            requirements_content = cls.create_requirements_content(
+                content_modifier["requirements"]
+            )
+            cls.write_file(requirements_file_path, requirements_content)
+        
+    @classmethod
+    def get_spectroscopy_content_modifiers(cls):
+        python_modifier = {
+            "source_file": spectroscopy_py_script_path,
+            "skip_pattern": "def get_recent_spectroscopy_file():",
+            "end_pattern": "with open(file_path, 'rb') as f:",
+            "replace_pattern": "with open(file_path, 'rb') as f:",
+            "requirements": ["matplotlib", "numpy"],
+        }
+        matlab_modifier = {
+            "source_file": spectroscopy_m_script_path,      
+            "skip_pattern": "% Get the recent spectroscopy file",
+            "end_pattern": "% Open the file",
+            "replace_pattern": "% Open the file",
+            "requirements": [],
+        }
+        return python_modifier, matlab_modifier
+    
+    @classmethod    
+    def get_phasors_content_modifiers(cls):
+        python_modifier = {
+            "source_file": phasors_py_script_path,
+            "skip_pattern": "get_recent_spectroscopy_file():",
+            "end_pattern": "def ns_to_mhz(laser_period_ns):",
+            "replace_pattern": "def ns_to_mhz(laser_period_ns):",
+            "requirements": ["matplotlib", "numpy"],
+        }
+        matlab_modifier = {
+            "source_file": phasors_m_script_path,
+            "skip_pattern": "% Get recent spectroscopy file",
+            "end_pattern": "% READ SPECTROSCOPY DATA",
+            "replace_pattern": "% READ SPECTROSCOPY DATA",
+            "requirements": [],
+        }
+        return python_modifier, matlab_modifier
 
     @classmethod
     def write_file(cls, file_name, content):
@@ -59,11 +91,9 @@ class ScriptFileUtils:
             file.writelines(content)
 
     @classmethod
-    def create_requirements_file(cls, script_file_name, requirements):
-        directory = os.path.dirname(script_file_name)
-        requirements_path = os.path.join(directory, "requirements.txt")
+    def create_requirements_content(cls, requirements):
         requirements_content = [f"{requirement}\n" for requirement in requirements]
-        return requirements_path, requirements_content
+        return requirements_content
 
     @classmethod
     def read_file_content(cls, file_path):
@@ -85,7 +115,7 @@ class ScriptFileUtils:
     @classmethod
     def show_success_message(cls, file_name):
         info_title, info_msg = MessagesUtilities.info_handler(
-            "SavedScriptFile", file_name
+            "SavedDataFiles", file_name
         )
         BoxMessage.setup(
             info_title,
@@ -97,7 +127,7 @@ class ScriptFileUtils:
     @classmethod
     def show_error_message(cls, error_message):
         error_title, error_msg = MessagesUtilities.error_handler(
-            "ErrorSavingScriptFile", error_message
+            "ErrorSavingDataFiles", error_message
         )
         BoxMessage.setup(
             error_title,
@@ -105,56 +135,3 @@ class ScriptFileUtils:
             QMessageBox.Icon.Critical,
             GUIStyles.set_msg_box_style(),
         )
-
-
-class PythonScriptUtils(ScriptFileUtils):
-
-    @staticmethod
-    def download_spectroscopy(window, bin_file_path):
-        file_paths = {"spectroscopy": bin_file_path}
-        content_modifier = {
-            "source_file": spectroscopy_py_script_path,
-            "skip_pattern": "def get_recent_spectroscopy_file():",
-            "end_pattern": "with open(file_path, 'rb') as f:",
-            "replace_pattern": "with open(file_path, 'rb') as f:",
-            "requirements": ["matplotlib", "numpy"],
-        }
-        ScriptFileUtils.export_script_file(file_paths, "py", content_modifier)
-
-    @staticmethod
-    def download_phasors(window, spectroscopy_ref_file_path, phasors_file_path):
-        file_paths = {"spectroscopy_phasors_ref": spectroscopy_ref_file_path, "phasors": phasors_file_path}
-        content_modifier = {
-            "source_file": phasors_py_script_path,
-            "skip_pattern": "get_recent_spectroscopy_file():",
-            "end_pattern": "def ns_to_mhz(laser_period_ns):",
-            "replace_pattern": "def ns_to_mhz(laser_period_ns):",
-            "requirements": ["matplotlib", "numpy"],
-        }
-        ScriptFileUtils.export_script_file(file_paths, "py", content_modifier)
-
-
-class MatlabScriptUtils(ScriptFileUtils):
-    @staticmethod
-    def download_spectroscopy(window, bin_file_path):
-        file_paths = {"spectroscopy": bin_file_path}
-        content_modifier = {
-            "source_file": spectroscopy_m_script_path,      
-            "skip_pattern": "% Get the recent spectroscopy file",
-            "end_pattern": "% Open the file",
-            "replace_pattern": "% Open the file",
-            "requirements": [],
-        }
-        ScriptFileUtils.export_script_file(file_paths, "m", content_modifier)
-
-    @staticmethod
-    def download_phasors(window, spectroscopy_ref_file_path, phasors_file_path):
-        file_paths = {"spectroscopy_phasors_ref": spectroscopy_ref_file_path, "phasors": phasors_file_path}
-        content_modifier = {
-            "source_file": phasors_m_script_path,
-            "skip_pattern": "% Get recent spectroscopy file",
-            "end_pattern": "% READ SPECTROSCOPY DATA",
-            "replace_pattern": "% READ SPECTROSCOPY DATA",
-            "requirements": [],
-        }
-        ScriptFileUtils.export_script_file(file_paths, "m", content_modifier)
