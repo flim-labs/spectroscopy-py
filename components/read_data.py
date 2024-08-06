@@ -86,12 +86,14 @@ class ReadData:
             if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None
             else 25
         )
+        channels = metadata["channels"] if "channels" in metadata else []
         if "times" in spectroscopy_data and "channels_curves" in spectroscopy_data and not(metadata == {}):
             ReadData.plot_spectroscopy_data(
                 app,
                 spectroscopy_data["times"],
                 spectroscopy_data["channels_curves"],
                 laser_period_ns,
+                channels
             )
         if data_type == "phasors":
             phasors_data = app.reader_data[data_type]["data"]["phasors_data"]
@@ -100,16 +102,17 @@ class ReadData:
             
 
     @staticmethod
-    def plot_spectroscopy_data(app, times, channels_curves, laser_period_ns):
+    def plot_spectroscopy_data(app, times, channels_curves, laser_period_ns, metadata_channels):
         num_bins = 256
         x_values = np.linspace(0, laser_period_ns, num_bins) / 1_000
         for channel, curves in channels_curves.items():
-            if channel in app.plots_to_show:
+            if metadata_channels[channel] in app.plots_to_show:
                 y_values = np.sum(curves, axis=0)
                 if app.tab_selected != TAB_PHASORS:
-                    app.cached_decay_values[app.tab_selected][channel] = y_values
-                app.update_plots2(channel, x_values, y_values, reader_mode=True)
-
+                    app.cached_decay_values[app.tab_selected][metadata_channels[channel]] = y_values
+                app.update_plots2(metadata_channels[channel], x_values, y_values, reader_mode=True)
+                
+                
     @staticmethod
     def plot_phasors_data(app, data, harmonics):
         app.all_phasors_points = app.get_empty_phasors_points()
@@ -531,7 +534,7 @@ class ReaderPopup(QWidget):
     def on_load_file_btn_clicked(self, file_type):
         ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
         file_name = self.app.reader_data[self.data_type]["files"][file_type]
-        if len(file_name) > 0:
+        if file_name is not None and len(file_name) > 0:
             bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self.app)
             self.app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
             widget_key = f"load_{file_type}_input"
