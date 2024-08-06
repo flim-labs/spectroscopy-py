@@ -113,7 +113,7 @@ READER_DATA = {
         "metadata": {},
         "data": {"phasors_data": {}, "spectroscopy_data": {}},
     },
-    "fitting": {"files": {"fitting": ""}, "plots": [], "metadata": {}, "data": {}},
+    "fitting": {"files": {"fitting": ""}, "plots": [], "metadata": {}, "data": {"fitting_data": {}, "spectroscopy_data": {}}},
 }
 
 DEFAULT_READER_DATA = deepcopy(READER_DATA)

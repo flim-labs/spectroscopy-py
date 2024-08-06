@@ -731,13 +731,11 @@ class SpectroscopyWindow(QWidget):
 
     def on_fit_btn_click(self):
         data = []
-
         channels_shown = [
             channel
             for channel in self.plots_to_show
             if channel in self.selected_channels
         ]
-
         for channel, channel_index in enumerate(channels_shown):
             x, y = self.decay_curves[self.tab_selected][channel_index].getData()
             data.append(
@@ -745,10 +743,9 @@ class SpectroscopyWindow(QWidget):
                     "x": x,
                     "y": y,
                     "title": "Channel "
-                    + str(self.selected_channels[channel_index] + 1),
+                    + str(channel_index + 1),
                 }
             )
-
         # check if every x len is the same as y len
         if not all(len(data[0]["x"]) == len(data[i]["x"]) for i in range(1, len(data))):
             BoxMessage.setup(
@@ -758,7 +755,6 @@ class SpectroscopyWindow(QWidget):
                 GUIStyles.set_msg_box_style(),
             )
             return
-
         self.fitting_config_popup = FittingDecayConfigPopup(self, data)
         self.fitting_config_popup.show()
 
