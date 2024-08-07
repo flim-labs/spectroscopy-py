@@ -2044,8 +2044,8 @@ class SpectroscopyWindow(QWidget):
                 self.quantize_phasors(
                     1, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
                 )
-                self.generate_phasors_cluster_center(1)   
-                self.generate_phasors_legend(1)    
+            self.generate_phasors_cluster_center(1)       
+            self.generate_phasors_legend(1)    
         if harmonic_selected > 1:
             self.harmonic_selector_shown = True
         if is_export_data_active:
