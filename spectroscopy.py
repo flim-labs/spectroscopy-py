@@ -1633,8 +1633,7 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[HARMONIC_SELECTOR].blockSignals(True)
             self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
             self.control_inputs[HARMONIC_SELECTOR].blockSignals(False)
-        if self.tab_selected == TAB_SPECTROSCOPY:
-            self.phasors_harmonic_selected = 1    
+        self.phasors_harmonic_selected = 1   
         print(f"Firmware selected: {firmware_selected}")
         print(f"Connection type: {connection_type}")
         print(f"Frequency: {frequency_mhz} Mhz")
@@ -1881,9 +1880,8 @@ class SpectroscopyWindow(QWidget):
                 self.control_inputs[HARMONIC_SELECTOR].clear()
                 for i in range(harmonics):
                     self.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))
-                self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(
-                    self.phasors_harmonic_selected - 1
-                )
+            self.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(           
+                self.phasors_harmonic_selected - 1)                      
 
     def hide_harmonic_selector(self):
         self.control_inputs[HARMONIC_SELECTOR].hide()
