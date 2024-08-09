@@ -8,7 +8,7 @@ import sys
 import flim_labs
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent
+from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent, QThreadPool
 from PyQt6.QtGui import QPixmap, QIcon, QFont
 from PyQt6.QtWidgets import (
     QApplication,
@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (
 )
 
 from components.box_message import BoxMessage
-from components.buttons import CollapseButton, ReadAcquireModeButton
+from components.buttons import CollapseButton, ExportPlotImageButton, ReadAcquireModeButton
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
@@ -60,6 +60,7 @@ project_root = os.path.abspath(os.path.join(current_path))
 class SpectroscopyWindow(QWidget):
     def __init__(self):
         super().__init__()
+        self.threadpool = QThreadPool()
         self.reader_data = READER_DATA
         self.update_plots_enabled = False
         self.settings = self.init_settings()
@@ -600,6 +601,9 @@ class SpectroscopyWindow(QWidget):
         bin_metadata_button.clicked.connect(self.open_reader_metadata_popup)
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self)
         bin_metadata_button.setVisible(bin_metadata_btn_visible)
+    
+        # EXPORT PLOT IMG BUTTON
+        export_plot_img_button = ExportPlotImageButton(self)
 
         # READ BIN BUTTON
         read_bin_button = QPushButton("READ/PLOT")
@@ -615,6 +619,7 @@ class SpectroscopyWindow(QWidget):
         collapse_button = CollapseButton(self.widgets[TOP_COLLAPSIBLE_WIDGET])
         controls_row.addWidget(start_button)
         controls_row.addWidget(bin_metadata_button)
+        controls_row.addWidget(export_plot_img_button)
         controls_row.addWidget(read_bin_button)
         controls_row.addWidget(collapse_button)
         self.widgets["collapse_button"] = collapse_button
@@ -670,6 +675,7 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[self.tab_selected].setChecked(True)
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self)
         self.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
+        self.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(bin_metadata_btn_visible)
         self.fit_button_hide()
         if self.acquire_read_mode == "acquire":
             self.clear_plots(deep_clear=False)
@@ -1060,6 +1066,7 @@ class SpectroscopyWindow(QWidget):
         x = np.arange(1)
         y = x * 0
         return x, y
+
 
     def initialize_decay_curves(self, channel, frequency_mhz):
         def get_default_x():

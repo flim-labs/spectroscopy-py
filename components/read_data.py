@@ -3,6 +3,7 @@ import json
 import os
 import re
 import struct
+from matplotlib import pyplot as plt
 import numpy as np
 from components.box_message import BoxMessage
 from components.file_utils import FileUtils
@@ -10,6 +11,7 @@ from components.gui_styles import GUIStyles
 from components.helpers import ns_to_mhz
 from components.input_text_control import InputTextControl
 from components.layout_utilities import clear_layout
+from components.messages_utilities import MessagesUtilities
 from components.resource_path import resource_path
 from settings import *
 from PyQt6.QtWidgets import (
@@ -25,8 +27,8 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QScrollArea
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QColor, QIcon
+from PyQt6.QtCore import Qt, QRunnable, QThreadPool, pyqtSignal, QObject, pyqtSlot
+from PyQt6.QtGui import QColor, QIcon
 from components.logo_utilities import TitlebarIcon
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -123,7 +125,8 @@ class ReadData:
                 if app.tab_selected != TAB_PHASORS:
                     app.cached_decay_values[app.tab_selected][metadata_channels[channel]] = y_values
                 app.update_plots2(metadata_channels[channel], x_values, y_values, reader_mode=True)
-
+                
+                
     @staticmethod
     def plot_phasors_data(app, data, harmonics):
         app.all_phasors_points = app.get_empty_phasors_points()
@@ -319,6 +322,38 @@ class ReadData:
             return None
 
     @staticmethod
+    def save_plot_image(plot):
+        dialog = QFileDialog()
+        base_path, _ = dialog.getSaveFileName(
+            None, 
+            "Save plot image", 
+            "", 
+            "PNG Files (*.png);;EPS Files (*.eps)", 
+            options=QFileDialog.Option.DontUseNativeDialog
+        )
+        def show_success_message():
+            info_title, info_msg = MessagesUtilities.info_handler(
+            "SavedPlotImage"
+            )
+            BoxMessage.setup(
+                info_title,
+                info_msg,
+                QMessageBox.Icon.Information,
+                GUIStyles.set_msg_box_style(),
+            )  
+        def show_error_message(error):
+            ReadData.show_warning_message(
+                "Error saving images", f"Error saving plot images: {error}"
+            )             
+        if base_path:
+            signals = WorkerSignals()
+            signals.success.connect(show_success_message)
+            signals.error.connect(show_error_message)
+            task = SavePlotTask(plot, base_path, signals)
+            QThreadPool.globalInstance().start(task)
+        
+
+    @staticmethod
     def get_phasors_frequency_mhz(app):
         metadata = app.reader_data["phasors"]["phasors_metadata"]
         if "laser_period_ns" in metadata:
@@ -350,6 +385,20 @@ class ReadData:
                 return x_values
         return None    
         
+    def prepare_spectroscopy_data_for_export_img(app):
+        metadata = app.reader_data["spectroscopy"]["metadata"]
+        channels_curves = app.reader_data["spectroscopy"]["data"]["channels_curves"]
+        times = app.reader_data["spectroscopy"]["data"]["times"]
+        return channels_curves, times, metadata
+    
+    @staticmethod
+    def prepare_phasors_data_for_export_img(app):
+        phasors_data = app.reader_data["phasors"]["data"]["phasors_data"]
+        laser_period = app.reader_data["phasors"]["metadata"]["laser_period_ns"]
+        active_channels = app.reader_data["phasors"]["metadata"]["channels"]
+        spectroscopy_curves = app.reader_data["phasors"]["data"]["spectroscopy_data"]["channels_curves"]
+        spectroscopy_times = app.reader_data["phasors"]["data"]["spectroscopy_data"]["times"]
+        return phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves
 
 class ReadDataControls:
 
@@ -359,6 +408,7 @@ class ReadDataControls:
         app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
         app.control_inputs["start_button"].setVisible(not read_mode)
         app.control_inputs["read_bin_button"].setVisible(read_mode)
+        app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(bin_metadata_btn_visible)
         app.widgets[TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
         app.widgets["collapse_button"].setVisible(not read_mode)
         app.control_inputs[SETTINGS_BIN_WIDTH].setEnabled(not read_mode)
@@ -600,6 +650,7 @@ class ReaderPopup(QWidget):
         if file_name is not None and len(file_name) > 0:
             bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self.app)
             self.app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
+            self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(bin_metadata_btn_visible)
             widget_key = f"load_{file_type}_input"
             self.widgets[widget_key].setText(file_name)
             if file_type != "laserblood_metadata":
@@ -651,6 +702,7 @@ class ReaderMetadataPopup(QWidget):
         self.setMinimumWidth(900)
         self.setMinimumHeight(600)
         self.app.widgets[READER_METADATA_POPUP] = self
+        self.center_window()
 
     def get_metadata_keys_dict(self):
         return {
@@ -713,3 +765,40 @@ class ReaderMetadataPopup(QWidget):
                         v_box.addLayout(metadata_row)
 
         return v_box
+    
+    
+    def center_window(self):    
+        self.setMinimumWidth(900)
+        window_geometry = self.frameGeometry()
+        screen_geometry = QApplication.primaryScreen().availableGeometry().center()
+        window_geometry.moveCenter(screen_geometry)
+        self.move(window_geometry.topLeft())    
+    
+    
+    
+
+class WorkerSignals(QObject):
+    success = pyqtSignal(str)
+    error = pyqtSignal(str)
+
+
+class SavePlotTask(QRunnable):
+    def __init__(self, plot, base_path, signals):
+        super().__init__()
+        self.plot = plot
+        self.base_path = base_path
+        self.signals = signals
+    @pyqtSlot()
+    def run(self):
+        try:
+            # png
+            png_path = f"{self.base_path}.png" if not self.base_path.endswith(".png") else self.base_path
+            self.plot.savefig(png_path, format='png')
+            # eps
+            eps_path = f"{self.base_path}.eps" if not self.base_path.endswith(".eps") else self.base_path
+            self.plot.savefig(eps_path, format='eps')
+            plt.close(self.plot)
+            self.signals.success.emit(f"Plot images saved successfully as {png_path} and {eps_path}")
+        except Exception as e:
+            plt.close(self.plot)
+            self.signals.error.emit(str(e))

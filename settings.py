@@ -97,6 +97,7 @@ SETTINGS_ACQUIRE_READ_MODE = "acquire_read_mode"
 DEFAULT_ACQUIRE_READ_MODE = "acquire"
 ACQUIRE_BUTTON = "acquire_button"
 READ_BUTTON = "read_button"
+EXPORT_PLOT_IMG_BUTTON = "export_plot_img_button"
 
 
 READER_DATA = {
@@ -122,17 +123,14 @@ READER_DATA = {
 DEFAULT_READER_DATA = deepcopy(READER_DATA)
 
 
-INTENSITY_LINES = {
-            TAB_SPECTROSCOPY: {},
-            TAB_FITTING: {}
-        }
+INTENSITY_LINES = {TAB_SPECTROSCOPY: {}, TAB_FITTING: {}}
 
 DEFAULT_INTENSITY_LINES = deepcopy(INTENSITY_LINES)
-DECAY_CURVES =  {
-            TAB_SPECTROSCOPY: {},
-            TAB_PHASORS: {},
-            TAB_FITTING: {},
-        }
+DECAY_CURVES = {
+    TAB_SPECTROSCOPY: {},
+    TAB_PHASORS: {},
+    TAB_FITTING: {},
+}
 DEFAULT_DECAY_CURVES = deepcopy(DECAY_CURVES)
 CACHED_DECAY_VALUES =  {
             TAB_SPECTROSCOPY: {},

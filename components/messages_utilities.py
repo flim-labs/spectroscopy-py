@@ -16,10 +16,9 @@ class MessagesUtilities:
 
     @staticmethod
     def info_handler(info_msg, custom_content=""):
-        if "SavedDataFiles" in info_msg:
-            return (
-                "Files successfully saved",
-                "Data files and scripts saved successfully",
-            )
+        if  "SavedDataFiles" in info_msg:
+            return ("Files successfully saved", "Data files and scripts saved successfully")
+        elif "SavedPlotImage" in info_msg:
+            return ("Image successfully saved", "Plot .png and .eps image saved successfully")
         else:
             return (None, None)
