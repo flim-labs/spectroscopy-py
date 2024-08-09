@@ -96,6 +96,7 @@ SETTINGS_ACQUIRE_READ_MODE = "acquire_read_mode"
 DEFAULT_ACQUIRE_READ_MODE = "acquire"
 ACQUIRE_BUTTON = "acquire_button"
 READ_BUTTON = "read_button"
+EXPORT_PLOT_IMG_BUTTON = "export_plot_img_button"
 
 
 READER_DATA = {
