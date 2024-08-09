@@ -184,7 +184,7 @@ class ExportPlotImageButton(QWidget):
             ReadData.save_plot_image(plot)
         if self.app.tab_selected == TAB_PHASORS:
             phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves = ReadData.prepare_phasors_data_for_export_img(self.app)
-            plot = plot_phasors_data(phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves, show_plot=False)
+            plot = plot_phasors_data(phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves, self.app.phasors_harmonic_selected, show_plot=False)
             ReadData.save_plot_image(plot)
             
 

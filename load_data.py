@@ -106,20 +106,7 @@ def plot_phasors(data):
     
     
     
-def plot_phasors_data(phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves, show_plot=True):
-    # Colormaps
-    harmonic_colors = plt.cm.viridis(
-        np.linspace(0, 1, max(h for ch in phasors_data.values() for h in ch.keys()))
-    ) 
-    harmonic_means_colors = plt.cm.brg(
-        np.linspace(0, 1, max(h for ch in phasors_data.values() for h in ch.keys()))
-    ) 
-    harmonic_colors_dict = {
-        harmonic: color for harmonic, color in enumerate(harmonic_colors, 1)
-    } 
-    harmonic_means_colors_dict = {
-        harmonic: color for harmonic, color in enumerate(harmonic_means_colors, 1)
-    }  
+def plot_phasors_data(phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves, selected_harmonic, show_plot=True):
     # plot layout config
     num_channels = len(phasors_data)
     max_channels_per_row = 3
@@ -155,7 +142,10 @@ def plot_phasors_data(phasors_data, laser_period, active_channels, spectroscopy_
         x = np.linspace(0, 1, 1000)
         y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
         ax.plot(x, y)
+        # Plot only the selected harmonic
         for harmonic, values in harmonics.items():
+            if selected_harmonic is not None and harmonic != selected_harmonic:
+                continue  # Skip non-selected harmonics
             if values:
                 g_values, s_values = zip(*values)
                 g_values = np.array(g_values)
@@ -168,7 +158,7 @@ def plot_phasors_data(phasors_data, laser_period, active_channels, spectroscopy_
                     s_values,
                     label=f"Harmonic: {harmonic}",
                     zorder=2,
-                    color=harmonic_colors_dict[harmonic],
+                    color="#00FFFF",
                 )
                 mean_g = np.mean(g_values)
                 mean_s = np.mean(s_values)
@@ -190,7 +180,7 @@ def plot_phasors_data(phasors_data, laser_period, active_channels, spectroscopy_
                 ax.scatter(
                     mean_g,
                     mean_s,
-                    color=harmonic_means_colors_dict[harmonic],
+                    color="#FF0000",
                     marker="x",
                     s=100,
                     zorder=3,

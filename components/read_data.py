@@ -633,6 +633,7 @@ class ReaderMetadataPopup(QWidget):
         self.setLayout(layout)
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.app.widgets[READER_METADATA_POPUP] = self
+        self.center_window()
 
     def get_metadata_keys_dict(self):
         return {
@@ -691,6 +692,14 @@ class ReaderMetadataPopup(QWidget):
                 h_box.addWidget(value_label)
                 v_box.addLayout(h_box)
         return v_box
+    
+    
+    def center_window(self):    
+        self.setMinimumWidth(500)
+        window_geometry = self.frameGeometry()
+        screen_geometry = QApplication.primaryScreen().availableGeometry().center()
+        window_geometry.moveCenter(screen_geometry)
+        self.move(window_geometry.topLeft())
 
 
 
