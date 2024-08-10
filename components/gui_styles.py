@@ -455,5 +455,15 @@ class GUIStyles:
                 border-bottom-right-radius: 3px;
                 
             }}
-        """               
+        """   
+        
+    @staticmethod
+    def acquisition_time_countdown_style():
+        return """
+            QLabel {
+                color: #1E90FF;
+                font-size: 18px;
+                padding: 0 8px 8px 16px;
+            }
+        """                     
                         
