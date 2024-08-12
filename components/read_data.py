@@ -147,9 +147,10 @@ class ReadData:
             app.on_quantize_phasors_changed(False)
         app.generate_phasors_cluster_center(app.phasors_harmonic_selected)
         app.generate_phasors_legend(app.phasors_harmonic_selected)
+        frequency_mhz = ns_to_mhz(laser_period_ns)
         for i, channel_index in enumerate(app.plots_to_show):
             app.draw_lifetime_points_in_phasors(
-                channel_index, app.phasors_harmonic_selected, laser_period_ns
+                channel_index, app.phasors_harmonic_selected, laser_period_ns, frequency_mhz
             )
 
     @staticmethod
