@@ -408,7 +408,7 @@ class SpectroscopyWindow(QWidget):
         )
         # CPS THRESHOLD
         _, inp = InputNumberControl.setup(
-            "Pile-up threshold:",
+            "Pile-up threshold (CPS):",
             0,
             100000000,
             int(self.settings.value(SETTINGS_CPS_THRESHOLD, DEFAULT_CPS_THRESHOLD)),
