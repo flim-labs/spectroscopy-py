@@ -39,7 +39,7 @@ from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
-from components.helpers import format_size
+from components.helpers import format_size, mhz_to_ns
 from components.input_number_control import InputNumberControl, InputFloatControl
 from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
 from components.lin_log_control import SpectroscopyLinLogControl
@@ -83,6 +83,7 @@ class SpectroscopyWindow(QWidget):
         self.phasors_charts = {}
         self.phasors_widgets = {}
         self.phasors_coords = {}
+        self.phasors_lifetime_points = {}
         self.phasors_colorbars = {}
         self.phasors_legends = {}
         self.phasors_clusters_center = {}
@@ -178,6 +179,13 @@ class SpectroscopyWindow(QWidget):
         for i in range(8):
             empty.append({1: [], 2: [], 3: [], 4: []})
         return empty
+
+    def phasors_points_empty(self):
+        for d in self.all_phasors_points:
+            if not all(v == [] for v in d.values()):
+                return False
+        return True
+    
 
     def init_ui(self):
         self.setWindowTitle(
@@ -1265,6 +1273,7 @@ class SpectroscopyWindow(QWidget):
                 font = QFont()
                 font.setPixelSize(25)
                 crosshair.setFont(font)
+                crosshair.setZValue(3)
                 phasors_widget.addItem(crosshair, ignoreBounds=True)
                 self.phasors_crosshairs[channel] = crosshair
             col_length = 1
@@ -1316,6 +1325,7 @@ class SpectroscopyWindow(QWidget):
                     },
                     symbol="x",
                 )
+                scatter.setZValue(2)
                 self.phasors_widgets[channel_index].addItem(scatter)
                 self.phasors_clusters_center[channel_index] = scatter
 
@@ -1382,8 +1392,8 @@ class SpectroscopyWindow(QWidget):
             self.phasors_coords[channel_index] = coord_text
         else:
             self.phasors_coords[channel_index] = coord_text
-        coord_text.setZValue(1)
-        crosshair.setZValue(1)
+        coord_text.setZValue(3)
+        crosshair.setZValue(3)
         self.phasors_widgets[channel_index].addItem(coord_text, ignoreBounds=True)
         self.phasors_widgets[channel_index].addItem(crosshair, ignoreBounds=True)
 
@@ -1470,10 +1480,12 @@ class SpectroscopyWindow(QWidget):
         self.clear_phasors_features(self.quantization_images)
         self.clear_phasors_features(self.phasors_clusters_center)
         self.clear_phasors_features(self.phasors_legends)
+        self.clear_phasors_features(self.phasors_lifetime_points)
         self.quantization_images.clear()
         self.phasors_colorbars.clear()
         self.phasors_clusters_center.clear()
         self.phasors_legends.clear()
+        self.phasors_lifetime_points.clear()
         self.intensities_widgets.clear()
         self.phasors_charts.clear()
         self.phasors_widgets.clear()
@@ -1832,6 +1844,31 @@ class SpectroscopyWindow(QWidget):
             y = np.concatenate((y, new_y))
             self.phasors_charts[channel].setData(x, y)
             pass
+        
+    
+    def draw_lifetime_points_in_phasors(self, channel, harmonic, laser_period_ns):
+        if channel in self.plots_to_show and channel in self.phasors_widgets:
+            if channel in self.phasors_lifetime_points:
+                self.phasors_widgets[channel].removeItem(self.phasors_lifetime_points[channel])
+            tau_m = np.array([0.1e-9, 0.5e-9, 1e-9, 2e-9, 3e-9, 4e-9, 5e-9, 6e-9, 7e-9, 8e-9, 9e-9, 10e-9])
+            tau_phi = tau_m
+            fex = (1/laser_period_ns) * 10e8
+            k = 1 / (2 * np.pi * harmonic * fex)
+            phi = np.arctan(tau_phi / k)
+            factor = (tau_m / k)**2
+            m = np.sqrt(1 / (1 + factor))
+            g = m * np.cos(phi)
+            s = m * np.sin(phi)
+            scatter = pg.ScatterPlotItem(
+                x=g, y=s, size=8,
+                pen=None,
+                brush="red",
+                symbol="o"
+            )
+            scatter.setZValue(5)
+            self.phasors_widgets[channel].addItem(scatter)       
+            self.phasors_lifetime_points[channel] = scatter
+             
 
     def quantize_phasors(self, harmonic, bins=64):
         for i, channel_index in enumerate(self.plots_to_show):
@@ -2079,12 +2116,13 @@ class SpectroscopyWindow(QWidget):
         plot.setYRange(-1, y_max, padding=0)
 
     def on_harmonic_selector_change(self, value):
+        frequency_mhz = self.get_current_frequency_mhz()
+        laser_period_ns = mhz_to_ns(frequency_mhz)
         self.clear_phasors_points()
         if not self.phasors_widgets or value < 0:
             return
         self.harmonic_selector_value = int(value) + 1
         self.phasors_harmonic_selected = int(value) + 1
-
         if self.harmonic_selector_value >= 1 and self.quantized_phasors:
             self.quantize_phasors(
                 self.harmonic_selector_value,
@@ -2102,6 +2140,9 @@ class SpectroscopyWindow(QWidget):
                     )
         self.generate_phasors_cluster_center(self.harmonic_selector_value)
         self.generate_phasors_legend(self.harmonic_selector_value)
+        if not (self.phasors_points_empty()):
+            for i, channel_index in enumerate(self.plots_to_show):
+                self.draw_lifetime_points_in_phasors(channel_index, self.harmonic_selector_value, laser_period_ns)
 
     def stop_spectroscopy_experiment(self):
         print("Stopping spectroscopy")
@@ -2140,6 +2181,10 @@ class SpectroscopyWindow(QWidget):
             self.settings.value(SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT)
         )
         if self.is_phasors():
+            frequency_mhz = self.get_current_frequency_mhz()
+            laser_period_ns = mhz_to_ns(frequency_mhz)
+            for _, channel_index in enumerate(self.plots_to_show):
+                self.draw_lifetime_points_in_phasors(channel_index, 1, laser_period_ns)
             if self.quantized_phasors:
                 self.quantize_phasors(
                     1, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])

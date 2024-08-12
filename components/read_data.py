@@ -89,34 +89,43 @@ class ReadData:
             else 25
         )
         channels = metadata["channels"] if "channels" in metadata else []
-        if "times" in spectroscopy_data and "channels_curves" in spectroscopy_data and not(metadata == {}):
+        if (
+            "times" in spectroscopy_data
+            and "channels_curves" in spectroscopy_data
+            and not (metadata == {})
+        ):
             ReadData.plot_spectroscopy_data(
                 app,
                 spectroscopy_data["times"],
                 spectroscopy_data["channels_curves"],
                 laser_period_ns,
-                channels
+                channels,
             )
         if data_type == "phasors":
             phasors_data = app.reader_data[data_type]["data"]["phasors_data"]
-            if not(metadata == {}):
+            if not (metadata == {}):
                 ReadData.plot_phasors_data(app, phasors_data, metadata["harmonics"])
-            
 
     @staticmethod
-    def plot_spectroscopy_data(app, times, channels_curves, laser_period_ns, metadata_channels):
+    def plot_spectroscopy_data(
+        app, times, channels_curves, laser_period_ns, metadata_channels
+    ):
         num_bins = 256
         x_values = np.linspace(0, laser_period_ns, num_bins) / 1_000
         for channel, curves in channels_curves.items():
             if metadata_channels[channel] in app.plots_to_show:
                 y_values = np.sum(curves, axis=0)
                 if app.tab_selected != TAB_PHASORS:
-                    app.cached_decay_values[app.tab_selected][metadata_channels[channel]] = y_values
-                app.update_plots2(metadata_channels[channel], x_values, y_values, reader_mode=True)
-                
-                
+                    app.cached_decay_values[app.tab_selected][
+                        metadata_channels[channel]
+                    ] = y_values
+                app.update_plots2(
+                    metadata_channels[channel], x_values, y_values, reader_mode=True
+                )
+
     @staticmethod
     def plot_phasors_data(app, data, harmonics):
+        laser_period_ns = ReadData.get_phasors_laser_period_ns(app)
         app.all_phasors_points = app.get_empty_phasors_points()
         app.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
         harmonics_length = len(harmonics) if isinstance(harmonics, list) else harmonics
@@ -128,7 +137,7 @@ class ReadData:
                 for harmonic, values in channel_data.items():
                     if harmonic == 1:
                         app.draw_points_in_phasors(channel, harmonic, values)
-                    app.all_phasors_points[channel][harmonic].extend(values)          
+                    app.all_phasors_points[channel][harmonic].extend(values)
         if app.quantized_phasors:
             app.quantize_phasors(
                 app.phasors_harmonic_selected,
@@ -136,8 +145,12 @@ class ReadData:
             )
         else:
             app.on_quantize_phasors_changed(False)
-        app.generate_phasors_cluster_center(app.phasors_harmonic_selected)   
+        app.generate_phasors_cluster_center(app.phasors_harmonic_selected)
         app.generate_phasors_legend(app.phasors_harmonic_selected)
+        for i, channel_index in enumerate(app.plots_to_show):
+            app.draw_lifetime_points_in_phasors(
+                channel_index, app.phasors_harmonic_selected, laser_period_ns
+            )
 
     @staticmethod
     def are_phasors_and_spectroscopy_ref_from_same_acquisition(
@@ -278,56 +291,66 @@ class ReadData:
     def save_plot_image(plot):
         dialog = QFileDialog()
         base_path, _ = dialog.getSaveFileName(
-            None, 
-            "Save plot image", 
-            "", 
-            "PNG Files (*.png);;EPS Files (*.eps)", 
-            options=QFileDialog.Option.DontUseNativeDialog
+            None,
+            "Save plot image",
+            "",
+            "PNG Files (*.png);;EPS Files (*.eps)",
+            options=QFileDialog.Option.DontUseNativeDialog,
         )
+
         def show_success_message():
-            info_title, info_msg = MessagesUtilities.info_handler(
-            "SavedPlotImage"
-            )
+            info_title, info_msg = MessagesUtilities.info_handler("SavedPlotImage")
             BoxMessage.setup(
                 info_title,
                 info_msg,
                 QMessageBox.Icon.Information,
                 GUIStyles.set_msg_box_style(),
-            )  
+            )
+
         def show_error_message(error):
             ReadData.show_warning_message(
                 "Error saving images", f"Error saving plot images: {error}"
-            )             
+            )
+
         if base_path:
             signals = WorkerSignals()
             signals.success.connect(show_success_message)
             signals.error.connect(show_error_message)
             task = SavePlotTask(plot, base_path, signals)
             QThreadPool.globalInstance().start(task)
-        
+            
+    
+    @staticmethod
+    def get_phasors_laser_period_ns(app):
+        metadata = app.reader_data["phasors"]["phasors_metadata"]
+        if "laser_period_ns" in metadata:
+            return metadata["laser_period_ns"]
+        else:
+            return 0.0
+                
 
     @staticmethod
     def get_phasors_frequency_mhz(app):
         metadata = app.reader_data["phasors"]["phasors_metadata"]
         if "laser_period_ns" in metadata:
-            return ns_to_mhz(metadata["laser_period_ns"]) 
+            return ns_to_mhz(metadata["laser_period_ns"])
         return 0.0
-    
+
     @staticmethod
     def get_spectroscopy_frequency_mhz(app):
-       metadata = app.reader_data["spectroscopy"]["metadata"]
-       if "laser_period_ns" in metadata:
-            return ns_to_mhz(metadata["laser_period_ns"]) 
-       return 0.0
-   
+        metadata = app.reader_data["spectroscopy"]["metadata"]
+        if "laser_period_ns" in metadata:
+            return ns_to_mhz(metadata["laser_period_ns"])
+        return 0.0
+
     @staticmethod
     def get_frequency_mhz(app):
         if app.tab_selected == TAB_SPECTROSCOPY:
-            return ReadData.get_spectroscopy_frequency_mhz(app) 
+            return ReadData.get_spectroscopy_frequency_mhz(app)
         elif app.tab_selected == TAB_PHASORS:
-            return ReadData.get_phasors_frequency_mhz(app) 
-        else: 
-            return 0.0       
+            return ReadData.get_phasors_frequency_mhz(app)
+        else:
+            return 0.0
 
     @staticmethod
     def prepare_spectroscopy_data_for_export_img(app):
@@ -335,15 +358,26 @@ class ReadData:
         channels_curves = app.reader_data["spectroscopy"]["data"]["channels_curves"]
         times = app.reader_data["spectroscopy"]["data"]["times"]
         return channels_curves, times, metadata
-    
+
     @staticmethod
     def prepare_phasors_data_for_export_img(app):
         phasors_data = app.reader_data["phasors"]["data"]["phasors_data"]
         laser_period = app.reader_data["phasors"]["metadata"]["laser_period_ns"]
         active_channels = app.reader_data["phasors"]["metadata"]["channels"]
-        spectroscopy_curves = app.reader_data["phasors"]["data"]["spectroscopy_data"]["channels_curves"]
-        spectroscopy_times = app.reader_data["phasors"]["data"]["spectroscopy_data"]["times"]
-        return phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves
+        spectroscopy_curves = app.reader_data["phasors"]["data"]["spectroscopy_data"][
+            "channels_curves"
+        ]
+        spectroscopy_times = app.reader_data["phasors"]["data"]["spectroscopy_data"][
+            "times"
+        ]
+        return (
+            phasors_data,
+            laser_period,
+            active_channels,
+            spectroscopy_times,
+            spectroscopy_curves,
+        )
+
 
 class ReadDataControls:
 
@@ -378,23 +412,26 @@ class ReadDataControls:
     @staticmethod
     def plot_data_on_tab_change(app):
         file_type = ReadData.get_data_type(app.tab_selected)
-        if app.acquire_read_mode == 'read':
+        if app.acquire_read_mode == "read":
             ReadDataControls.handle_plots_config(app, file_type)
             app.clear_plots()
             app.generate_plots(ReadData.get_frequency_mhz(app))
             app.toggle_intensities_widgets_visibility()
             ReadData.plot_data(app)
-            
-    
+
     @staticmethod
     def read_bin_metadata_enabled(app):
-        data_type = ReadData.get_data_type(app.tab_selected) 
-        metadata = app.reader_data[data_type]["metadata"]  
-        if data_type != 'phasors':
-            return not(metadata  == {}) and app.acquire_read_mode == 'read'
+        data_type = ReadData.get_data_type(app.tab_selected)
+        metadata = app.reader_data[data_type]["metadata"]
+        if data_type != "phasors":
+            return not (metadata == {}) and app.acquire_read_mode == "read"
         else:
-            phasors_file = app.reader_data[data_type]["files"]["phasors"] 
-            return not(metadata == {}) and not(phasors_file.strip() == "") and app.acquire_read_mode == 'read'
+            phasors_file = app.reader_data[data_type]["files"]["phasors"]
+            return (
+                not (metadata == {})
+                and not (phasors_file.strip() == "")
+                and app.acquire_read_mode == "read"
+            )
 
 
 class ReaderPopup(QWidget):
@@ -586,9 +623,15 @@ class ReaderPopup(QWidget):
         ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
         file_name = self.app.reader_data[self.data_type]["files"][file_type]
         if file_name is not None and len(file_name) > 0:
-            bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self.app)
-            self.app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
-            self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(bin_metadata_btn_visible)
+            bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(
+                self.app
+            )
+            self.app.control_inputs["bin_metadata_button"].setVisible(
+                bin_metadata_btn_visible
+            )
+            self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(
+                bin_metadata_btn_visible
+            )
             widget_key = f"load_{file_type}_input"
             self.widgets[widget_key].setText(file_name)
             self.remove_channels_grid()
@@ -692,15 +735,13 @@ class ReaderMetadataPopup(QWidget):
                 h_box.addWidget(value_label)
                 v_box.addLayout(h_box)
         return v_box
-    
-    
-    def center_window(self):    
+
+    def center_window(self):
         self.setMinimumWidth(500)
         window_geometry = self.frameGeometry()
         screen_geometry = QApplication.primaryScreen().availableGeometry().center()
         window_geometry.moveCenter(screen_geometry)
         self.move(window_geometry.topLeft())
-
 
 
 class WorkerSignals(QObject):
@@ -714,17 +755,28 @@ class SavePlotTask(QRunnable):
         self.plot = plot
         self.base_path = base_path
         self.signals = signals
+
     @pyqtSlot()
     def run(self):
         try:
             # png
-            png_path = f"{self.base_path}.png" if not self.base_path.endswith(".png") else self.base_path
-            self.plot.savefig(png_path, format='png')
+            png_path = (
+                f"{self.base_path}.png"
+                if not self.base_path.endswith(".png")
+                else self.base_path
+            )
+            self.plot.savefig(png_path, format="png")
             # eps
-            eps_path = f"{self.base_path}.eps" if not self.base_path.endswith(".eps") else self.base_path
-            self.plot.savefig(eps_path, format='eps')
+            eps_path = (
+                f"{self.base_path}.eps"
+                if not self.base_path.endswith(".eps")
+                else self.base_path
+            )
+            self.plot.savefig(eps_path, format="eps")
             plt.close(self.plot)
-            self.signals.success.emit(f"Plot images saved successfully as {png_path} and {eps_path}")
+            self.signals.success.emit(
+                f"Plot images saved successfully as {png_path} and {eps_path}"
+            )
         except Exception as e:
             plt.close(self.plot)
             self.signals.error.emit(str(e))

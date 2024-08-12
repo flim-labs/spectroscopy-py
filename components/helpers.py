@@ -14,3 +14,9 @@ def ns_to_mhz(laser_period_ns):
     frequency_hz = 1 / period_s
     frequency_mhz = frequency_hz / 1e6
     return frequency_mhz
+
+def mhz_to_ns(frequency_mhz):
+    frequency_hz = frequency_mhz * 1e6
+    period_s = 1 / frequency_hz
+    period_ns = period_s * 1e9
+    return period_ns
