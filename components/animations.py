@@ -3,11 +3,12 @@ from PyQt6.QtCore import QPropertyAnimation, QPoint, QEasingCurve, QAbstractAnim
 
 
 class VibrantAnimation:
-    def __init__(self, widget, start_color="", stop_color="", bg_color=""):
+    def __init__(self, widget, start_color="", stop_color="", bg_color="", margin_top=""):
         self.widget = widget
         self.start_color = start_color
         self.stop_color = stop_color
         self.bg_color = bg_color
+        self.margin_top = margin_top
         self.animation = QPropertyAnimation(widget, b"pos")
         self.animation.setEasingCurve(QEasingCurve.Type.OutBounce)
         self.animation.setLoopCount(-1)
@@ -18,7 +19,7 @@ class VibrantAnimation:
             return
         self.original_pos = self.widget.pos()
         self.widget.setStyleSheet(        
-                    f"QLabel {{ color : {self.start_color}; font-size: 42px; font-weight: bold; background-color: {self.bg_color}; padding: 8px; }}"
+                    f"QLabel {{ color : {self.start_color}; font-size: 42px; font-weight: bold; background-color: {self.bg_color}; padding: 8px 8px 0 8px;}}"
                 )         
         self.animation.setDuration(duration)
         self.animation.setStartValue(self.original_pos)
@@ -29,7 +30,7 @@ class VibrantAnimation:
     def stop(self):
         if self.animation.state() == QAbstractAnimation.State.Running:
             self.widget.setStyleSheet(        
-                        f"QLabel {{ color : {self.stop_color}; font-size: 42px; font-weight: bold; background-color: {self.bg_color}; padding: 8px; }}"
+                        f"QLabel {{ color : {self.stop_color}; font-size: 42px; font-weight: bold; background-color: {self.bg_color}; padding: 8px 8px 0 8px;}}"
                     )              
             self.animation.stop()
             self.widget.move(self.original_pos)

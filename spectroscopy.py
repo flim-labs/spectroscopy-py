@@ -91,6 +91,7 @@ class SpectroscopyWindow(QWidget):
         self.cps_widgets = {}
         self.cps_widgets_animation = {}
         self.cps_counts = {}
+        self.acquisition_time_countdown_widgets = {}
         self.decay_curves = DECAY_CURVES
         self.decay_widgets = {}
         self.cached_decay_values = CACHED_DECAY_VALUES
@@ -407,7 +408,7 @@ class SpectroscopyWindow(QWidget):
         )
         # CPS THRESHOLD
         _, inp = InputNumberControl.setup(
-            "Pile-up Threshold:",
+            "Pile-up threshold (CPS):",
             0,
             100000000,
             int(self.settings.value(SETTINGS_CPS_THRESHOLD, DEFAULT_CPS_THRESHOLD)),
@@ -1103,12 +1104,15 @@ class SpectroscopyWindow(QWidget):
             ):
                 intensity_widget_wrapper = QWidget()
                 h_layout = QHBoxLayout()
-                label = QLabel("No CPS")
-                label.setStyleSheet(
-                    "QLabel { color : #285da6; font-size: 42px; font-weight: bold; background-color: transparent; padding: 8px; }"
+                cps_contdown_v_box = QVBoxLayout()
+                cps_contdown_v_box.setContentsMargins(0, 0, 0, 0)
+                cps_contdown_v_box.setSpacing(0)
+                cps_label = QLabel("No CPS")
+                cps_label.setStyleSheet(
+                    "QLabel { color : #285da6; font-size: 42px; font-weight: bold; background-color: transparent; padding: 8px 8px 0 8px;}"
                 )
                 # label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-                self.cps_widgets[channel] = label
+                self.cps_widgets[channel] = cps_label
                 self.cps_widgets_animation[channel] = VibrantAnimation(
                     self.cps_widgets[channel],
                     stop_color="#285da6",
@@ -1120,6 +1124,10 @@ class SpectroscopyWindow(QWidget):
                     "last_count": 0,
                     "current_count": 0,
                 }
+                countdown_label = QLabel("Remaining time:")
+                countdown_label.setStyleSheet(GUIStyles.acquisition_time_countdown_style()) 
+                countdown_label.setVisible(False) 
+                self.acquisition_time_countdown_widgets[channel] = countdown_label
                 intensity_widget = pg.PlotWidget()
                 intensity_widget.setLabel(
                     "left",
@@ -1138,7 +1146,9 @@ class SpectroscopyWindow(QWidget):
                 x, y = self.initialize_intensity_plot_data(channel)
                 intensity_plot = intensity_widget.plot(x, y, pen="#1E90FF", pen_width=2)
                 self.intensity_lines[self.tab_selected][channel] = intensity_plot
-                h_layout.addWidget(label, stretch=1)
+                cps_contdown_v_box.addWidget(cps_label)
+                cps_contdown_v_box.addWidget(countdown_label)
+                h_layout.addLayout(cps_contdown_v_box, stretch=1)
                 if len(self.plots_to_show) == 1:
                     intensity_plot_stretch = 6
                 elif len(self.plots_to_show) == 2:
@@ -1191,12 +1201,15 @@ class SpectroscopyWindow(QWidget):
                 self.fit_button_hide()
             elif self.tab_selected == TAB_PHASORS:
                 h_layout = QHBoxLayout()
-                label = QLabel("No CPS")
-                label.setStyleSheet(
-                    "QLabel { color : #f72828; font-size: 42px; font-weight: bold; background-color: #000000; padding: 8px; }"
+                cps_contdown_v_box = QVBoxLayout()
+                cps_contdown_v_box.setContentsMargins(0, 0, 0, 0)
+                cps_contdown_v_box.setSpacing(0)
+                cps_label = QLabel("No CPS")
+                cps_label.setStyleSheet(
+                    "QLabel { color : #f72828; font-size: 42px; font-weight: bold; background-color: transparent; padding: 8px 8px 0 8px; }"
                 )
                 # label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-                self.cps_widgets[channel] = label
+                self.cps_widgets[channel] = cps_label
                 self.cps_widgets_animation[channel] = VibrantAnimation(
                     self.cps_widgets[channel],
                     stop_color="#f72828",
@@ -1208,6 +1221,10 @@ class SpectroscopyWindow(QWidget):
                     "last_count": 0,
                     "current_count": 0,
                 }
+                countdown_label = QLabel("Remaining time:")
+                countdown_label.setStyleSheet(GUIStyles.acquisition_time_countdown_style()) 
+                countdown_label.setVisible(False)
+                self.acquisition_time_countdown_widgets[channel] = countdown_label
                 curve_widget = pg.PlotWidget()
                 curve_widget.setLabel("left", "Photon counts", units="")
                 curve_widget.setLabel("bottom", "Time", units="ns")
@@ -1216,7 +1233,9 @@ class SpectroscopyWindow(QWidget):
                 static_curve = curve_widget.plot(x, y, pen="#f72828", pen_width=2)
                 self.decay_curves[self.tab_selected][channel] = static_curve
                 self.decay_widgets[channel] = curve_widget
-                h_layout.addWidget(label, stretch=1)
+                cps_contdown_v_box.addWidget(cps_label)
+                cps_contdown_v_box.addWidget(countdown_label)
+                h_layout.addLayout(cps_contdown_v_box, stretch=1)
                 h_layout.addWidget(curve_widget, stretch=1)
                 v_layout.addLayout(h_layout, 1)
                 # add a phasors chart
@@ -1466,6 +1485,7 @@ class SpectroscopyWindow(QWidget):
         self.cps_widgets_animation.clear()
         self.cps_widgets.clear()
         self.cps_counts.clear()
+        self.acquisition_time_countdown_widgets.clear()
         if deep_clear:
             self.intensity_lines = deepcopy(DEFAULT_INTENSITY_LINES)
             self.decay_curves = deepcopy(DEFAULT_DECAY_CURVES)
@@ -1796,6 +1816,7 @@ class SpectroscopyWindow(QWidget):
                 )
                 if channel_index is not None:
                     self.update_plots2(channel_index, time_ns, intensities)
+                    self.update_acquisition_countdowns(time_ns)
                     self.update_cps(channel_index, time_ns, intensities)
                 QApplication.processEvents()
 
@@ -1917,6 +1938,24 @@ class SpectroscopyWindow(QWidget):
 
     def is_phasors(self):
         return self.tab_selected == TAB_PHASORS
+    
+    
+    def update_acquisition_countdowns(self, time_ns):
+        free_running = self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
+        acquisition_time = self.control_inputs[SETTINGS_ACQUISITION_TIME].value()  
+        if free_running is True or free_running == "true":
+            return
+        elapsed_time_sec = time_ns / 1_000_000_000
+        remaining_time_sec = max(0, acquisition_time - elapsed_time_sec)
+        seconds = int(remaining_time_sec)
+        milliseconds = int((remaining_time_sec - seconds) * 1000)
+        milliseconds = milliseconds // 10
+        for _, countdown_widget in self.acquisition_time_countdown_widgets.items():
+            if countdown_widget:
+                if not countdown_widget.isVisible():
+                    countdown_widget.setVisible(True)
+                countdown_widget.setText(f"Remaining time: {seconds:02}:{milliseconds:02} (s)")
+
 
     def update_cps(self, channel_index, time_ns, curve):
         # check if there is channel_index'th element in cps_counts
@@ -1936,9 +1975,7 @@ class SpectroscopyWindow(QWidget):
                 time_elapsed / 1_000_000_000
             )
             humanized_number = self.humanize_number(cps_value)
-            self.cps_widgets[channel_index].setText(
-                f"{humanized_number} CPS"
-            )
+            self.cps_widgets[channel_index].setText(f"{humanized_number} CPS")
             cps_threshold = self.control_inputs[SETTINGS_CPS_THRESHOLD].value()
             if cps_threshold > 0:
                 if cps_value > cps_threshold:
@@ -2083,9 +2120,14 @@ class SpectroscopyWindow(QWidget):
         is_export_data_active = self.write_data_gui
         SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, True)
         self.top_bar_set_enabled(True)
-        for _, animation in self.cps_widgets_animation.items():
-            if animation:
-                animation.stop()
+        def clear_cps_and_countdown_widgets():
+            for _, animation in self.cps_widgets_animation.items():
+                if animation:
+                    animation.stop()
+            for _, widget in self.acquisition_time_countdown_widgets.items():                
+                if widget:
+                    widget.setVisible(False)                                 
+        QTimer.singleShot(400,clear_cps_and_countdown_widgets)        
         QApplication.processEvents()
         if self.is_reference_phasors():
             # read reference file from .pid file
@@ -2115,6 +2157,7 @@ class SpectroscopyWindow(QWidget):
             )
         if self.tab_selected == TAB_FITTING:
             self.fit_button_show()
+            
 
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
