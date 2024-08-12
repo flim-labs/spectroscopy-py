@@ -503,7 +503,7 @@ class SpectroscopyWindow(QWidget):
 
         ctl, inp, label = SelectControl.setup(
             "Harmonic displayed:",
-            1,
+            0,
             controls_row,
             ["1", "2", "3", "4"],
             self.on_harmonic_selector_change,
