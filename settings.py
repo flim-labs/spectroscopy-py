@@ -33,6 +33,8 @@ DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
 SETTINGS_WRITE_DATA = "write_data"
 DEFAULT_WRITE_DATA = True
 SETTINGS_TIME_SHIFTS = "time_shift"
+SETTINGS_CPS_THRESHOLD = "cps_threshold"
+DEFAULT_CPS_THRESHOLD = 0
 
 FIT_BTN = "fit_button"
 FIT_BTN_PLACEHOLDER = "fit_button_placeholder"
@@ -62,6 +64,7 @@ SETTINGS_LIN_LOG_MODE = "lin_log_mode"
 DEFAULT_LIN_LOG_MODE = "{}"
 
 CHANNELS_GRID = "channels_grid"
+
 
 
 UNICODE_SUP = {
