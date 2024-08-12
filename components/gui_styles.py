@@ -213,14 +213,14 @@ class GUIStyles:
         """
 
     @staticmethod
-    def set_input_number_style(border_color="#3b3b3b", disabled_border_color="#3c3c3c"):
+    def set_input_number_style(border_color="#3b3b3b", disabled_border_color="#3c3c3c", min_width = "60px"):
         return f"""
             QDoubleSpinBox, QSpinBox {{
                 color: #f8f8f8;
                 font-family: "Montserrat";
                 font-size: 14px;
                 padding: 8px;
-                min-width: 60px;
+                min-width: {min_width};
                 border: 1px solid {border_color};
                 border-radius: 5px;
                 background-color: transparent;
@@ -463,5 +463,15 @@ class GUIStyles:
                 border-bottom-right-radius: 3px;
                 
             }}
-        """               
+        """   
+        
+    @staticmethod
+    def acquisition_time_countdown_style():
+        return """
+            QLabel {
+                color: #1E90FF;
+                font-size: 18px;
+                padding: 0 8px 8px 16px;
+            }
+        """                     
                         

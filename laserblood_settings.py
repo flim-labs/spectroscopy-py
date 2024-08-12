@@ -534,6 +534,21 @@ EMISSION_FILTER = {
     "REQUIRED": True,
 }
 
+CPS_THRESHOLD = {
+    "LABEL": "Pile-up Threshold",
+    "UNIT": "CPS",
+    "VALUE": 0,
+    "INPUT_TYPE": "int",
+    "OPTIONS": [],
+    "MIN": 0,
+    "MAX": 10000000,
+    "POSITION": (7, 3, 1, 1),
+    "STRETCH": 3,
+    "ENABLED": False,
+    "REMOVABLE": False,
+    "REQUIRED": True,
+}
+
 NOTES = {
     "LABEL": "Notes",
     "UNIT": None,
@@ -582,6 +597,7 @@ LASERBLOOD_METADATA = [
     LASER_CENTRAL_WAVE_LENGTH,
     EMISSION_FILTER,
     SPA_DETECTOR_TYPE,
+    CPS_THRESHOLD,
     NOTES,
 ]
 

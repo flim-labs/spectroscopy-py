@@ -42,7 +42,6 @@ class ExportData:
                 "spectroscopy": new_spectroscopy_file_path,
                 "laserblood_metadata": laserblood_metadata_file_path,
             }
-            print(file_paths)
             ExportData.download_scripts(file_paths, save_name, save_dir, "spectroscopy")
         except Exception as e:
             ScriptFileUtils.show_error_message(e)

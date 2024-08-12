@@ -25,14 +25,19 @@ from PyQt6.QtWidgets import (
     QFileDialog,
 )
 
+from components.animations import VibrantAnimation
 from components.box_message import BoxMessage
-from components.buttons import CollapseButton, ExportPlotImageButton, ReadAcquireModeButton
+from components.buttons import (
+    CollapseButton,
+    ExportPlotImageButton,
+    ReadAcquireModeButton,
+)
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
-from components.helpers import format_size
+from components.helpers import format_size, mhz_to_ns
 from components.input_number_control import InputNumberControl, InputFloatControl
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
 from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
@@ -60,10 +65,26 @@ project_root = os.path.abspath(os.path.join(current_path))
 class SpectroscopyWindow(QWidget):
     def __init__(self):
         super().__init__()
+        self.settings = self.init_settings()
+        ## LASERBLOOD METADATA
+        self.laserblood_settings = json.loads(
+            self.settings.value(METADATA_LASERBLOOD_KEY, LASERBLOOD_METADATA_JSON)
+        )
+        self.laserblood_laser_type = self.settings.value(
+            SETTINGS_LASER_TYPE, DEFAULT_LASER_TYPE
+        )
+        self.laserblood_filter_type = self.settings.value(
+            SETTINGS_FILTER_TYPE, DEFAULT_FILTER_TYPE
+        )
+        self.laserblood_new_added_inputs = json.loads(
+            self.settings.value(
+                NEW_ADDED_LASERBLOOD_INPUTS_KEY, NEW_ADDED_LASERBLOOD_INPUTS_JSON
+            )
+        )
+        self.laserblood_widgets = {}           
         self.threadpool = QThreadPool()
         self.reader_data = READER_DATA
         self.update_plots_enabled = False
-        self.settings = self.init_settings()
         self.widgets = {}
         self.channel_checkboxes = []
         self.sync_buttons = []
@@ -84,7 +105,9 @@ class SpectroscopyWindow(QWidget):
         self.phasors_crosshairs = {}
         self.quantization_images = {}
         self.cps_widgets = {}
+        self.cps_widgets_animation = {}
         self.cps_counts = {}
+        self.acquisition_time_countdown_widgets = {}
         self.decay_curves = DECAY_CURVES
         self.decay_widgets = {}
         self.displayed_cps = {}
@@ -162,28 +185,12 @@ class SpectroscopyWindow(QWidget):
         self.fitting_config_popup = None
         self.calc_exported_file_size()
         self.phasors_harmonic_selected = 1
-        ## LASERBLOOD METADATA
-        self.laserblood_settings = json.loads(
-            self.settings.value(METADATA_LASERBLOOD_KEY, LASERBLOOD_METADATA_JSON)
-        )
-        self.laserblood_laser_type = self.settings.value(
-            SETTINGS_LASER_TYPE, DEFAULT_LASER_TYPE
-        )
-        self.laserblood_filter_type = self.settings.value(
-            SETTINGS_FILTER_TYPE, DEFAULT_FILTER_TYPE
-        )
-        self.laserblood_new_added_inputs = json.loads(
-            self.settings.value(
-                NEW_ADDED_LASERBLOOD_INPUTS_KEY, NEW_ADDED_LASERBLOOD_INPUTS_JSON
-            )
-        )
-        self.laserblood_widgets = {}
-        
         ReadDataControls.handle_widgets_visibility(
             self, self.acquire_read_mode == "read"
         )
         self.toggle_intensities_widgets_visibility()
         self.refresh_reader_popup_plots = False
+        LaserbloodMetadataPopup.set_FPGA_firmware(self)
 
     @staticmethod
     def get_empty_phasors_points():
@@ -434,7 +441,19 @@ class SpectroscopyWindow(QWidget):
         self.on_free_running_changed(
             self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING) == "true"
         )
-
+        # CPS THRESHOLD
+        cps_threshold = int(self.settings.value(SETTINGS_CPS_THRESHOLD, DEFAULT_CPS_THRESHOLD))
+        _, inp = InputNumberControl.setup(
+            "Pile-up threshold (CPS):",
+            0,
+            100000000,
+            cps_threshold,
+            controls_row,
+            self.on_cps_threshold_change,
+        )
+        inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="120px"))
+        self.control_inputs[SETTINGS_CPS_THRESHOLD] = inp
+        LaserbloodMetadataPopup.set_cps_threshold(self, cps_threshold)
         # QUANTIZE PHASORS
         quantize_phasors_switch_control = QVBoxLayout()
         inp_quantize = SwitchControl(
@@ -601,10 +620,8 @@ class SpectroscopyWindow(QWidget):
         bin_metadata_button.clicked.connect(self.open_reader_metadata_popup)
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self)
         bin_metadata_button.setVisible(bin_metadata_btn_visible)
-    
         # EXPORT PLOT IMG BUTTON
         export_plot_img_button = ExportPlotImageButton(self)
-
         # READ BIN BUTTON
         read_bin_button = QPushButton("READ/PLOT")
         read_bin_button.setObjectName("btn")
@@ -742,8 +759,12 @@ class SpectroscopyWindow(QWidget):
                 self.control_inputs[LOAD_REF_BTN].show()
             self.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
             channels_grid = self.widgets[CHANNELS_GRID]
-            self.generate_phasors_cluster_center(self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1)   
-            self.generate_phasors_legend(self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1)
+            self.generate_phasors_cluster_center(
+                self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1
+            )
+            self.generate_phasors_legend(
+                self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1
+            )
             if self.harmonic_selector_shown:
                 if self.quantized_phasors:
                     self.quantize_phasors(
@@ -783,8 +804,7 @@ class SpectroscopyWindow(QWidget):
                 {
                     "x": x,
                     "y": y,
-                    "title": "Channel "
-                    + str(channel_index + 1),
+                    "title": "Channel " + str(channel_index + 1),
                 }
             )
         # check if every x len is the same as y len
@@ -829,6 +849,10 @@ class SpectroscopyWindow(QWidget):
     def on_acquisition_time_change(self, value):
         self.settings.setValue(SETTINGS_ACQUISITION_TIME, value)
         self.calc_exported_file_size()
+
+    def on_cps_threshold_change(self, value):
+        self.settings.setValue(SETTINGS_CPS_THRESHOLD, value)
+        LaserbloodMetadataPopup.set_cps_threshold(self, value)
 
     def on_time_span_change(self, value):
         self.settings.setValue(SETTINGS_TIME_SPAN, value)
@@ -1067,13 +1091,13 @@ class SpectroscopyWindow(QWidget):
         y = x * 0
         return x, y
 
-
     def initialize_decay_curves(self, channel, frequency_mhz):
         def get_default_x():
             if frequency_mhz != 0.0:
                 period = 1_000 / frequency_mhz
                 return np.linspace(0, period, 256)
             return np.arange(1)
+
         decay_curves = self.decay_curves[self.tab_selected]
         if self.tab_selected in [TAB_SPECTROSCOPY, TAB_FITTING]:
             cached_decay_values = self.cached_decay_values[self.tab_selected]
@@ -1116,17 +1140,30 @@ class SpectroscopyWindow(QWidget):
             ):
                 intensity_widget_wrapper = QWidget()
                 h_layout = QHBoxLayout()
-                label = QLabel("No CPS")
-                label.setStyleSheet(
-                    "QLabel { color : #285da6; font-size: 42px; font-weight: bold; background-color: transparent; padding: 8px; }"
+                cps_contdown_v_box = QVBoxLayout()
+                cps_contdown_v_box.setContentsMargins(0, 0, 0, 0)
+                cps_contdown_v_box.setSpacing(0)
+                cps_label = QLabel("No CPS")
+                cps_label.setStyleSheet(
+                    "QLabel { color : #285da6; font-size: 42px; font-weight: bold; background-color: transparent; padding: 8px 8px 0 8px;}"
                 )
                 # label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-                self.cps_widgets[channel] = label
+                self.cps_widgets[channel] = cps_label
+                self.cps_widgets_animation[channel] = VibrantAnimation(
+                    self.cps_widgets[channel],
+                    stop_color="#285da6",
+                    bg_color="transparent",
+                    start_color="#eed202",
+                )
                 self.cps_counts[channel] = {
                     "last_time_ns": 0,
                     "last_count": 0,
                     "current_count": 0,
                 }
+                countdown_label = QLabel("Remaining time:")
+                countdown_label.setStyleSheet(GUIStyles.acquisition_time_countdown_style()) 
+                countdown_label.setVisible(False) 
+                self.acquisition_time_countdown_widgets[channel] = countdown_label
                 intensity_widget = pg.PlotWidget()
                 intensity_widget.setLabel(
                     "left",
@@ -1145,7 +1182,9 @@ class SpectroscopyWindow(QWidget):
                 x, y = self.initialize_intensity_plot_data(channel)
                 intensity_plot = intensity_widget.plot(x, y, pen="#1E90FF", pen_width=2)
                 self.intensity_lines[self.tab_selected][channel] = intensity_plot
-                h_layout.addWidget(label, stretch=1)
+                cps_contdown_v_box.addWidget(cps_label)
+                cps_contdown_v_box.addWidget(countdown_label)
+                h_layout.addLayout(cps_contdown_v_box, stretch=1)
                 if len(self.plots_to_show) == 1:
                     intensity_plot_stretch = 6
                 elif len(self.plots_to_show) == 2:
@@ -1198,17 +1237,30 @@ class SpectroscopyWindow(QWidget):
                 self.fit_button_hide()
             elif self.tab_selected == TAB_PHASORS:
                 h_layout = QHBoxLayout()
-                label = QLabel("No CPS")
-                label.setStyleSheet(
-                    "QLabel { color : #f72828; font-size: 42px; font-weight: bold; background-color: #000000; padding: 8px; }"
+                cps_contdown_v_box = QVBoxLayout()
+                cps_contdown_v_box.setContentsMargins(0, 0, 0, 0)
+                cps_contdown_v_box.setSpacing(0)
+                cps_label = QLabel("No CPS")
+                cps_label.setStyleSheet(
+                    "QLabel { color : #f72828; font-size: 42px; font-weight: bold; background-color: transparent; padding: 8px 8px 0 8px; }"
                 )
                 # label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-                self.cps_widgets[channel] = label
+                self.cps_widgets[channel] = cps_label
+                self.cps_widgets_animation[channel] = VibrantAnimation(
+                    self.cps_widgets[channel],
+                    stop_color="#f72828",
+                    bg_color="transparent",
+                    start_color="#eed202",
+                )
                 self.cps_counts[channel] = {
                     "last_time_ns": 0,
                     "last_count": 0,
                     "current_count": 0,
                 }
+                countdown_label = QLabel("Remaining time:")
+                countdown_label.setStyleSheet(GUIStyles.acquisition_time_countdown_style()) 
+                countdown_label.setVisible(False)
+                self.acquisition_time_countdown_widgets[channel] = countdown_label
                 curve_widget = pg.PlotWidget()
                 curve_widget.setLabel("left", "Photon counts", units="")
                 curve_widget.setLabel("bottom", "Time", units="ns")
@@ -1217,7 +1269,9 @@ class SpectroscopyWindow(QWidget):
                 static_curve = curve_widget.plot(x, y, pen="#f72828", pen_width=2)
                 self.decay_curves[self.tab_selected][channel] = static_curve
                 self.decay_widgets[channel] = curve_widget
-                h_layout.addWidget(label, stretch=1)
+                cps_contdown_v_box.addWidget(cps_label)
+                cps_contdown_v_box.addWidget(countdown_label)
+                h_layout.addLayout(cps_contdown_v_box, stretch=1)
                 h_layout.addWidget(curve_widget, stretch=1)
                 v_layout.addLayout(h_layout, 1)
                 # add a phasors chart
@@ -1258,24 +1312,22 @@ class SpectroscopyWindow(QWidget):
                 col_length = 2
             v_widget.setStyleSheet(GUIStyles.chart_wrapper_style())
             self.grid_layout.addWidget(v_widget, i // col_length, i % col_length)
-            
 
-    def calculate_phasors_points_mean(self,channel_index, harmonic):
+    def calculate_phasors_points_mean(self, channel_index, harmonic):
         x = [p[0] for p in self.all_phasors_points[channel_index][harmonic]]
         y = [p[1] for p in self.all_phasors_points[channel_index][harmonic]]
         g_values = np.array(x)
         s_values = np.array(y)
         if (
-                g_values.size == 0
-                or s_values.size == 0
-                or np.all(np.isnan(g_values))
-                or np.all(np.isnan(s_values))
-            ):
+            g_values.size == 0
+            or s_values.size == 0
+            or np.all(np.isnan(g_values))
+            or np.all(np.isnan(s_values))
+        ):
             return None, None
-        mean_g = np.nanmean(g_values)            
+        mean_g = np.nanmean(g_values)
         mean_s = np.nanmean(s_values)
         return mean_g, mean_s
-                    
 
     def generate_phasors_cluster_center(self, harmonic):
         for i, channel_index in enumerate(self.plots_to_show):
@@ -1285,7 +1337,9 @@ class SpectroscopyWindow(QWidget):
                     self.phasors_widgets[channel_index].removeItem(
                         self.phasors_clusters_center[channel_index]
                     )
-                mean_g, mean_s = self.calculate_phasors_points_mean(channel_index, harmonic)
+                mean_g, mean_s = self.calculate_phasors_points_mean(
+                    channel_index, harmonic
+                )
                 if mean_g is None or mean_s is None:
                     continue
                 scatter = pg.ScatterPlotItem(
@@ -1309,37 +1363,38 @@ class SpectroscopyWindow(QWidget):
                     self.phasors_widgets[channel_index].removeItem(
                         self.phasors_legends[channel_index]
                     )
-                mean_g, mean_s = self.calculate_phasors_points_mean(channel_index, harmonic)
+                mean_g, mean_s = self.calculate_phasors_points_mean(
+                    channel_index, harmonic
+                )
                 if mean_g is None or mean_s is None:
-                    continue   
-                freq_mhz = self.get_frequency_mhz() 
-                tau_phi, tau_m = self.calculate_tau(mean_g, mean_s, freq_mhz, harmonic) 
+                    continue
+                freq_mhz = self.get_frequency_mhz()
+                tau_phi, tau_m = self.calculate_tau(mean_g, mean_s, freq_mhz, harmonic)
                 if tau_phi is None:
                     return
                 if tau_m is None:
                     legend_text = (
                         '<div style="background-color: rgba(0, 0, 0, 0.1); padding: 20px; border-radius: 4px;'
                         ' color: #FF3131; font-size: 18px; border: 1px solid white; text-align: left;">'
-                        f'G (mean)={round(mean_g, 2)}; '
-                        f'S (mean)={round(mean_s, 2)}; '
-                        f'𝜏ϕ={round(tau_phi, 2)} ns'
-                        '</div>'
+                        f"G (mean)={round(mean_g, 2)}; "
+                        f"S (mean)={round(mean_s, 2)}; "
+                        f"𝜏ϕ={round(tau_phi, 2)} ns"
+                        "</div>"
                     )
                 else:
                     legend_text = (
                         '<div style="background-color: rgba(0, 0, 0, 0.1);  padding: 20px; border-radius: 4px;'
                         ' color: #FF3131; font-size: 18px;  border: 1px solid white; text-align: left;">'
-                        f'G (mean)={round(mean_g, 2)}; '
-                        f'S (mean)={round(mean_s, 2)}; '
-                        f'𝜏ϕ={round(tau_phi, 2)} ns; '
-                        f'𝜏m={round(tau_m, 2)} ns'
-                        '</div>'
+                        f"G (mean)={round(mean_g, 2)}; "
+                        f"S (mean)={round(mean_s, 2)}; "
+                        f"𝜏ϕ={round(tau_phi, 2)} ns; "
+                        f"𝜏m={round(tau_m, 2)} ns"
+                        "</div>"
                     )
                 legend_item = pg.TextItem(html=legend_text)
                 legend_item.setPos(0.1, 0)
                 self.phasors_widgets[channel_index].addItem(legend_item)
-                self.phasors_legends[channel_index] = legend_item          
-                
+                self.phasors_legends[channel_index] = legend_item
 
     def generate_coords(self, channel_index):
         font = QFont()
@@ -1367,8 +1422,7 @@ class SpectroscopyWindow(QWidget):
         crosshair.setZValue(1)
         self.phasors_widgets[channel_index].addItem(coord_text, ignoreBounds=True)
         self.phasors_widgets[channel_index].addItem(crosshair, ignoreBounds=True)
-        
-        
+
     def calculate_tau(self, g, s, freq_mhz, harmonic):
             if freq_mhz == 0.0:
                 return None, None 
@@ -1460,8 +1514,13 @@ class SpectroscopyWindow(QWidget):
         self.phasors_widgets.clear()
         self.decay_widgets.clear()
         self.phasors_coords.clear()
+        for i, animation in self.cps_widgets_animation.items():
+            if animation:
+                animation.stop()
+        self.cps_widgets_animation.clear()
         self.cps_widgets.clear()
         self.cps_counts.clear()
+        self.acquisition_time_countdown_widgets.clear()
         if deep_clear:
             self.intensity_lines = deepcopy(DEFAULT_INTENSITY_LINES)
             self.decay_curves = deepcopy(DEFAULT_DECAY_CURVES)
@@ -1808,6 +1867,7 @@ class SpectroscopyWindow(QWidget):
                 )
                 if channel_index is not None:
                     self.update_plots2(channel_index, time_ns, intensities)
+                    self.update_acquisition_countdowns(time_ns)
                     self.update_cps(channel_index, time_ns, intensities)
                 QApplication.processEvents()
 
@@ -1928,6 +1988,24 @@ class SpectroscopyWindow(QWidget):
 
     def is_phasors(self):
         return self.tab_selected == TAB_PHASORS
+    
+    
+    def update_acquisition_countdowns(self, time_ns):
+        free_running = self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
+        acquisition_time = self.control_inputs[SETTINGS_ACQUISITION_TIME].value()  
+        if free_running is True or free_running == "true":
+            return
+        elapsed_time_sec = time_ns / 1_000_000_000
+        remaining_time_sec = max(0, acquisition_time - elapsed_time_sec)
+        seconds = int(remaining_time_sec)
+        milliseconds = int((remaining_time_sec - seconds) * 1000)
+        milliseconds = milliseconds // 10
+        for _, countdown_widget in self.acquisition_time_countdown_widgets.items():
+            if countdown_widget:
+                if not countdown_widget.isVisible():
+                    countdown_widget.setVisible(True)
+                countdown_widget.setText(f"Remaining time: {seconds:02}:{milliseconds:02} (s)")
+
 
     def update_cps(self, channel_index, time_ns, curve):
         # check if there is channel_index'th element in cps_counts
@@ -1946,13 +2024,14 @@ class SpectroscopyWindow(QWidget):
             cps_value = (cps["current_count"] - cps["last_count"]) / (
                 time_elapsed / 1_000_000_000
             )
-            if not channel_index in self.displayed_cps:
-                self.displayed_cps[channel_index] = [cps_value]
-            else:
-                self.displayed_cps[channel_index].append(cps_value)    
-            self.cps_widgets[channel_index].setText(
-                f"{self.humanize_number(cps_value)} CPS"
-            )
+            humanized_number = self.humanize_number(cps_value)
+            self.cps_widgets[channel_index].setText(f"{humanized_number} CPS")
+            cps_threshold = self.control_inputs[SETTINGS_CPS_THRESHOLD].value()
+            if cps_threshold > 0:
+                if cps_value > cps_threshold:
+                    self.cps_widgets_animation[channel_index].start()
+                else:
+                    self.cps_widgets_animation[channel_index].stop()
             cps["last_time_ns"] = time_ns
             cps["last_count"] = cps["current_count"]
 
@@ -1962,7 +2041,8 @@ class SpectroscopyWindow(QWidget):
         units = ["", "K", "M", "G", "T", "P"]
         k = 1000.0
         magnitude = int(floor(log(number, k)))
-        return "%.2f%s" % (number / k**magnitude, units[magnitude])
+        scaled_number = number / k**magnitude
+        return f"{int(scaled_number)}.{str(scaled_number).split('.')[1][:2]}{units[magnitude]}"
 
     def update_intensity_plots(self, channel_index, time_ns, curve):
         bin_width_micros = int(
@@ -2068,8 +2148,9 @@ class SpectroscopyWindow(QWidget):
                         self.harmonic_selector_value,
                         self.all_phasors_points[channel_index][
                             self.harmonic_selector_value
-                        ],)          
-        self.generate_phasors_cluster_center(self.harmonic_selector_value)    
+                        ],
+                    )
+        self.generate_phasors_cluster_center(self.harmonic_selector_value)
         self.generate_phasors_legend(self.harmonic_selector_value)
 
     def stop_spectroscopy_experiment(self):
@@ -2089,6 +2170,14 @@ class SpectroscopyWindow(QWidget):
         is_export_data_active = self.write_data_gui
         SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, True)
         self.top_bar_set_enabled(True)
+        def clear_cps_and_countdown_widgets():
+            for _, animation in self.cps_widgets_animation.items():
+                if animation:
+                    animation.stop()
+            for _, widget in self.acquisition_time_countdown_widgets.items():                
+                if widget:
+                    widget.setVisible(False)                                 
+        QTimer.singleShot(400,clear_cps_and_countdown_widgets)        
         QApplication.processEvents()
         if self.is_reference_phasors():
             # read reference file from .pid file
@@ -2100,7 +2189,7 @@ class SpectroscopyWindow(QWidget):
         harmonic_selected = int(
             self.settings.value(SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT)
         )
-        if self.is_phasors():
+        if self.is_phasors():         
             if self.quantized_phasors:
                 self.quantize_phasors(
                     1, bins=int(PHASORS_RESOLUTIONS[self.phasors_resolution])
