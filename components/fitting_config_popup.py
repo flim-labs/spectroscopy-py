@@ -1,8 +1,8 @@
 import os
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QCursor, QGuiApplication, QIcon
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot, QSize
+from PyQt6.QtGui import QCursor, QGuiApplication, QIcon, QMovie
 from PyQt6.QtWidgets import (
     QWidget,
     QPushButton,
@@ -53,6 +53,10 @@ class FittingDecayConfigPopup(QWidget):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.controls_bar = self.create_controls_bar()
         self.main_layout.addWidget(self.controls_bar)
+        self.main_layout.addSpacing(10)
+        self.loading_row = self.create_loading_row()
+        self.main_layout.addLayout(self.loading_row)
+        self.main_layout.addSpacing(10)
         self.plot_widgets = {}
         self.residuals_widgets = {}
         self.fitted_params_labels = {}
@@ -146,6 +150,25 @@ class FittingDecayConfigPopup(QWidget):
         controls_bar_widget.setLayout(controls_bar)
         return controls_bar_widget
 
+
+    def create_loading_row(self):
+        loading_row = QHBoxLayout()
+        loading_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        loading_row.addSpacing(20)
+        self.loading_text = QLabel("Processing data...")
+        self.loading_text.setStyleSheet("font-family: Montserrat; font-size: 18px; font-weight: bold; color: #50b3d7")
+        loading_gif = QMovie(resource_path("assets/loading.gif"))
+        self.gif_label = QLabel()
+        self.gif_label.setMovie(loading_gif)
+        loading_gif.setScaledSize(QSize(36, 36))
+        loading_gif.start()
+        loading_row.addWidget(self.loading_text)
+        loading_row.addSpacing(5)
+        loading_row.addWidget(self.gif_label)
+        self.loading_text.setVisible(False)
+        self.gif_label.setVisible(False)  
+        return loading_row
+        
     def update_model_text(self):
         num_components = self.components_select.currentIndex() + 1
         include_b = self.b_component_switch.isChecked()
@@ -165,7 +188,37 @@ class FittingDecayConfigPopup(QWidget):
         if num_components == -1:
             print("Please select the number of components.")
             return
-        QTimer.singleShot(100, self.perform_fitting)
+        self.loading_text.setVisible(True)
+        self.gif_label.setVisible(True)
+        self.worker = FittingWorker(self.data, num_components, include_b)
+        self.worker.fitting_done.connect(self.handle_fitting_done)
+        self.worker.error_occurred.connect(self.handle_error)
+        self.worker.start()
+        
+        
+    @pyqtSlot(list)
+    def handle_fitting_done(self, results):
+        self.loading_text.setVisible(False)
+        self.gif_label.setVisible(False)        
+        # Process results
+        for title, result in results:
+            if "error" in result:
+                self.display_error(result["error"], title)
+            else:
+                index = next((i for i, item in enumerate(self.data) if item["title"] == title), None)
+                if index is not None:
+                    self.update_plot(result, index)
+        # Enable and style the export button
+        self.export_fitting_btn.setEnabled(True)
+        self.export_fitting_btn.setStyleSheet(
+            "border: 1px solid #11468F; font-family: Montserrat; color:#11468F; background-color: white; font-weight: bold; padding: 8px; border-radius: 4px;"
+        )
+        
+    @pyqtSlot(str)
+    def handle_error(self, error_message):
+        self.loading_text.setVisible(False)
+        self.gif_label.setVisible(False)        
+        print(f"Error: {error_message}")
 
     def perform_fitting(self):
         num_components = self.components_select.currentIndex() + 1
@@ -321,6 +374,33 @@ class FittingDecayConfigPopup(QWidget):
             if screen.geometry().contains(cursor_pos):
                 return screen_number
         return -1
+    
+    
+    
+class FittingWorker(QThread):
+    fitting_done = pyqtSignal(list)  # Emit a list of tuples (chart title (channel),  fitting result)
+    error_occurred = pyqtSignal(str)  # Emit an error message
+    def __init__(self, data, num_components, include_b, parent=None):
+        super().__init__(parent)
+        self.data = data
+        self.num_components = num_components
+        self.include_b = include_b
+    def run(self):
+        results = []
+        for data_point in self.data:
+            try:
+                result = fit_decay_curve(
+                    data_point["x"],
+                    data_point["y"],
+                    data_point["title"],
+                    self.num_components,
+                    self.include_b,
+                )
+                results.append((data_point["title"], result))
+            except Exception as e:
+                self.error_occurred.emit(f"An error occurred: {str(e)}")
+                return
+        self.fitting_done.emit(results)    
 
 
 if __name__ == "__main__":
