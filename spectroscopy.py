@@ -616,8 +616,9 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[FIT_BTN].setStyleSheet(
                 """
             QPushButton {
-                background-color: #8d4ef2;
+                background-color: #1E90FF;
                 color: white;
+                width: 60px;
                 border-radius: 5px;
                 padding: 5px 12px;
                 font-weight: bold;
