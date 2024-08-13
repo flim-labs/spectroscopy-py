@@ -106,7 +106,7 @@ class LinLogControl(QWidget):
         y = np.roll(y_data, time_shifts)
         decay_curve.setData(x, y)
         decay_widget.getAxis("left").setTicks([ticks])
-        self.app.set_plot_y_range(decay_widget, self.lin_log_modes[self.channel])
+        self.app.set_plot_y_range(decay_widget)
 
 
     def on_fitting_lin_log_changed(self, state):
@@ -136,8 +136,8 @@ class LinLogControl(QWidget):
                 y_data,
                 pen=None,
                 symbol="o",
-                symbolSize=3,
-                symbolBrush="lime",
+                symbolSize=4,
+                symbolBrush="#04f7ee",
                 name="Counts",
             )
             plot_widget.plot(
@@ -145,7 +145,8 @@ class LinLogControl(QWidget):
                 fitted_data,
                 pen=pg.mkPen("#f72828", width=2),
                 name="Fitted curve",
-            )                                  
+            ) 
+            self.app.set_plot_y_range(plot_widget)                                 
      
       
 

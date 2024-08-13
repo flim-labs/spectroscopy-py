@@ -1206,7 +1206,7 @@ class SpectroscopyWindow(QWidget):
                     axis = curve_widget.getAxis("left")
                     curve_widget.showGrid(x=False, y=True, alpha=0.3)
                     axis.setTicks([ticks])
-                    self.set_plot_y_range(curve_widget, self.lin_log_mode[channel])
+                    self.set_plot_y_range(curve_widget)
                 curve_widget.plotItem.getAxis("left").enableAutoSIPrefix(False)
                 curve_widget.plotItem.getAxis("bottom").enableAutoSIPrefix(False)
                 self.decay_curves[self.tab_selected][channel] = static_curve
@@ -2107,7 +2107,7 @@ class SpectroscopyWindow(QWidget):
         ):
             decay_widget.showGrid(x=False, y=False, alpha=0.3)
             decay_curve.setData(x, np.roll(y, time_shift))
-            self.set_plot_y_range(decay_widget, "LIN")
+            self.set_plot_y_range(decay_widget)
         else:
             decay_widget.showGrid(x=False, y=True, alpha=0.3)
             sum_decay = y
@@ -2117,7 +2117,7 @@ class SpectroscopyWindow(QWidget):
             decay_curve.setData(x, np.roll(log_values, time_shift))
             axis = decay_widget.getAxis("left")
             axis.setTicks([ticks])
-            self.set_plot_y_range(decay_widget, self.lin_log_mode[channel_index])
+            self.set_plot_y_range(decay_widget)
 
     def update_plots2(self, channel_index, time_ns, curve, reader_mode=False):
         if not reader_mode:
@@ -2146,7 +2146,7 @@ class SpectroscopyWindow(QWidget):
         QApplication.processEvents()
         time.sleep(0.01)
 
-    def set_plot_y_range(self, plot, lin_log_mode):
+    def set_plot_y_range(self, plot):
         plot.plotItem.autoRange()
         view_range = plot.viewRange()
         _, y_max = view_range[1]
@@ -2262,6 +2262,8 @@ class SpectroscopyWindow(QWidget):
             self.widgets[READER_POPUP].close()
         if READER_METADATA_POPUP in self.widgets:
             self.widgets[READER_METADATA_POPUP].close()
+        if FITTING_POPUP in self.widgets:
+            self.widgets[FITTING_POPUP].close()   
         event.accept()
 
     def eventFilter(self, source, event):

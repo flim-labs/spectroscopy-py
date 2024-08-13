@@ -73,7 +73,7 @@ class SpectroscopyTimeShift(QWidget):
                     decay_widget.getAxis("left").setTicks([ticks])    
                     y = np.roll(y_data, value)
                     decay_curve.setData(x, y)
-                    self.app.set_plot_y_range(decay_widget, lin_log_mode)
+                    self.app.set_plot_y_range(decay_widget)
         self.app.settings.setValue(SETTINGS_TIME_SHIFTS, json.dumps(self.app.time_shifts))
         
     

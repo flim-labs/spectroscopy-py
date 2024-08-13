@@ -94,6 +94,7 @@ DEFAULT_QUANTIZE_PHASORS = True
 
 READER_POPUP = "reader_popup"
 READER_METADATA_POPUP = "reader_metadata_popup"
+FITTING_POPUP = "fitting_popup"
 
 SETTINGS_ACQUIRE_READ_MODE = "acquire_read_mode"
 DEFAULT_ACQUIRE_READ_MODE = "acquire"

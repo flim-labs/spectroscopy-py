@@ -21,7 +21,7 @@ from components.resource_path import resource_path
 from components.select_control import SelectControl
 from components.switch_control import SwitchControl
 from fit_decay_curve import fit_decay_curve
-from settings import TAB_FITTING
+from settings import FITTING_POPUP, TAB_FITTING
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
@@ -89,6 +89,7 @@ class FittingDecayConfigPopup(QWidget):
         self.main_layout.addSpacing(20)
         self.setLayout(self.main_layout)
         self.update_model_text()
+        self.app.widgets[FITTING_POPUP] = self
         
     
     def initialize_dicts_for_plot_cached_data(self):
@@ -277,6 +278,7 @@ class FittingDecayConfigPopup(QWidget):
         )
         plot_widget = pg.PlotWidget()
         plot_widget.setMinimumHeight(250)
+        plot_widget.setMaximumHeight(250)
         plot_widget.setBackground("#0a0a0a")
         plot_widget.setLabel("left", "Counts", color="white")
         plot_widget.setLabel("bottom", "Time", color="white")
@@ -288,6 +290,7 @@ class FittingDecayConfigPopup(QWidget):
         # Residuals
         residuals_widget = pg.PlotWidget()
         residuals_widget.setMinimumHeight(150)
+        residuals_widget.setMaximumHeight(150)
         residuals_widget.setBackground("#0a0a0a")
         residuals_widget.setLabel("left", "Residuals", color="white")
         residuals_widget.setLabel("bottom", "Time", color="white")
@@ -329,7 +332,7 @@ class FittingDecayConfigPopup(QWidget):
           y_ticks, fitted_data = LinLogControl.calculate_lin_mode(self.cached_fitted_data[channel]["y"])  
         else:
             y_data, __, _ = LinLogControl.calculate_log_ticks(self.cached_counts_data[channel]["y"]) 
-            fitted_data, y_ticks, _ = LinLogControl.calculate_log_ticks(self.cached_fitted_data[channel]["y"])    
+            fitted_data, y_ticks, _ = LinLogControl.calculate_log_ticks(self.cached_fitted_data[channel]["y"]) 
             
         axis = plot_widget.getAxis("left")    
         axis.setTicks([y_ticks])
@@ -343,8 +346,8 @@ class FittingDecayConfigPopup(QWidget):
             y_data,
             pen=None,
             symbol="o",
-            symbolSize=3,
-            symbolBrush="lime",
+            symbolSize=4,
+            symbolBrush="#04f7ee",
             name="Counts",
         )
         plot_widget.plot(
@@ -353,6 +356,7 @@ class FittingDecayConfigPopup(QWidget):
             pen=pg.mkPen("#f72828", width=2),
             name="Fitted curve",
         )
+        self.app.set_plot_y_range(plot_widget)  
         # Residuals
         residuals = np.concatenate(
             (np.full(result["decay_start"], 0), result["residuals"])
@@ -378,9 +382,11 @@ class FittingDecayConfigPopup(QWidget):
 
     def display_error(self, error_message, title):
         error_label = QLabel(f"Error in {title}: {error_message}")
-        error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        error_label.setWordWrap(True)
         error_label.setStyleSheet(
-            f"font-size: {DARK_THEME_TEXT_FONT_SIZE}; color: red; background-color: {DARK_THEME_BG_COLOR};"
+            f"font-size: 20px; color: red; background-color: {DARK_THEME_BG_COLOR};"
         )
         self.plot_layout.addWidget(error_label)
 
