@@ -63,7 +63,6 @@ class FittingDecayConfigPopup(QWidget):
         self.plot_widgets = {}
         self.residuals_widgets = {}
         self.fitted_params_labels = {}
-        self.placeholder_labels = {}
         self.lin_log_modes = {}
         self.lin_log_switches = {}
         self.cached_counts_data = {}
@@ -256,13 +255,6 @@ class FittingDecayConfigPopup(QWidget):
         title_layout.addWidget(chart_title)
         title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addLayout(title_layout)
-        placeholder_label = QLabel(
-            "Plot will be available after fitting is complete..."
-        )
-        placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        placeholder_label.setStyleSheet(
-            "color: #cecece; font-size: 14px; font-family: Montserrat;"
-        )
         # Fitted curve
         fitted_curve_container = QHBoxLayout()
         # LIN LOG
@@ -278,7 +270,7 @@ class FittingDecayConfigPopup(QWidget):
         )
         plot_widget = pg.PlotWidget()
         plot_widget.setMinimumHeight(250)
-        plot_widget.setMaximumHeight(250)
+        plot_widget.setMaximumHeight(300)
         plot_widget.setBackground("#0a0a0a")
         plot_widget.setLabel("left", "Counts", color="white")
         plot_widget.setLabel("bottom", "Time", color="white")
@@ -290,17 +282,16 @@ class FittingDecayConfigPopup(QWidget):
         # Residuals
         residuals_widget = pg.PlotWidget()
         residuals_widget.setMinimumHeight(150)
-        residuals_widget.setMaximumHeight(150)
+        residuals_widget.setMaximumHeight(200)
         residuals_widget.setBackground("#0a0a0a")
         residuals_widget.setLabel("left", "Residuals", color="white")
         residuals_widget.setLabel("bottom", "Time", color="white")
         residuals_widget.getAxis("left").setPen("white")
         residuals_widget.getAxis("bottom").setPen("white")
         residuals_widget.showGrid(x=True, y=True, alpha=0.3)
-        layout.addWidget(placeholder_label)
         layout.addLayout(fitted_curve_container, stretch=2)
         layout.addWidget(residuals_widget, stretch=1)
-        fitted_params_text = QLabel("Fitted parameters will be displayed here.")
+        fitted_params_text = QLabel("")
         fitted_params_text.setStyleSheet("color: #cecece; font-family: Montserrat;")
         layout.addWidget(fitted_params_text)
         charts_wrapper = QWidget()
@@ -312,14 +303,12 @@ class FittingDecayConfigPopup(QWidget):
         self.plot_widgets[channel] = plot_widget
         self.residuals_widgets[channel] = residuals_widget
         self.fitted_params_labels[channel] = fitted_params_text
-        self.placeholder_labels[channel] = placeholder_label
         LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, False)
 
     def update_plot(self, result, channel):
         plot_widget = self.plot_widgets[channel]
         residuals_widget = self.residuals_widgets[channel]
         fitted_params_text = self.fitted_params_labels[channel]
-        placeholder_label = self.placeholder_labels[channel]
         truncated_x_values = result["x_values"][result["decay_start"] :]
         # Cache y values to handle lin/log change
         self.cached_counts_data[channel]["y"] = np.array(result["y_data"]) * result["scale_factor"]
@@ -336,7 +325,6 @@ class FittingDecayConfigPopup(QWidget):
             
         axis = plot_widget.getAxis("left")    
         axis.setTicks([y_ticks])
-        placeholder_label.setVisible(False)
         plot_widget.clear()
         legend = plot_widget.addLegend(offset=(0, 20))
         legend.setParent(plot_widget)
