@@ -2,7 +2,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 
-def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component):
+def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component, channel):
     def decay_model_1_with_B(t, A1, tau1, B):
         return A1 * np.exp(-t / tau1) + B
 
@@ -86,6 +86,7 @@ def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component)
         'fitted_params_text': fitted_params_text,
         'output_data': output_data,
         'scale_factor': scale_factor,
-        'decay_start': decay_start
+        'decay_start': decay_start,
+        'channel': channel
     }
 

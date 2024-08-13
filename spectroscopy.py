@@ -42,7 +42,7 @@ from components.gui_styles import GUIStyles
 from components.helpers import format_size, mhz_to_ns
 from components.input_number_control import InputNumberControl, InputFloatControl
 from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
-from components.lin_log_control import SpectroscopyLinLogControl
+from components.lin_log_control import LinLogControl
 from components.link_widget import LinkWidget
 from components.logo_utilities import OverlayWidget, TitlebarIcon
 from components.plots_config import PlotsConfigPopup
@@ -779,6 +779,7 @@ class SpectroscopyWindow(QWidget):
                     "x": x,
                     "y": y,
                     "title": "Channel " + str(channel_index + 1),
+                    "channel_index": channel_index
                 }
             )
         # check if every x len is the same as y len
@@ -1181,7 +1182,10 @@ class SpectroscopyWindow(QWidget):
                 v_layout.addWidget(intensity_widget_wrapper, 2)
                 # Spectroscopy
                 h_decay_layout = QHBoxLayout()
-                lin_log_widget = SpectroscopyLinLogControl(self, channel)
+                #LIN LOG
+                time_shifts = SpectroscopyTimeShift.get_channel_time_shift(self, channel)
+                lin_log_modes = self.lin_log_mode
+                lin_log_widget = LinLogControl(self, channel, time_shifts=time_shifts, lin_log_modes=lin_log_modes, lin_log_switches= self.lin_log_switches)
                 curve_widget = pg.PlotWidget()
                 curve_widget.setLabel("left", "Photon counts", units="")
                 curve_widget.setLabel("bottom", "Time", units="ns")
@@ -1196,7 +1200,7 @@ class SpectroscopyWindow(QWidget):
              
                 else:
                     log_values, ticks, _ = (
-                        SpectroscopyLinLogControl.calculate_log_ticks(y)
+                        LinLogControl.calculate_log_ticks(y)
                     )
                     static_curve = curve_widget.plot(x, log_values, pen=pg.mkPen(color="#f72828", width=2))  
                     axis = curve_widget.getAxis("left")
@@ -1296,6 +1300,8 @@ class SpectroscopyWindow(QWidget):
                 col_length = 2
             v_widget.setStyleSheet(GUIStyles.chart_wrapper_style())
             self.grid_layout.addWidget(v_widget, i // col_length, i % col_length)
+            
+                     
 
     def calculate_phasors_points_mean(self, channel_index, harmonic):
         x = [p[0] for p in self.all_phasors_points[channel_index][harmonic]]
@@ -1811,7 +1817,7 @@ class SpectroscopyWindow(QWidget):
         QApplication.processEvents()
         self.update_plots_enabled = True
         self.top_bar_set_enabled(False)
-        SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, False)
+        LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, False)
         # self.timer_update.start(18)
         self.pull_from_queue_timer.start(25)
         # self.pull_from_queue()
@@ -2105,7 +2111,7 @@ class SpectroscopyWindow(QWidget):
         else:
             decay_widget.showGrid(x=False, y=True, alpha=0.3)
             sum_decay = y
-            log_values, ticks, _ = SpectroscopyLinLogControl.calculate_log_ticks(
+            log_values, ticks, _ = LinLogControl.calculate_log_ticks(
                 sum_decay
             )
             decay_curve.setData(x, np.roll(log_values, time_shift))
@@ -2191,7 +2197,7 @@ class SpectroscopyWindow(QWidget):
         # self.timer_update.stop()
         # self.update_plots_enabled = False
         is_export_data_active = self.write_data_gui
-        SpectroscopyLinLogControl.set_lin_log_switches_enable_mode(self, True)
+        LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, True)
         self.top_bar_set_enabled(True)
         def clear_cps_and_countdown_widgets():
             for _, animation in self.cps_widgets_animation.items():
