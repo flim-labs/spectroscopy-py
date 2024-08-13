@@ -1,12 +1,14 @@
 import os
 from io import BytesIO
-
+import numpy as np
+import pyqtgraph as pg
 import matplotlib.pyplot as plt
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QCursor, QGuiApplication, QPixmap, QIcon
 from PyQt6.QtWidgets import QWidget, QPushButton, QCheckBox, QComboBox, QHBoxLayout, QVBoxLayout, QLabel, \
-    QApplication, QSpacerItem, QSizePolicy, QScrollArea
+    QApplication, QSpacerItem, QSizePolicy, QScrollArea, QGraphicsLayout, QGridLayout
 
+from components.gui_styles import GUIStyles
 from components.logo_utilities import TitlebarIcon
 from components.resource_path import resource_path
 from fit_decay_curve import fit_decay_curve
@@ -36,20 +38,16 @@ class FittingDecayConfigPopup(QWidget):
         self.setWindowIcon(QIcon(resource_path("assets/spectroscopy-logo.png")))
         self.setStyleSheet(f"background-color: {DARK_THEME_BG_COLOR};")
         self.setWindowState(Qt.WindowState.WindowMaximized)
-
         self.main_layout = QVBoxLayout()
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.main_layout.setContentsMargins(20, 20, 20, 20)
-
         desc = QLabel("Select the number of components for the fitting model and whether to include a B component.")
         desc.setWordWrap(True)
         desc.setStyleSheet(DARK_THEME_LABEL_STYLE)
         self.main_layout.addWidget(desc)
         self.main_layout.addSpacing(20)
-
         components_layout = QVBoxLayout()
         components_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
         self.components_combo = QComboBox()
         self.components_combo.setFixedWidth(200)
         self.components_combo.setStyleSheet(DARK_THEME_RADIO_BTN_STYLE)
@@ -57,63 +55,43 @@ class FittingDecayConfigPopup(QWidget):
         self.components_combo.currentIndexChanged.connect(self.update_model_text)
         components_layout.addWidget(self.components_combo)
         self.main_layout.addLayout(components_layout)
-
         self.b_component_checkbox = QCheckBox("Include B Component")
         self.b_component_checkbox.setStyleSheet(DARK_THEME_RADIO_BTN_STYLE)
         self.b_component_checkbox.stateChanged.connect(self.update_model_text)
         self.main_layout.addWidget(self.b_component_checkbox)
-
         self.model_text = QLabel("")
         self.model_text.setWordWrap(True)
         self.model_text.setStyleSheet(
             f"font-size: {DARK_THEME_TEXT_FONT_SIZE}; color: {DARK_THEME_TEXT_COLOR}; font-family: {DARK_THEME_FONT_FAMILY};")
         self.main_layout.addWidget(self.model_text)
-
         self.main_layout.addSpacing(20)
-
-
         # Create a scroll area for the plots
         self.scroll_area = QScrollArea()
         self.scroll_area.setStyleSheet("background-color: #141414; border: none;")
         self.scroll_area.setWidgetResizable(True)
         # set scroll_area stretch factor to 1
         self.scroll_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
         self.scroll_widget = QWidget()
-        self.plot_layout = QHBoxLayout(self.scroll_widget)
+        self.plot_layout = QGridLayout(self.scroll_widget)
         self.plot_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.scroll_widget.setLayout(self.plot_layout)
-
         self.scroll_area.setWidget(self.scroll_widget)
         self.main_layout.addWidget(self.scroll_area)
-
         self.fitting_message = QLabel("Fitting in progress, please wait...")
         self.fitting_message.setStyleSheet(f"font-size: {DARK_THEME_TEXT_FONT_SIZE}; color: yellow;")
         self.fitting_message.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.fitting_message.setVisible(False)
         self.main_layout.addWidget(self.fitting_message)
-
         self.main_layout.addSpacing(20)
-
         btn_layout = QHBoxLayout()
-        self.cancel_btn = QPushButton("Cancel")
-        self.cancel_btn.setStyleSheet(DARK_THEME_BTN_CANCEL_STYLE)
-        self.cancel_btn.setFixedHeight(DARK_THEME_BTN_HEIGHT)
-        self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.cancel_btn.clicked.connect(self.cancel)
-        btn_layout.addWidget(self.cancel_btn)
-
         self.start_fitting_btn = QPushButton("Start Fitting")
         self.start_fitting_btn.setStyleSheet(DARK_THEME_BTN_STYLE)
         self.start_fitting_btn.setFixedHeight(DARK_THEME_BTN_HEIGHT)
         self.start_fitting_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.start_fitting_btn.clicked.connect(self.start_fitting)
         btn_layout.addWidget(self.start_fitting_btn)
-
         self.main_layout.addLayout(btn_layout)
-
         self.setLayout(self.main_layout)
-
         self.update_model_text()
 
     def update_model_text(self):
@@ -151,15 +129,12 @@ class FittingDecayConfigPopup(QWidget):
     def perform_fitting(self):
         num_components = self.components_combo.currentIndex() + 1
         include_b = self.b_component_checkbox.isChecked()
-
-        for data_point in self.data:
+        for index, data_point in enumerate(self.data):
             result = self.get_plotted_data(data_point['x'], data_point['y'], data_point['title'], num_components, include_b)
             if 'error' in result:
                 self.display_error(result['error'], data_point['title'])
             else:
-                self.display_plot(result['buffer'], data_point['title'])
-
-        self.fitting_message.setVisible(False)
+                self.display_plot(result, data_point['title'], index)
 
     def clear_plots(self):
         for i in reversed(range(self.plot_layout.count())):
@@ -171,21 +146,65 @@ class FittingDecayConfigPopup(QWidget):
         result = fit_decay_curve(x_values, y_values, plot_title, num_components, B_component)
         if 'error' in result:
             return {'error': result['error']}
-        buf = BytesIO()
-        plt.savefig(buf, format='png')
-        buf.seek(0)
-        plt.close()
-        return {'buffer': buf}
+        return result
 
-    def display_plot(self, plot_data, title):
-        plot_label = QLabel(self)
-        pixmap = QPixmap()
-        pixmap.loadFromData(plot_data.getvalue())
-        plot_label.setPixmap(pixmap)
-        plot_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        plot_label.setStyleSheet(f"background-color: {DARK_THEME_BG_COLOR}; border: 1px solid {DARK_THEME_BG_COLOR};")
-        self.plot_layout.addWidget(plot_label)
-        plot_data.close()
+    def display_plot(self, result, title, index):
+        layout = QVBoxLayout()
+        title_layout = QHBoxLayout()
+        chart_title = QLabel(title)
+        chart_title.setStyleSheet("color: #cecece; font-size: 18px; font-family: Montserrat; text-align: center;")
+        title_layout.addWidget(chart_title)
+        title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  
+        layout.addLayout(title_layout)
+        plot_widget = pg.PlotWidget()
+        plot_widget.setMinimumHeight(250)
+        legend = plot_widget.addLegend(offset=(0, 20))
+        legend.setParent(plot_widget)  
+        plot_widget.setBackground('#0a0a0a')
+        truncated_x_values = result['x_values'][result['decay_start']:]
+        plot_widget.plot(truncated_x_values, np.array(result['y_data']) * result['scale_factor'], 
+                        pen=None, symbol='o', symbolSize=3, symbolBrush='lime', name='Counts')
+        plot_widget.plot(result['t_data'], result['fitted_values'] * result['scale_factor'], 
+                        pen=pg.mkPen('#f72828', width=2), name='Fitted curve')
+        plot_widget.setLabel('left', 'Counts', color='white')
+        plot_widget.setLabel('bottom', 'Time', color='white')
+        plot_widget.getAxis('left').setPen('white')
+        plot_widget.getAxis('bottom').setPen('white')
+        plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        residuals_widget = pg.PlotWidget()
+        residuals_widget.setMinimumHeight(150)
+        residuals_widget.setBackground('#0a0a0a')
+        residuals = np.concatenate((np.full(result['decay_start'], 0), result['residuals']))
+        residuals_widget.plot(result["x_values"], residuals, pen=pg.mkPen('#1E90FF', width=2))
+        residuals_widget.addLine(y=0, pen=pg.mkPen('w', style=Qt.PenStyle.DashLine))
+        residuals_widget.setLabel('left', 'Residuals', color='white')
+        residuals_widget.setLabel('bottom', 'Time', color='white')
+        residuals_widget.getAxis('left').setPen('white')
+        residuals_widget.getAxis('bottom').setPen('white')
+        residuals_widget.showGrid(x=True, y=True, alpha=0.3)
+        layout.addWidget(plot_widget, stretch=2)
+        layout.addWidget(residuals_widget, stretch=1)
+        fitted_params_text = QLabel(result['fitted_params_text'])
+        fitted_params_text.setStyleSheet("color: #cecece; font-family: Montserrat;")
+        layout.addWidget(fitted_params_text)
+        charts_wrapper = QWidget()
+        charts_wrapper.setContentsMargins(10, 10, 10, 10) 
+        charts_wrapper.setObjectName("chart_wrapper")
+        charts_wrapper.setLayout(layout)
+        charts_wrapper.setStyleSheet(GUIStyles.chart_wrapper_style())
+        self.add_chart_to_grid(charts_wrapper, index)
+             
+        
+    def add_chart_to_grid(self, chart_widget, index):
+        col_length = 1
+        if len(self.data) == 2:
+            col_length = 2
+        elif len(self.data) == 3:    
+            col_length = 3
+        if len(self.data) > 3:    
+            col_length = 2
+        self.plot_layout.addWidget(chart_widget, index // col_length, index % col_length)    
+        
 
     def display_error(self, error_message, title):
         error_label = QLabel(f"Error in {title}: {error_message}")

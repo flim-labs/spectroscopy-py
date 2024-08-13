@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 
@@ -32,7 +31,7 @@ def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component)
     decay_models_with_B = [decay_model_1_with_B, decay_model_2_with_B, decay_model_3_with_B, decay_model_4_with_B]
 
     decay_start = np.argmax(y_values)
-
+    
     # if y_values is all zeros, return an error
     if sum(y_values) == 0:
         return {"error": "All counts are zero."}
@@ -78,36 +77,15 @@ def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component)
     fitted_values = decay_model(t_data, *popt)
     residuals = np.array(y_data) * scale_factor - fitted_values * scale_factor
 
-    # Plot the overall results and residuals
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), gridspec_kw={'height_ratios': [3, 1]})
+    return {
+        'x_values': x_values,
+        't_data': t_data,
+        'y_data': y_data,
+        'fitted_values': fitted_values,
+        'residuals': residuals,
+        'fitted_params_text': fitted_params_text,
+        'output_data': output_data,
+        'scale_factor': scale_factor,
+        'decay_start': decay_start
+    }
 
-    # Main plot
-    ax1.scatter(x_values, np.array(y_values) * scale_factor, label='Counts', color='lime', s=1)
-    ax1.plot(t_data, decay_model(t_data, *popt) * scale_factor, label='Fitted curve', color='red')
-    ax1.set_xlabel('Time', color='white')
-    ax1.set_ylabel('Counts', color='white')
-    ax1.set_title(plot_title, color='white')
-    ax1.legend(facecolor='grey', edgecolor='white')
-    ax1.set_facecolor('black')
-    fig.patch.set_facecolor('black')
-    ax1.grid(color='white', linestyle='--', linewidth=0.5)
-    ax1.tick_params(colors='white')
-    fig.text(0.02, 0.02, fitted_params_text, fontsize=10, va='bottom', ha='left', color='white',
-             bbox=dict(facecolor='black', alpha=0.8))
-
-    # add initial missing x values to residuals to match the length of x_values
-    residuals = np.concatenate((np.full(decay_start, 0), residuals))
-    ax2.plot(x_values, residuals, color='cyan', linewidth=1)
-    ax2.axhline(0, color='white', linestyle='--', linewidth=0.5)
-    ax2.set_xlabel('Time', color='white')
-    ax2.set_ylabel('Residuals', color='white')
-    ax2.set_facecolor('black')
-    ax2.grid(color='white', linestyle='--', linewidth=0.5)
-    ax2.tick_params(colors='white')
-
-    # Adjust layout to add an empty margin at the bottom
-    plt.subplots_adjust(bottom=0.15)
-
-    plt.tight_layout(rect=[0, 0.05, 1, 1])
-
-    return {'plt': plt, 'output_data': output_data}
