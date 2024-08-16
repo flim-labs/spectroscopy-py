@@ -1,16 +1,5 @@
-% Get the recent spectroscopy file
-userprofile = getenv('USERPROFILE');
-data_folder = fullfile(userprofile, '.flim-labs', 'data');
-
-files = dir(fullfile(data_folder, 'spectroscopy*'));
-file_names = {files.name};
-is_spectroscopy = cellfun(@(x) isempty(strfind(x, 'calibration')) && isempty(strfind(x, 'phasors')), file_names);
-spectroscopy_files = files(is_spectroscopy);
-[~, idx] = sort([spectroscopy_files.datenum], 'descend');
-file_path = fullfile(data_folder, spectroscopy_files(idx(1)).name);
-fprintf('Using data file: %s\n', file_path);
-
-% Open the file
+file_path = '<FILE-PATH>';
+% Open the file            
 fid = fopen(file_path, 'rb');
 if fid == -1
     error('Could not open file');
@@ -19,7 +8,7 @@ end
 % Check for 'SP01' identifier
 sp01 = fread(fid, 4, 'char');
 if ~isequal(char(sp01'), 'SP01')
-    fprintf('Invalid data file\n');
+    fprintf('Invalid data file');
     fclose(fid);
     return;
 end

@@ -63,27 +63,3 @@ while ~feof(fid)
     end
 end
 fclose(fid);
-
-% Calculate the x-axis values based on the laser period
-num_bins = 256;
-x_values = linspace(0, laser_period_ns, num_bins);
-
-% Plotting
-figure;
-hold on;
-xlabel(sprintf('Time (ns, Laser period = %d ns)', laser_period_ns));
-ylabel('Intensity');
-title(sprintf('Spectroscopy (time: %.2fs, curves stored: %d)', round(times(end)), length(times)));
-
-total_max = -inf;
-total_min = inf;
-for i = 1:num_channels
-    sum_curve = sum(channel_curves{i}, 1);
-    total_max = max(total_max, max(sum_curve));
-    total_min = min(total_min, min(sum_curve));
-    plot(x_values, sum_curve, 'DisplayName', sprintf('Channel %d', metadata.channels(i) + 1));
-end
-
-ylim([total_min * 0.99, total_max * 1.01]);
-legend show;
-hold off;

@@ -36,7 +36,7 @@ class ExportData:
             if not new_spectroscopy_file_path:
                 return
             file_paths = {"spectroscopy": new_spectroscopy_file_path}
-            # ExportData.download_scripts(file_paths, save_name, save_dir, "fitting")
+            ExportData.download_scripts(file_paths, save_name, save_dir, "fitting")
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
 
