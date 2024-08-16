@@ -88,7 +88,7 @@ def fit_decay_curve(x_values, y_values, channel):
     # Calculate best fitting model depending on R² value
     for model, initial_guess in decay_models:
         try:
-            popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=50000)
+            popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=1000000000)
             fitted_values = model(t_data, *popt)
             residuals = np.array(y_data) - fitted_values
             

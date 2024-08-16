@@ -17,8 +17,7 @@ from PyQt6.QtWidgets import (
 from components.export_data import ExportData
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
-from components.helpers import convert_ndarray_to_list
-from components.layout_utilities import draw_layout_separator
+from components.layout_utilities import clear_layout_widgets, draw_layout_separator
 from components.lin_log_control import LinLogControl
 from components.resource_path import resource_path
 from fit_decay_curve import convert_fitting_result_into_json_serializable_item, fit_decay_curve
@@ -92,10 +91,13 @@ class FittingDecayConfigPopup(QWidget):
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
         for index, data_point in enumerate(self.data):
-            self.display_plot(data_point["title"], data_point["channel_index"], index)
+            self.display_plot(data_point["title"], data_point["channel_index"], index)    
         self.scroll_widget.setLayout(self.plot_layout)
         self.scroll_area.setWidget(self.scroll_widget)
         self.main_layout.addWidget(self.scroll_area)
+        self.main_layout.addSpacing(10)
+        self.errors_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.errors_layout)
         self.main_layout.addSpacing(20)
         self.setLayout(self.main_layout)
         self.app.widgets[FITTING_POPUP] = self
@@ -121,7 +123,7 @@ class FittingDecayConfigPopup(QWidget):
         controls_row.setAlignment(Qt.AlignmentFlag.AlignBaseline)
         fitting_title = GradientText(
             self,
-            text="FITTING DECAY",
+            text="INTENSITY DECAY FITTING",
             colors=[(0.7, "#1E90FF"), (1.0, PALETTE_RED_1)],
             stylesheet=GUIStyles.set_main_title_style(),
         )
@@ -187,6 +189,7 @@ class FittingDecayConfigPopup(QWidget):
         return loading_row
 
     def start_fitting(self):
+        clear_layout_widgets(self.errors_layout)  
         self.loading_text.setVisible(True)
         self.gif_label.setVisible(True)
         self.worker = FittingWorker(
@@ -230,6 +233,7 @@ class FittingDecayConfigPopup(QWidget):
         self.loading_text.setVisible(False)
         self.gif_label.setVisible(False)
         print(f"Error: {error_message}")
+        self.display_error(error_message, "")
 
     def display_spectroscopy_curve(self, plot_widget, channel):
         data = [d for d in self.data if d["channel_index"] == channel]
@@ -388,13 +392,12 @@ class FittingDecayConfigPopup(QWidget):
         )
 
     def display_error(self, error_message, title):
-        self.error_label = QLabel(f"Error in {title}: {error_message}")
+        self.error_label = QLabel(f"Error {title}: {error_message}")
         self.error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.error_label.setWordWrap(True)
         self.error_label.setStyleSheet(
-            f"font-size: 20px; color: red; background-color: {DARK_THEME_BG_COLOR};"
+            f"font-size: 20px; color: red; background-color: {DARK_THEME_BG_COLOR}; margin-left: 10px;"
         )
-        self.plot_layout.addWidget(self.error_label)
+        self.errors_layout.addWidget(self.error_label)
 
     def on_roi_selection_changed(self, roi, x, y, channel):
         if not roi.isVisible():
@@ -438,8 +441,7 @@ class FittingDecayConfigPopup(QWidget):
         for ch, plot in self.residuals_widgets.items():
             if plot:
                 plot.clear() 
-        if  hasattr(self, "error_label") and self.error_label is not None:        
-            self.plot_layout.removeWidget(self.error_label)    
+        clear_layout_widgets(self.errors_layout)  
         self.fitting_results.clear()      
         self.plot_widgets.clear()   
         self.residuals_widgets.clear()    
