@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QScrollArea,
     QGridLayout,
+    QCheckBox,
 )
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
@@ -39,10 +40,15 @@ DARK_THEME_LABEL_STYLE = (
 
 
 class FittingDecayConfigPopup(QWidget):
-    def __init__(self, window, data):
+    def __init__(
+        self, window, data, preloaded_fitting=None, read_mode=False, save_plot_img=False
+    ):
         super().__init__()
         self.app = window
         self.data = data
+        self.preloaded_fitting = preloaded_fitting
+        self.read_mode = read_mode
+        self.save_plot_img = save_plot_img
         self.setWindowTitle("Spectroscopy - Fitting Decay Config")
         self.setWindowIcon(QIcon(resource_path("assets/spectroscopy-logo.png")))
         self.setStyleSheet(
@@ -63,6 +69,10 @@ class FittingDecayConfigPopup(QWidget):
         self.fitted_params_labels = {}
         self.lin_log_modes = {}
         self.lin_log_switches = {}
+        self.roi_checkboxes = {}
+        self.roi_items = {}
+        self.cut_data_x = {}
+        self.cut_data_y = {}
         self.cached_counts_data = {}
         self.cached_fitted_data = {}
         self.initialize_dicts_for_plot_cached_data()
@@ -86,8 +96,7 @@ class FittingDecayConfigPopup(QWidget):
         self.main_layout.addSpacing(20)
         self.setLayout(self.main_layout)
         self.app.widgets[FITTING_POPUP] = self
-        
-    
+
     def initialize_dicts_for_plot_cached_data(self):
         for index, item in enumerate(self.data):
             channel_index = item["channel_index"]
@@ -98,8 +107,7 @@ class FittingDecayConfigPopup(QWidget):
             self.cached_counts_data[channel_index]["y"] = []
             self.cached_counts_data[channel_index]["x"] = []
             self.cached_fitted_data[channel_index]["y"] = []
-            self.cached_fitted_data[channel_index]["x"] = []    
-        
+            self.cached_fitted_data[channel_index]["x"] = []
 
     def create_controls_bar(self):
         controls_bar_widget = QWidget()
@@ -110,7 +118,7 @@ class FittingDecayConfigPopup(QWidget):
         controls_row.setAlignment(Qt.AlignmentFlag.AlignBaseline)
         fitting_title = GradientText(
             self,
-            text="FITTING",
+            text="FITTING DECAY",
             colors=[(0.7, "#1E90FF"), (1.0, PALETTE_RED_1)],
             stylesheet=GUIStyles.set_main_title_style(),
         )
@@ -134,10 +142,20 @@ class FittingDecayConfigPopup(QWidget):
         start_fitting_btn.setFixedWidth(150)
         start_fitting_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         start_fitting_btn.clicked.connect(self.start_fitting)
+        # Reset btn
+        reset_btn = QPushButton("RESET")
+        reset_btn.setObjectName("btn")
+        GUIStyles.set_stop_btn_style(reset_btn)
+        reset_btn.setFixedHeight(55)
+        reset_btn.setFixedWidth(150)
+        reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        reset_btn.clicked.connect(self.reset)        
         controls_row.addStretch(1)
         controls_row.addWidget(self.export_fitting_btn)
         controls_row.addSpacing(10)
         controls_row.addWidget(start_fitting_btn)
+        controls_row.addSpacing(10)
+        controls_row.addWidget(reset_btn)
         controls_row.addSpacing(20)
         controls_bar.addLayout(controls_row)
         controls_bar.addWidget(draw_layout_separator())
@@ -164,11 +182,12 @@ class FittingDecayConfigPopup(QWidget):
         self.gif_label.setVisible(False)
         return loading_row
 
-
     def start_fitting(self):
         self.loading_text.setVisible(True)
         self.gif_label.setVisible(True)
-        self.worker = FittingWorker(self.data)
+        self.worker = FittingWorker(
+            self.data, self.roi_checkboxes, self.cut_data_x, self.cut_data_y
+        )
         self.worker.fitting_done.connect(self.handle_fitting_done)
         self.worker.error_occurred.connect(self.handle_error)
         self.worker.start()
@@ -183,11 +202,17 @@ class FittingDecayConfigPopup(QWidget):
                 self.display_error(result["error"], title)
             else:
                 channel = next(
-                    (result["channel"] for item in self.data if item["channel_index"] == result["channel"]),
-                    None
+                    (
+                        result["channel"]
+                        for item in self.data
+                        if item["channel_index"] == result["channel"]
+                    ),
+                    None,
                 )
                 if channel is not None:
                     self.update_plot(result, channel)
+        # Hide roi checkboxes
+        self.set_roi_checkboxes_visibility(False)          
         # Enable and style the export button
         self.export_fitting_btn.setEnabled(True)
         self.export_fitting_btn.setStyleSheet(
@@ -201,6 +226,11 @@ class FittingDecayConfigPopup(QWidget):
         self.gif_label.setVisible(False)
         print(f"Error: {error_message}")
 
+    def display_spectroscopy_curve(self, plot_widget, channel):
+        data = [d for d in self.data if d["channel_index"] == channel]
+        plot_widget.plot(data[0]["x"], data[0]["y"], pen=pg.mkPen("#f72828", width=2))
+        return data[0]["x"], data[0]["y"]
+
     def display_plot(self, title, channel, index):
         layout = QVBoxLayout()
         title_layout = QHBoxLayout()
@@ -208,7 +238,12 @@ class FittingDecayConfigPopup(QWidget):
         chart_title.setStyleSheet(
             "color: #cecece; font-size: 18px; font-family: Montserrat; text-align: center;"
         )
+        title_layout.addStretch()
         title_layout.addWidget(chart_title)
+        if not (self.read_mode):
+            title_layout.addStretch()
+            roi_checkbox = self.create_roi_checkbox(channel)
+            title_layout.addWidget(roi_checkbox)
         title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addLayout(title_layout)
         # Fitted curve
@@ -220,9 +255,9 @@ class FittingDecayConfigPopup(QWidget):
             time_shifts=0,
             lin_log_modes=self.lin_log_modes,
             persist_changes=False,
-            data_type= TAB_FITTING,
-            fitting_popup= self,
-            lin_log_switches=self.lin_log_switches
+            data_type=TAB_FITTING,
+            fitting_popup=self,
+            lin_log_switches=self.lin_log_switches,
         )
         plot_widget = pg.PlotWidget()
         plot_widget.setMinimumHeight(250)
@@ -233,6 +268,17 @@ class FittingDecayConfigPopup(QWidget):
         plot_widget.getAxis("left").setPen("white")
         plot_widget.getAxis("bottom").setPen("white")
         plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        if not (self.read_mode):
+            # Spectroscopy curve
+            x, y = self.display_spectroscopy_curve(plot_widget, channel)
+            # Roi selection
+            roi = pg.LinearRegionItem([2, 8])
+            roi.setVisible(False)
+            roi.sigRegionChanged.connect(
+                lambda: self.on_roi_selection_changed(roi, x, y, channel)
+            )
+            self.roi_items[channel] = roi
+            plot_widget.addItem(roi)
         fitted_curve_container.addWidget(lin_log_widget, 1)
         fitted_curve_container.addWidget(plot_widget, 11)
         # Residuals
@@ -267,19 +313,31 @@ class FittingDecayConfigPopup(QWidget):
         fitted_params_text = self.fitted_params_labels[channel]
         truncated_x_values = result["x_values"][result["decay_start"] :]
         # Cache y values to handle lin/log change
-        self.cached_counts_data[channel]["y"] = np.array(result["y_data"]) * result["scale_factor"]
+        self.cached_counts_data[channel]["y"] = (
+            np.array(result["y_data"]) * result["scale_factor"]
+        )
         self.cached_counts_data[channel]["x"] = result["t_data"]
-        self.cached_fitted_data[channel]["y"] = np.array(result["fitted_values"] * result["scale_factor"])
+        self.cached_fitted_data[channel]["y"] = np.array(
+            result["fitted_values"] * result["scale_factor"]
+        )
         self.cached_fitted_data[channel]["x"] = truncated_x_values
         # Retrieve Y values based on active lin/log mode
         if channel not in self.lin_log_modes or self.lin_log_modes[channel] == "LIN":
-          _, y_data = LinLogControl.calculate_lin_mode(self.cached_counts_data[channel]["y"]) 
-          y_ticks, fitted_data = LinLogControl.calculate_lin_mode(self.cached_fitted_data[channel]["y"])  
+            _, y_data = LinLogControl.calculate_lin_mode(
+                self.cached_counts_data[channel]["y"]
+            )
+            y_ticks, fitted_data = LinLogControl.calculate_lin_mode(
+                self.cached_fitted_data[channel]["y"]
+            )
         else:
-            y_data, __, _ = LinLogControl.calculate_log_ticks(self.cached_counts_data[channel]["y"]) 
-            fitted_data, y_ticks, _ = LinLogControl.calculate_log_ticks(self.cached_fitted_data[channel]["y"]) 
-            
-        axis = plot_widget.getAxis("left")    
+            y_data, __, _ = LinLogControl.calculate_log_ticks(
+                self.cached_counts_data[channel]["y"]
+            )
+            fitted_data, y_ticks, _ = LinLogControl.calculate_log_ticks(
+                self.cached_fitted_data[channel]["y"]
+            )
+
+        axis = plot_widget.getAxis("left")
         axis.setTicks([y_ticks])
         plot_widget.clear()
         legend = plot_widget.addLegend(offset=(0, 20))
@@ -300,7 +358,7 @@ class FittingDecayConfigPopup(QWidget):
             pen=pg.mkPen("#f72828", width=2),
             name="Fitted curve",
         )
-        self.app.set_plot_y_range(plot_widget)  
+        self.app.set_plot_y_range(plot_widget)
         # Residuals
         residuals = np.concatenate(
             (np.full(result["decay_start"], 0), result["residuals"])
@@ -313,7 +371,6 @@ class FittingDecayConfigPopup(QWidget):
         if len(fitted_params_text.text()) > 55:
             fitted_params_text.setWordWrap(True)
         fitted_params_text.setText(result["fitted_params_text"])
-        
 
     def add_chart_to_grid(self, chart_widget, index):
         col_length = 1
@@ -325,16 +382,68 @@ class FittingDecayConfigPopup(QWidget):
             chart_widget, index // col_length, index % col_length
         )
 
-
     def display_error(self, error_message, title):
-        error_label = QLabel(f"Error in {title}: {error_message}")
-        
-        error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        error_label.setWordWrap(True)
-        error_label.setStyleSheet(
+        self.error_label = QLabel(f"Error in {title}: {error_message}")
+        self.error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.error_label.setWordWrap(True)
+        self.error_label.setStyleSheet(
             f"font-size: 20px; color: red; background-color: {DARK_THEME_BG_COLOR};"
         )
-        self.plot_layout.addWidget(error_label)
+        self.plot_layout.addWidget(self.error_label)
+
+    def on_roi_selection_changed(self, roi, x, y, channel):
+        if not roi.isVisible():
+            return
+        min_x, max_x = roi.getRegion()
+        mask = (x >= min_x) & (x <= max_x)
+        selected_x = x[mask]
+        selected_y = y[mask]
+        self.cut_data_x[channel] = selected_x
+        self.cut_data_y[channel] = selected_y
+
+    def create_roi_checkbox(self, channel):
+        checkbox = QCheckBox("ROI")
+        checkbox.setStyleSheet(GUIStyles.set_checkbox_style())
+        checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        checkbox.toggled.connect(
+            lambda checked, channel=channel: self.on_roi_checkbox_state_changed(
+                checked, channel
+            )
+        )
+        self.roi_checkboxes[channel] = checkbox
+        return checkbox
+
+    def on_roi_checkbox_state_changed(self, checked: bool, channel: int):
+        if channel in self.roi_items:
+            self.roi_items[channel].setVisible(checked)
+
+    def set_roi_checkboxes_visibility(self, visible):
+        for ch, widget in self.roi_checkboxes.items():
+            if widget is not None:
+                widget.setVisible(visible)
+                
+                
+    def reset(self):
+        for ch, plot in self.plot_widgets.items():
+            if plot:
+                plot.clear()   
+        for ch, plot in self.residuals_widgets.items():
+            if plot:
+                plot.clear() 
+        if self.error_label is not None:        
+            self.plot_layout.removeWidget(self.error_label)      
+        self.plot_widgets.clear()   
+        self.residuals_widgets.clear()    
+        self.fitted_params_labels.clear()    
+        self.roi_items.clear()  
+        self.cut_data_x.clear()   
+        self.cut_data_y.clear()
+        for ch, checkbox in self.roi_checkboxes.items():
+            if checkbox:
+                checkbox.setChecked(False)
+        for index, data_point in enumerate(self.data):
+            self.display_plot(data_point["title"], data_point["channel_index"], index)
+                
 
     def center_window(self):
         screen_number = self.get_current_screen()
@@ -365,23 +474,29 @@ class FittingWorker(QThread):
     )  # Emit a list of tuples (chart title (channel),  fitting result)
     error_occurred = pyqtSignal(str)  # Emit an error message
 
-    def __init__(self, data, parent=None):
+    def __init__(self, data, roi_checkboxes, cut_data_x, cut_data_y, parent=None):
         super().__init__(parent)
         self.data = data
+        self.roi_checkboxes = roi_checkboxes
+        self.cut_data_x = cut_data_x
+        self.cut_data_y = cut_data_y
     
+    def get_data_point(self, data_point, channel):
+        if channel in self.roi_checkboxes and self.roi_checkboxes[channel].isChecked():
+            return self.cut_data_x[channel], self.cut_data_y[channel]
+        else:
+            return data_point["x"], data_point["y"]
+
     def run(self):
         results = []
         for data_point in self.data:
             try:
+                x, y = self.get_data_point(data_point, data_point["channel_index"])
                 result = fit_decay_curve(
-                    data_point["x"],
-                    data_point["y"],
-                    data_point["channel_index"]
+                    x, y, data_point["channel_index"]
                 )
                 results.append((data_point["title"], result))
             except Exception as e:
                 self.error_occurred.emit(f"An error occurred: {str(e)}")
                 return
         self.fitting_done.emit(results)
-
-

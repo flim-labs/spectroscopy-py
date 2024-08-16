@@ -101,7 +101,7 @@ def fit_decay_curve(x_values, y_values, channel):
                 best_model = model
                 best_popt = popt
 
-        except RuntimeError:
+        except RuntimeError as e:
             continue
     
     if best_fit is None:
