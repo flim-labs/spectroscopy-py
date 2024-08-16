@@ -1,36 +1,70 @@
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.special import wofz
 
-def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component, channel):
-    def decay_model_1_with_B(t, A1, tau1, B):
-        return A1 * np.exp(-t / tau1) + B
 
-    def decay_model_2_with_B(t, A1, tau1, A2, tau2, B):
-        return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + B
+def decay_model_1_with_B(t, A1, tau1, B):
+    return A1 * np.exp(-t / tau1) + B
 
-    def decay_model_3_with_B(t, A1, tau1, A2, tau2, A3, tau3, B):
-        return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + A3 * np.exp(-t / tau3) + B
+def decay_model_2_with_B(t, A1, tau1, A2, tau2, B):
+    return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + B
 
-    def decay_model_4_with_B(t, A1, tau1, A2, tau2, A3, tau3, A4, tau4, B):
-        return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + A3 * np.exp(-t / tau3) + A4 * np.exp(-t / tau4) + B
+def decay_model_3_with_B(t, A1, tau1, A2, tau2, A3, tau3, B):
+    return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + A3 * np.exp(-t / tau3) + B
 
-    def decay_model_1(t, A1, tau1):
-        return A1 * np.exp(-t / tau1)
+def decay_model_4_with_B(t, A1, tau1, A2, tau2, A3, tau3, A4, tau4, B):
+    return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + A3 * np.exp(-t / tau3) + A4 * np.exp(-t / tau4) + B
 
-    def decay_model_2(t, A1, tau1, A2, tau2):
-        return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2)
+def decay_model_gaussian(t, A, mu, sigma):
+    return A * np.exp(-(t - mu)**2 / (2 * sigma**2))
 
-    def decay_model_3(t, A1, tau1, A2, tau2, A3, tau3):
-        return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + A3 * np.exp(-t / tau3)
+def decay_model_exp_gaussian(t, A, tau, mu, sigma):
+    return A * np.exp(-t / tau) * np.exp(-(t - mu)**2 / (2 * sigma**2))
 
-    def decay_model_4(t, A1, tau1, A2, tau2, A3, tau3, A4, tau4):
-        return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + A3 * np.exp(-t / tau3) + A4 * np.exp(-t / tau4)
+def decay_model_lorentzian(t, A, mu, gamma):
+    return A * gamma**2 / ((t - mu)**2 + gamma**2)
 
-    decay_models = [decay_model_1, decay_model_2, decay_model_3, decay_model_4]
-    decay_models_with_B = [decay_model_1_with_B, decay_model_2_with_B, decay_model_3_with_B, decay_model_4_with_B]
+def decay_model_lorentzian_gaussian(t, A, mu, gamma, sigma):
+    return A * (gamma**2 / ((t - mu)**2 + gamma**2)) * np.exp(-(t - mu)**2 / (2 * sigma**2))
+
+def decay_model_voigt_profile(t, A, mu, sigma, gamma):
+    z = ((t - mu) + 1j * gamma) / (sigma * np.sqrt(2))
+    return A * np.real(wofz(z))
+
+def decay_model_power_law(t, A, alpha):
+    return A * t**(-alpha)
+
+
+model_formulas = {  
+    decay_model_1_with_B: "A1 * exp(-t / tau1) + B",
+    decay_model_2_with_B: "A1 * exp(-t / tau1) + A2 * exp(-t / tau2) + B",
+    decay_model_3_with_B: "A1 * exp(-t / tau1) + A2 * exp(-t / tau2) + A3 * exp(-t / tau3) + B",
+    decay_model_4_with_B: "A1 * exp(-t / tau1) + A2 * exp(-t / tau2) + A3 * exp(-t / tau3) + A4 * exp(-t / tau4) + B",
+    decay_model_gaussian: "A * exp(-(t - mu)**2 / (2 * sigma**2))",
+    decay_model_exp_gaussian: "A * exp(-t / tau) * exp(-(t - mu)**2 / (2 * sigma**2))",
+    decay_model_lorentzian: "A * gamma**2 / ((t - mu)**2 + gamma**2)",
+    decay_model_lorentzian_gaussian: "A * (gamma**2 / ((t - mu)**2 + gamma**2)) * exp(-(t - mu)**2 / (2 * sigma**2))",
+    decay_model_voigt_profile: "A * real(wofz(((t - mu) + 1j * gamma) / (sigma * sqrt(2))))",
+    decay_model_power_law: "A * t**(-alpha)"
+}
+
+def fit_decay_curve(x_values, y_values, channel):
+
+    decay_models = [
+        (decay_model_1_with_B, [1, 1, 1]),
+        (decay_model_2_with_B, [1, 1, 1, 1, 1]),
+        (decay_model_3_with_B, [1, 1, 1, 1, 1, 1, 1]),
+        (decay_model_4_with_B, [1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        (decay_model_gaussian, [1, 0, 1]),
+        (decay_model_exp_gaussian, [1, 1, 0, 1]),
+        (decay_model_lorentzian, [1, 0, 1]),
+        (decay_model_lorentzian_gaussian, [1, 0, 1, 1]),
+        (decay_model_voigt_profile, [1, 0, 1, 1]),
+        (decay_model_power_law, [1, 1])
+    ]
 
     decay_start = np.argmax(y_values)
-    
+
     # if y_values is all zeros, return an error
     if sum(y_values) == 0:
         return {"error": "All counts are zero."}
@@ -44,54 +78,65 @@ def fit_decay_curve(x_values, y_values, plot_title, num_components, B_component,
     t_data = x_values[decay_start:]
     y_data = y_values[decay_start:]
 
-    # Choose the model and initial guess based on the number of components
-    if num_components < 1 or num_components > 4:
-        return {"error": "Number of components must be between 1 and 4."}
-    decay_model = decay_models[num_components - 1] if not B_component else decay_models_with_B[num_components - 1]
-    initial_guess = [1] * (num_components * 2) if not B_component else [1] * (num_components * 2 + 1)
+    best_r2 = -np.inf
+    best_fit = None
+    best_model = None
+    best_popt = None
 
-    if num_components == 1 and B_component == False:
-        initial_guess[0] = max(y_data) / 2
+    # Calculate best fitting model depending on R² value
+    for model, initial_guess in decay_models:
+        try:
+            popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=1000000000)
+            fitted_values = model(t_data, *popt)
+            residuals = np.array(y_data) - fitted_values
+            
+            # Calculate R²
+            SStot = np.sum((y_data - np.mean(y_data))**2)
+            SSres = np.sum(residuals**2)
+            r2 = 1 - SSres / SStot
 
-    try:
-        maxfev = 1000000000
-        popt, pcov = curve_fit(decay_model, t_data, y_data, p0=initial_guess, maxfev=maxfev)
-    except RuntimeError:
-        return {"error": "Optimal parameters not found: Number of calls to function has reached maxfev."}
+            if r2 > best_r2:
+                best_r2 = r2
+                best_fit = fitted_values
+                best_model = model
+                best_popt = popt
+
+        except RuntimeError:
+            continue
+    
+    if best_fit is None:
+        return {"error": "Optimal parameters not found for any model."}
+
+    output_data = {}
+    num_components = (len(best_popt) - 1) // 2
 
     fitted_params_text = 'Fitted parameters:\n'
-    output_data = {}
     for i in range(num_components):
         y = i * 2
-        SUM = sum(popt[even_index] for even_index in range(0, len(popt), 2))
-        percentage_tau = popt[y] / (SUM + popt[-1]) if B_component else popt[y] / SUM
-        fitted_params_text += f'τ{i + 1} = {popt[y + 1]:.4f} ns, {percentage_tau:.2%} of total\n'
-        output_data[f'component_A{i + 1}'] = {'tau_ns': popt[y + 1], 'percentage': percentage_tau}
-    if B_component:
-        SUM = sum(popt[even_index] for even_index in range(0, len(popt), 2))
-        percentage_tau = popt[-1] / (SUM + popt[-1])
-        fitted_params_text += f'B = {percentage_tau:.2%} of total\n'
-        output_data['component_B'] = popt[-1]
-
-    fitted_values = decay_model(t_data, *popt)
-    residuals = np.array(y_data) - fitted_values
+        SUM = sum(best_popt[even_index] for even_index in range(0, len(best_popt) - 1, 2))
+        percentage_tau = best_popt[y] / (SUM + best_popt[-1])
+        fitted_params_text += f'τ{i + 1} = {best_popt[y + 1]:.4f} ns, {percentage_tau:.2%} of total\n'
+        output_data[f'component_A{i + 1}'] = {'tau_ns': best_popt[y + 1], 'percentage': percentage_tau}
     
-    # Calculate R^2
-    SStot = np.sum((y_data - np.mean(y_data))**2)
-    SSres = np.sum(residuals**2)
-    r2 = 1 - SSres / SStot    
-    fitted_params_text += f'R² = {r2:.4f}\n'
+    SUM = sum(best_popt[even_index] for even_index in range(0, len(best_popt) - 1, 2))
+    percentage_tau = best_popt[-1] / (SUM + best_popt[-1])
+    fitted_params_text += f'B = {percentage_tau:.2%} of total\n'
+    output_data['component_B'] = best_popt[-1]
+
+    fitted_params_text += f'R² = {best_r2:.4f}\n'
+    fitted_params_text += f'Model = {model_formulas[best_model]}\n'
 
     return {
         'x_values': x_values,
         't_data': t_data,
         'y_data': y_data,
-        'fitted_values': fitted_values,
-        'residuals': residuals,
+        'fitted_values': best_fit,
+        'residuals': np.array(y_data) - best_fit,
         'fitted_params_text': fitted_params_text,
         'output_data': output_data,
         'scale_factor': scale_factor,
         'decay_start': decay_start,
         'channel': channel,
-        'r2': r2
+        'r2': best_r2,
+        'model': model_formulas[best_model]  
     }

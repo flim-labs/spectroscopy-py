@@ -9,19 +9,17 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
     QLabel,
-    QApplication,
     QSizePolicy,
     QScrollArea,
     QGridLayout,
 )
+from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
 from components.layout_utilities import draw_layout_separator
 from components.lin_log_control import LinLogControl
 from components.resource_path import resource_path
-from components.select_control import SelectControl
-from components.switch_control import SwitchControl
 from fit_decay_curve import fit_decay_curve
-from settings import FITTING_POPUP, TAB_FITTING
+from settings import FITTING_POPUP, PALETTE_RED_1, TAB_FITTING
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
@@ -87,7 +85,6 @@ class FittingDecayConfigPopup(QWidget):
         self.main_layout.addWidget(self.scroll_area)
         self.main_layout.addSpacing(20)
         self.setLayout(self.main_layout)
-        self.update_model_text()
         self.app.widgets[FITTING_POPUP] = self
         
     
@@ -111,38 +108,14 @@ class FittingDecayConfigPopup(QWidget):
         controls_bar.setContentsMargins(0, 20, 0, 0)
         controls_row = QHBoxLayout()
         controls_row.setAlignment(Qt.AlignmentFlag.AlignBaseline)
-        controls_row.addSpacing(20)
-        # Components select
-        n_components_options = [f"{i} Component(s)" for i in range(1, 5)]
-        _, self.components_select, __ = SelectControl.setup(
-            "Components number:",
-            0,
-            controls_row,
-            n_components_options,
-            self.update_model_text,
-            width=150,
-            control_layout="horizontal",
+        fitting_title = GradientText(
+            self,
+            text="FITTING",
+            colors=[(0.7, "#1E90FF"), (1.0, PALETTE_RED_1)],
+            stylesheet=GUIStyles.set_main_title_style(),
         )
-        self.components_select.setStyleSheet(GUIStyles.set_input_select_style())
-        self.components_select.setFixedHeight(40)
-        # B component switch
-        b_component_container = QHBoxLayout()
-        self.b_component_switch = SwitchControl(
-            active_color="#11468F",
-            checked=False,
-        )
-        self.b_component_switch.toggled.connect(self.update_model_text)
-        b_component_container.addWidget(QLabel("Include B Component:"))
-        b_component_container.addSpacing(8)
-        b_component_container.addWidget(self.b_component_switch)
-        controls_row.addLayout(b_component_container)
-        controls_row.addSpacing(20)
-        # Model text
-        self.model_text = QLabel("")
-        self.model_text.setStyleSheet(
-            f"font-size: 14px; color: #1E90FF; font-family: {DARK_THEME_FONT_FAMILY};"
-        )
-        controls_row.addWidget(self.model_text)
+        controls_row.addSpacing(10)
+        controls_row.addWidget(fitting_title)
         controls_row.addSpacing(20)
         # Export fitting data btn
         self.export_fitting_btn = QPushButton("EXPORT")
@@ -191,28 +164,11 @@ class FittingDecayConfigPopup(QWidget):
         self.gif_label.setVisible(False)
         return loading_row
 
-    def update_model_text(self):
-        num_components = self.components_select.currentIndex() + 1
-        include_b = self.b_component_switch.isChecked()
-        if num_components == -1:
-            self.model_text.setText("")
-            return
-        model_text = "Model: "
-        terms = [f"A{i} * exp(-t / tau{i})" for i in range(1, num_components + 1)]
-        if include_b:
-            terms.append("B")
-        model_text += " + ".join(terms)
-        self.model_text.setText(model_text)
 
     def start_fitting(self):
-        num_components = self.components_select.currentIndex() + 1
-        include_b = self.b_component_switch.isChecked()
-        if num_components == -1:
-            print("Please select the number of components.")
-            return
         self.loading_text.setVisible(True)
         self.gif_label.setVisible(True)
-        self.worker = FittingWorker(self.data, num_components, include_b)
+        self.worker = FittingWorker(self.data)
         self.worker.fitting_done.connect(self.handle_fitting_done)
         self.worker.error_occurred.connect(self.handle_error)
         self.worker.start()
@@ -354,6 +310,8 @@ class FittingDecayConfigPopup(QWidget):
             result["x_values"], residuals, pen=pg.mkPen("#1E90FF", width=2)
         )
         residuals_widget.addLine(y=0, pen=pg.mkPen("w", style=Qt.PenStyle.DashLine))
+        if len(fitted_params_text.text()) > 55:
+            fitted_params_text.setWordWrap(True)
         fitted_params_text.setText(result["fitted_params_text"])
         
 
@@ -407,12 +365,10 @@ class FittingWorker(QThread):
     )  # Emit a list of tuples (chart title (channel),  fitting result)
     error_occurred = pyqtSignal(str)  # Emit an error message
 
-    def __init__(self, data, num_components, include_b, parent=None):
+    def __init__(self, data, parent=None):
         super().__init__(parent)
         self.data = data
-        self.num_components = num_components
-        self.include_b = include_b
-
+    
     def run(self):
         results = []
         for data_point in self.data:
@@ -420,9 +376,6 @@ class FittingWorker(QThread):
                 result = fit_decay_curve(
                     data_point["x"],
                     data_point["y"],
-                    data_point["title"],
-                    self.num_components,
-                    self.include_b,
                     data_point["channel_index"]
                 )
                 results.append((data_point["title"], result))
@@ -432,52 +385,3 @@ class FittingWorker(QThread):
         self.fitting_done.emit(results)
 
 
-if __name__ == "__main__":
-
-    def generate_fake_decay_data(num_bins=256, x_max=12.5):
-        import numpy as np
-
-        x_values = np.linspace(0, x_max, num_bins)
-
-        # Create an initial rapid increase using a sigmoid function
-        increase_length = num_bins // 10
-        decay_length = num_bins - increase_length
-
-        sigmoid = 1 / (
-            1
-            + np.exp(
-                -10 * (x_values[:increase_length] - 0.5 * x_values[increase_length])
-            )
-        )
-        sigmoid = sigmoid / sigmoid[-1] * 1000  # Normalize to a range of counts
-
-        # Create a smooth exponential decay that starts from the last point of increase
-        decay = np.exp(-0.3 * (x_values[increase_length:] - x_values[increase_length]))
-        decay = decay * sigmoid[-1]  # Ensure continuity
-
-        # Concatenate the increase and decay parts
-        y_values = np.concatenate([sigmoid, decay])
-        y_values = y_values[
-            :num_bins
-        ]  # Ensure y_values has the same length as x_values
-
-        # Add random noise with lower amplitude
-        noise = np.random.normal(0, 0.02 * np.max(y_values), num_bins)
-        y_values = y_values + noise
-        y_values = np.maximum(y_values, 0)  # Ensure no negative counts
-
-        return x_values, y_values
-
-    def main():
-        sample_data = [
-            {"x": channel_data[0], "y": channel_data[1], "title": f"Channel {i + 1}"}
-            for i, channel_data in enumerate(
-                [generate_fake_decay_data() for _ in range(3)]
-            )
-        ]
-        app = QApplication([])
-        window = FittingDecayConfigPopup(None, sample_data)
-        window.show()
-        app.exec()
-
-    main()
