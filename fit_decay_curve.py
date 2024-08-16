@@ -2,6 +2,8 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.special import wofz
 
+from components.helpers import convert_ndarray_to_list, convert_np_num_to_py_num
+
 
 def decay_model_1_with_B(t, A1, tau1, B):
     return A1 * np.exp(-t / tau1) + B
@@ -140,3 +142,25 @@ def fit_decay_curve(x_values, y_values, channel):
         'r2': best_r2,
         'model': model_formulas[best_model]  
     }
+
+
+def convert_fitting_result_into_json_serializable_item(results):
+    parsed_results = []
+    for result in results:
+        parsed_result = {
+            'x_values': convert_ndarray_to_list(result[1].get("x_values")),
+            't_data': convert_ndarray_to_list(result[1].get("t_data")),
+            'y_data': convert_ndarray_to_list(result[1].get("y_data")),
+            'fitted_values': convert_ndarray_to_list(result[1].get("fitted_values")),
+            'residuals': convert_ndarray_to_list(result[1].get("residuals")),
+            'fitted_params_text': result[1].get('fitted_params_text'),
+            'output_data': convert_np_num_to_py_num(result[1].get('output_data')),
+            'scale_factor': convert_np_num_to_py_num(result[1].get('scale_factor')),
+            'decay_start': convert_np_num_to_py_num(result[1].get('decay_start')),
+            'channel': result[1].get('channel'),
+            'r2': convert_np_num_to_py_num(result[1].get('r2')),
+            'model': result[1].get('model')
+        }
+        parsed_results.append(parsed_result)
+    return parsed_results
+        

@@ -14,12 +14,14 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QCheckBox,
 )
+from components.export_data import ExportData
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
+from components.helpers import convert_ndarray_to_list
 from components.layout_utilities import draw_layout_separator
 from components.lin_log_control import LinLogControl
 from components.resource_path import resource_path
-from fit_decay_curve import fit_decay_curve
+from fit_decay_curve import convert_fitting_result_into_json_serializable_item, fit_decay_curve
 from settings import FITTING_POPUP, PALETTE_RED_1, TAB_FITTING
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -64,6 +66,7 @@ class FittingDecayConfigPopup(QWidget):
         self.loading_row = self.create_loading_row()
         self.main_layout.addLayout(self.loading_row)
         self.main_layout.addSpacing(10)
+        self.fitting_results = []
         self.plot_widgets = {}
         self.residuals_widgets = {}
         self.fitted_params_labels = {}
@@ -133,6 +136,7 @@ class FittingDecayConfigPopup(QWidget):
         self.export_fitting_btn.setFixedHeight(55)
         self.export_fitting_btn.setFixedWidth(90)
         self.export_fitting_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.export_fitting_btn.clicked.connect(self.export_fitting_data)
         self.export_fitting_btn.setEnabled(False)
         # Start fitting btn
         start_fitting_btn = QPushButton("START FITTING")
@@ -196,6 +200,7 @@ class FittingDecayConfigPopup(QWidget):
     def handle_fitting_done(self, results):
         self.loading_text.setVisible(False)
         self.gif_label.setVisible(False)
+        self.fitting_results = results
         # Process results
         for title, result in results:
             if "error" in result:
@@ -421,7 +426,10 @@ class FittingDecayConfigPopup(QWidget):
         for ch, widget in self.roi_checkboxes.items():
             if widget is not None:
                 widget.setVisible(visible)
-                
+    
+    def export_fitting_data(self):
+        parsed_fitting_results = convert_fitting_result_into_json_serializable_item(self.fitting_results)
+        ExportData.save_fitting_config_json(parsed_fitting_results, self)           
                 
     def reset(self):
         for ch, plot in self.plot_widgets.items():
@@ -431,7 +439,8 @@ class FittingDecayConfigPopup(QWidget):
             if plot:
                 plot.clear() 
         if self.error_label is not None:        
-            self.plot_layout.removeWidget(self.error_label)      
+            self.plot_layout.removeWidget(self.error_label)    
+        self.fitting_results.clear()      
         self.plot_widgets.clear()   
         self.residuals_widgets.clear()    
         self.fitted_params_labels.clear()    
