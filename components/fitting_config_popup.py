@@ -438,7 +438,7 @@ class FittingDecayConfigPopup(QWidget):
         for ch, plot in self.residuals_widgets.items():
             if plot:
                 plot.clear() 
-        if self.error_label is not None:        
+        if  hasattr(self, "error_label") and self.error_label is not None:        
             self.plot_layout.removeWidget(self.error_label)    
         self.fitting_results.clear()      
         self.plot_widgets.clear()   
