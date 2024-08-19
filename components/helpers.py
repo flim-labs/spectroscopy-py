@@ -25,13 +25,24 @@ def mhz_to_ns(frequency_mhz):
     period_ns = period_s * 1e9
     return period_ns
 
+
 def convert_ndarray_to_list(data):
     if isinstance(data, np.ndarray):
         return data.tolist()
     return data
 
+
 def convert_np_num_to_py_num(data):
     if isinstance(data, (np.int64, np.float64)):
         return data.item()
     return data
-    
+
+
+def convert_py_num_to_np_num(output_data):
+    if isinstance(output_data, (int, float)):
+        return (
+            np.float64(output_data)
+            if isinstance(output_data, float)
+            else np.int64(output_data)
+        )
+    return output_data

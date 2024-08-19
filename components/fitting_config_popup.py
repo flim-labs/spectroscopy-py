@@ -91,7 +91,9 @@ class FittingDecayConfigPopup(QWidget):
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
         for index, data_point in enumerate(self.data):
-            self.display_plot(data_point["title"], data_point["channel_index"], index)    
+            self.display_plot(data_point["title"], data_point["channel_index"], index)   
+        if self.read_mode and self.preloaded_fitting:
+            self.process_fitting_results(self.preloaded_fitting)    
         self.scroll_widget.setLayout(self.plot_layout)
         self.scroll_area.setWidget(self.scroll_widget)
         self.main_layout.addWidget(self.scroll_area)
@@ -115,6 +117,7 @@ class FittingDecayConfigPopup(QWidget):
             self.cached_fitted_data[channel_index]["x"] = []
 
     def create_controls_bar(self):
+        from components.buttons import ExportPlotImageButton
         controls_bar_widget = QWidget()
         controls_bar_widget.setStyleSheet("background-color: #1c1c1c")
         controls_bar = QVBoxLayout()
@@ -155,14 +158,21 @@ class FittingDecayConfigPopup(QWidget):
         reset_btn.setFixedHeight(55)
         reset_btn.setFixedWidth(150)
         reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        reset_btn.clicked.connect(self.reset)        
+        reset_btn.clicked.connect(self.reset)  
+        # Export plot img btn
+        self.export_img_btn = ExportPlotImageButton(app = self.app)  
+        self.export_img_btn.setVisible(False)    
         controls_row.addStretch(1)
-        controls_row.addWidget(self.export_fitting_btn)
-        controls_row.addSpacing(10)
-        controls_row.addWidget(start_fitting_btn)
-        controls_row.addSpacing(10)
-        controls_row.addWidget(reset_btn)
-        controls_row.addSpacing(20)
+        if not self.read_mode:
+            controls_row.addWidget(self.export_fitting_btn)
+            controls_row.addSpacing(10)
+            controls_row.addWidget(start_fitting_btn)
+            controls_row.addSpacing(10)
+            controls_row.addWidget(reset_btn)
+            controls_row.addSpacing(20)
+        if self.save_plot_img:
+            controls_row.addWidget(self.export_img_btn) 
+            controls_row.addSpacing(20)         
         controls_bar.addLayout(controls_row)
         controls_bar.addWidget(draw_layout_separator())
         controls_bar_widget.setLayout(controls_bar)
@@ -198,35 +208,42 @@ class FittingDecayConfigPopup(QWidget):
         self.worker.fitting_done.connect(self.handle_fitting_done)
         self.worker.error_occurred.connect(self.handle_error)
         self.worker.start()
-
+    
+    def process_fitting_results(self, results):
+        self.fitting_results = results
+        for result in results:
+                if "error" in result:
+                    title = "Channel " + result["channel"] + 1
+                    self.display_error(result["error"], title)
+                else:
+                    channel = next(
+                        (
+                            result["channel"]
+                            for item in self.data
+                            if item["channel_index"] == result["channel"]
+                        ),
+                        None,
+                    )
+                    if channel is not None:
+                        self.update_plot(result, channel)
+        # Hide roi checkboxes
+        self.set_roi_checkboxes_visibility(False) 
+        LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, True)  
+        if self.save_plot_img:
+            self.export_img_btn.set_data_to_save(results) 
+            self.export_img_btn.setVisible(True)         
+        
     @pyqtSlot(list)
     def handle_fitting_done(self, results):
         self.loading_text.setVisible(False)
         self.gif_label.setVisible(False)
-        self.fitting_results = results
         # Process results
-        for title, result in results:
-            if "error" in result:
-                self.display_error(result["error"], title)
-            else:
-                channel = next(
-                    (
-                        result["channel"]
-                        for item in self.data
-                        if item["channel_index"] == result["channel"]
-                    ),
-                    None,
-                )
-                if channel is not None:
-                    self.update_plot(result, channel)
-        # Hide roi checkboxes
-        self.set_roi_checkboxes_visibility(False)          
+        self.process_fitting_results(results) 
         # Enable and style the export button
         self.export_fitting_btn.setEnabled(True)
         self.export_fitting_btn.setStyleSheet(
             "border: 1px solid #11468F; font-family: Montserrat; color:#11468F; background-color: white; font-weight: bold; padding: 8px; border-radius: 4px;"
         )
-        LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, True)
 
     @pyqtSlot(str)
     def handle_error(self, error_message):
@@ -369,12 +386,10 @@ class FittingDecayConfigPopup(QWidget):
         )
         self.app.set_plot_y_range(plot_widget)
         # Residuals
-        residuals = np.concatenate(
-            (np.full(result["decay_start"], 0), result["residuals"])
-        )
+        residuals = result["residuals"]  
         residuals_widget.clear()
         residuals_widget.plot(
-            result["x_values"], residuals, pen=pg.mkPen("#1E90FF", width=2)
+            truncated_x_values, residuals, pen=pg.mkPen("#1E90FF", width=2)
         )
         residuals_widget.addLine(y=0, pen=pg.mkPen("w", style=Qt.PenStyle.DashLine))
         if len(fitted_params_text.text()) > 55:
@@ -454,6 +469,7 @@ class FittingDecayConfigPopup(QWidget):
                 checkbox.setChecked(False)
         for index, data_point in enumerate(self.data):
             self.display_plot(data_point["title"], data_point["channel_index"], index)
+        self.export_img_btn.setVisible(False)    
                 
 
     def center_window(self):
@@ -506,7 +522,7 @@ class FittingWorker(QThread):
                 result = fit_decay_curve(
                     x, y, data_point["channel_index"]
                 )
-                results.append((data_point["title"], result))
+                results.append((result))
             except Exception as e:
                 self.error_occurred.emit(f"An error occurred: {str(e)}")
                 return

@@ -3,16 +3,19 @@ import json
 import os
 import re
 import struct
+import traceback
 from matplotlib import pyplot as plt
 import numpy as np
 from components.box_message import BoxMessage
 from components.file_utils import compare_file_timestamps
+from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gui_styles import GUIStyles
 from components.helpers import ns_to_mhz
 from components.input_text_control import InputTextControl
 from components.layout_utilities import clear_layout
 from components.messages_utilities import MessagesUtilities
 from components.resource_path import resource_path
+from fit_decay_curve import convert_json_serializable_item_into_np_fitting_result
 from settings import *
 from PyQt6.QtWidgets import (
     QFileDialog,
@@ -53,11 +56,12 @@ class ReadData:
         app.reader_data[active_tab]["files"][file_type] = file_name
         if file_type == "spectroscopy":
             times, channels_curves = data
-            app.reader_data[active_tab]["data"] = {
-                "times": times,
-                "channels_curves": channels_curves,
-            }
-            if active_tab == "phasors":
+            if active_tab == "spectroscopy":
+                app.reader_data[active_tab]["data"] = {
+                    "times": times,
+                    "channels_curves": channels_curves,
+                }
+            if active_tab == "phasors" or active_tab == "fitting":
                 app.reader_data[active_tab]["spectroscopy_metadata"] = metadata
                 app.reader_data[active_tab]["data"]["spectroscopy_data"] = {
                     "times": times,
@@ -67,6 +71,99 @@ class ReadData:
             phasors_data = data[0]
             app.reader_data[active_tab]["data"]["phasors_data"] = phasors_data
             app.reader_data[active_tab]["phasors_metadata"] = metadata
+
+    @staticmethod
+    def read_fitting_data(window, app):
+        result = ReadData.read_json(window, "Fitting")
+        if not result:
+            return
+        file_name, data = result
+        active_channels = [item["channel"] for item in data]
+        if not ReadData.are_spectroscopy_and_fitting_from_same_acquisition(
+            app, active_channels, "fitting"
+        ):
+            return
+        app.reader_data["fitting"]["files"]["fitting"] = file_name
+        app.reader_data["fitting"]["data"]["fitting_data"] = data
+        app.reader_data["fitting"]["metadata"]["channels"] = (
+            ReadData.get_fitting_active_channels(app)
+        )
+
+    @staticmethod
+    def get_fitting_active_channels(app):
+        data = app.reader_data["fitting"]["data"]["fitting_data"]
+        if data:
+            return [item["channel"] for item in data]
+        return []
+
+    @staticmethod
+    def preloaded_fitting_data(app):
+        fitting_file = app.reader_data["fitting"]["files"]["fitting"]
+        if len(fitting_file.strip()) > 0 and app.acquire_read_mode == "read":
+            fitting_results = app.reader_data["fitting"]["data"]["fitting_data"]
+            parsed_fitting_results = convert_json_serializable_item_into_np_fitting_result(fitting_results)
+            return parsed_fitting_results
+        else:
+            return None
+
+    @staticmethod
+    def are_spectroscopy_and_fitting_from_same_acquisition(app, channels, data_origin):
+        def show_error():
+            ReadData.show_warning_message(
+                "Channels mismatch",
+                "Active channels mismatching in Spectroscopy file and Fitting file. Files are not from the same acquisition",
+            )
+
+        if data_origin == "spectroscopy":
+            fitting_channels = ReadData.get_fitting_active_channels(app)
+            if len(fitting_channels) == 0:
+                return True
+            if not (set(channels) == set(fitting_channels)):
+                show_error()
+                return False
+            return True
+        else:
+            spectroscopy_metadata = app.reader_data["fitting"]["spectroscopy_metadata"]
+            if spectroscopy_metadata and "channels" in spectroscopy_metadata:
+                spectroscopy_channels = spectroscopy_metadata["channels"]
+                if not (set(channels) == set(spectroscopy_channels)):
+                    show_error()
+                    return False
+                return True
+            return True
+
+    @staticmethod
+    def read_json(window, file_type):
+        dialog = QFileDialog()
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        dialog.setNameFilter("JSON files (*.json)")
+        file_name, _ = dialog.getOpenFileName(
+            window,
+            f"Load {file_type} file",
+            "",
+            "JSON files (*.json)",
+            options=QFileDialog.Option.DontUseNativeDialog,
+        )
+        if not file_name or not file_name.endswith(".json"):
+            ReadData.show_warning_message(
+                "Invalid extension", "Invalid extension. File should be a .json"
+            )
+            return None, None
+
+        try:
+            with open(file_name, "r") as f:
+                data = json.load(f)
+                return file_name, data
+        except json.JSONDecodeError:
+            ReadData.show_warning_message(
+                "Invalid JSON", "The file could not be parsed as valid JSON."
+            )
+            return None, None
+        except Exception as e:
+            ReadData.show_warning_message(
+                "Error reading file", f"Error reading {file_type} file: {str(e)}"
+            )
+            return None, None
 
     @staticmethod
     def get_data_type(active_tab):
@@ -124,6 +221,37 @@ class ReadData:
                 )
 
     @staticmethod
+    def get_spectroscopy_data_to_fit(app):
+        spectroscopy_data = app.reader_data["fitting"]["data"]["spectroscopy_data"]
+        metadata = app.reader_data["fitting"]["metadata"]
+        channels_curves = spectroscopy_data["channels_curves"]
+        channels = metadata["channels"]
+        laser_period_ns = (
+            metadata["laser_period_ns"]
+            if "laser_period_ns" in metadata and metadata["laser_period_ns"] is not None
+            else 25
+        )
+        data = []
+        num_bins = 256
+        x_values = np.linspace(0, laser_period_ns, num_bins)
+        for channel, curves in channels_curves.items():
+            if channels[channel] in app.plots_to_show:
+                y_values = np.sum(curves, axis=0)
+                if app.tab_selected != TAB_PHASORS:
+                    app.cached_decay_values[app.tab_selected][
+                        channels[channel]
+                    ] = y_values
+                data.append(
+                    {
+                        "x": x_values,
+                        "y": y_values,
+                        "title": "Channel " + str(channels[channel]  + 1),
+                        "channel_index": channels[channel] ,
+                    }
+                )
+        return data        
+
+    @staticmethod
     def plot_phasors_data(app, data, harmonics):
         laser_period_ns = ReadData.get_phasors_laser_period_ns(app)
         app.all_phasors_points = app.get_empty_phasors_points()
@@ -150,7 +278,10 @@ class ReadData:
         frequency_mhz = ns_to_mhz(laser_period_ns)
         for i, channel_index in enumerate(app.plots_to_show):
             app.draw_lifetime_points_in_phasors(
-                channel_index, app.phasors_harmonic_selected, laser_period_ns, frequency_mhz
+                channel_index,
+                app.phasors_harmonic_selected,
+                laser_period_ns,
+                frequency_mhz,
             )
 
     @staticmethod
@@ -234,6 +365,11 @@ class ReadData:
                     app, file_name, file_type.lower(), metadata
                 ):
                     return None
+            if tab_selected == "fitting":
+                if not ReadData.are_spectroscopy_and_fitting_from_same_acquisition(
+                    app, metadata["channels"], "spectroscopy"
+                ):
+                    return None
             channel_curves = {i: [] for i in range(len(metadata["channels"]))}
             times = []
             number_of_channels = len(metadata["channels"])
@@ -249,7 +385,7 @@ class ReadData:
                         return times, channel_curves
                     channel_curves[i].append(np.array(struct.unpack("I" * 256, data)))
             return file_name, "spectroscopy", times, channel_curves, metadata
-        except Exception:
+        except Exception as e:
             ReadData.show_warning_message(
                 "Error reading file", "Error reading Spectroscopy file"
             )
@@ -319,8 +455,7 @@ class ReadData:
             signals.error.connect(show_error_message)
             task = SavePlotTask(plot, base_path, signals)
             QThreadPool.globalInstance().start(task)
-            
-    
+
     @staticmethod
     def get_phasors_laser_period_ns(app):
         metadata = app.reader_data["phasors"]["phasors_metadata"]
@@ -328,7 +463,6 @@ class ReadData:
             return metadata["laser_period_ns"]
         else:
             return 0.0
-                
 
     @staticmethod
     def get_phasors_frequency_mhz(app):
@@ -384,17 +518,25 @@ class ReadDataControls:
 
     @staticmethod
     def handle_widgets_visibility(app, read_mode):
+        if not read_mode:
+            app.fit_button_hide()
+        else:
+            if ReadDataControls.fit_button_enabled(app):
+                app.fit_button_show()  
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(app)
         app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
         app.control_inputs["start_button"].setVisible(not read_mode)
         app.control_inputs["read_bin_button"].setVisible(read_mode)
-        app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(bin_metadata_btn_visible)
+        app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(
+            bin_metadata_btn_visible and app.tab_selected != TAB_FITTING
+        ) 
         app.widgets[TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
         app.widgets["collapse_button"].setVisible(not read_mode)
         app.control_inputs[SETTINGS_BIN_WIDTH].setEnabled(not read_mode)
         app.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(not read_mode)
         app.control_inputs[SETTINGS_FREE_RUNNING].setEnabled(not read_mode)
         app.control_inputs[SETTINGS_CALIBRATION_TYPE].setEnabled(not read_mode)
+        app.control_inputs[SETTINGS_CPS_THRESHOLD].setEnabled(not read_mode)
         app.control_inputs["tau"].setEnabled(not read_mode)
         app.control_inputs[SETTINGS_TIME_SPAN].setEnabled(not read_mode)
         app.control_inputs[SETTINGS_HARMONIC].setEnabled(not read_mode)
@@ -433,6 +575,18 @@ class ReadDataControls:
                 and not (phasors_file.strip() == "")
                 and app.acquire_read_mode == "read"
             )
+
+    @staticmethod
+    def fit_button_enabled(app):
+        tab_selected_fitting = app.tab_selected == TAB_FITTING
+        read_mode = app.acquire_read_mode == "read"
+        fitting_file = app.reader_data["fitting"]["files"]["fitting"]
+        spectroscopy_file = app.reader_data["fitting"]["files"]["spectroscopy"]
+        fitting_file_exists = len(fitting_file.strip()) > 0
+        spectroscopy_file_exists = len(spectroscopy_file.strip()) > 0
+        return tab_selected_fitting and read_mode and (
+            fitting_file_exists or spectroscopy_file_exists
+        )
 
 
 class ReaderPopup(QWidget):
@@ -473,12 +627,16 @@ class ReaderPopup(QWidget):
         v_box = QVBoxLayout()
         files = self.app.reader_data[self.data_type]["files"]
         for file_type, file_path in files.items():
-            if file_type == "phasors" and self.data_type == "phasors":
+            if (file_type == "phasors" and self.data_type == "phasors") or (
+                file_type == "fitting" and self.data_type == "fitting"
+            ):
                 input_desc = QLabel(f"LOAD RELATED {file_type.upper()} FILE:")
             else:
                 input_desc = QLabel(f"LOAD A {file_type.upper()} FILE:")
             input_desc.setStyleSheet("font-size: 16px; font-family: 'Montserrat'")
             control_row = QHBoxLayout()
+
+            file_extension = ".json" if file_type == "fitting" else ".bin"
 
             def on_change(file_type=file_type):
                 def callback(text):
@@ -488,7 +646,7 @@ class ReaderPopup(QWidget):
 
             _, input = InputTextControl.setup(
                 label="",
-                placeholder="Load .bin file",
+                placeholder=f"Load {file_extension} file",
                 event_callback=on_change(),
                 text=file_path,
             )
@@ -548,8 +706,15 @@ class ReaderPopup(QWidget):
             return None
 
     def create_plot_btn_layout(self):
+        fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
+        spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]        
         row_btn = QHBoxLayout()
-        plot_btn = QPushButton("PLOT DATA")
+        # PLOT BTN
+        plot_btn = QPushButton("")
+        if fitting_data and not spectroscopy_data:
+                plot_btn.setText("FIT DATA")   
+        else:     
+            plot_btn.setText("PLOT DATA")     
         plot_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         plot_btn.setObjectName("btn")
         GUIStyles.set_stop_btn_style(plot_btn)
@@ -612,6 +777,11 @@ class ReaderPopup(QWidget):
         self.app.clear_plots()
         self.app.generate_plots()
         self.app.toggle_intensities_widgets_visibility()
+        if ReadDataControls.fit_button_enabled(self.app):
+            self.app.fit_button_show()
+        else:
+            self.app.fit_button_hide()            
+      
 
     def on_loaded_file_change(self, text, file_type):
         if text != self.app.reader_data[self.data_type]["files"][file_type]:
@@ -619,9 +789,13 @@ class ReaderPopup(QWidget):
             self.app.generate_plots()
             self.app.toggle_intensities_widgets_visibility()
         self.app.reader_data[self.data_type]["files"][file_type] = text
+        
 
     def on_load_file_btn_clicked(self, file_type):
-        ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
+        if file_type == "fitting":
+            ReadData.read_fitting_data(self, self.app)
+        else:
+            ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
         file_name = self.app.reader_data[self.data_type]["files"][file_type]
         if file_name is not None and len(file_name) > 0:
             bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(
@@ -631,7 +805,7 @@ class ReaderPopup(QWidget):
                 bin_metadata_btn_visible
             )
             self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(
-                bin_metadata_btn_visible
+                bin_metadata_btn_visible and self.tab_selected != TAB_FITTING
             )
             widget_key = f"load_{file_type}_input"
             self.widgets[widget_key].setText(file_name)
@@ -639,9 +813,28 @@ class ReaderPopup(QWidget):
             channels_layout = self.init_channels_layout()
             if channels_layout is not None:
                 self.layout.insertLayout(2, channels_layout)
+        if ReadDataControls.fit_button_enabled(self.app):
+            self.app.fit_button_show()
+        else:
+            self.app.fit_button_hide()
+        if "plot_btn" in self.widgets:
+            fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
+            spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]
+            if fitting_data and not spectroscopy_data:
+                self.widgets["plot_btn"].setText("FIT DATA")   
+            else: 
+                self.widgets["plot_btn"].setText("PLOT DATA")     
+
+    def on_fit_data_btn_clicked(self):
+        pass
 
     def on_plot_data_btn_clicked(self):
-        ReadData.plot_data(self.app)
+        fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
+        spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]
+        if fitting_data and not spectroscopy_data:
+           self.app.on_fit_btn_click()           
+        else:
+            ReadData.plot_data(self.app)
         self.close()
 
     def center_window(self):
@@ -692,7 +885,11 @@ class ReaderMetadataPopup(QWidget):
     def create_metadata_table(self):
         metadata_keys = self.get_metadata_keys_dict()
         metadata = self.app.reader_data[self.data_type]["metadata"]
-        file = self.app.reader_data[self.data_type]["files"][self.data_type]
+        file = (
+            self.app.reader_data[self.data_type]["files"][self.data_type]
+            if self.data_type != "fitting"
+            else self.app.reader_data[self.data_type]["files"]["spectroscopy"]
+        )
         v_box = QVBoxLayout()
         if metadata:
             title = QLabel(f"{self.data_type.upper()} FILE METADATA")
