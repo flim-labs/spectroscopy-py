@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt, QSize
 from components.read_data import ReadData, ReadDataControls
 from components.resource_path import resource_path
 from components.gui_styles import GUIStyles
-from load_data import plot_phasors_data, plot_spectroscopy_data
+from load_data import plot_fitting_data, plot_phasors_data, plot_spectroscopy_data
 from settings import *
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -151,9 +151,11 @@ class ReadAcquireModeButton(QWidget):
         
 
 class ExportPlotImageButton(QWidget):
-    def __init__(self, app, parent=None):
+    def __init__(self, app, show = True, parent=None):
         super().__init__(parent)
         self.app = app
+        self.show = show
+        self.data = None
         self.export_img_button = self.create_button()
         layout = QVBoxLayout()
         layout.setSpacing(0)
@@ -171,11 +173,15 @@ class ExportPlotImageButton(QWidget):
         export_img_button.setFixedHeight(55)
         export_img_button.setCursor(Qt.CursorShape.PointingHandCursor)
         export_img_button.clicked.connect(self.on_export_plot_image)
-        button_visible = ReadDataControls.read_bin_metadata_enabled(self.app)
+        button_visible = ReadDataControls.read_bin_metadata_enabled(self.app) and self.show
         export_img_button.setVisible(button_visible)
-        self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON] = export_img_button
+        if self.app.tab_selected != TAB_FITTING:
+            self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON] = export_img_button
         return export_img_button
     
+    
+    def set_data_to_save(self, data):
+        self.data = data
     
     def on_export_plot_image(self):
         if self.app.tab_selected == TAB_SPECTROSCOPY:
@@ -186,6 +192,10 @@ class ExportPlotImageButton(QWidget):
             phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves = ReadData.prepare_phasors_data_for_export_img(self.app)
             plot = plot_phasors_data(phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves, self.app.phasors_harmonic_selected, show_plot=False)
             ReadData.save_plot_image(plot)
+        if self.app.tab_selected == TAB_FITTING:
+            if self.data:
+                plot = plot_fitting_data(self.data, show_plot=False)
+                ReadData.save_plot_image(plot)
             
 
      

@@ -16,6 +16,6 @@ class MessagesUtilities:
         if  "SavedDataFiles" in info_msg:
             return ("Files successfully saved", "Data files and scripts saved successfully")
         elif "SavedPlotImage" in info_msg:
-            return ("Image successfully saved", "Plot .png and .eps image saved successfully")
+            return ("Image successfully saved", "Plot .png and .eps images saved successfully")
         else:
             return (None, None)
