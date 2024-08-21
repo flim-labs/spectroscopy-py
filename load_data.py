@@ -296,31 +296,29 @@ def plot_fitting_data(data, show_plot=True):
         fitted_y_data = np.array(result["fitted_values"]) * result["scale_factor"]
 
         axes[row, col].scatter(
-            truncated_x_values, counts_y_data, label="Counts", color="lime", s=1
+            truncated_x_values, counts_y_data, label="Counts", color="green", s=2
         )
         axes[row, col].plot(
             result["t_data"], fitted_y_data, label="Fitted curve", color="red"
         )
-        axes[row, col].set_xlabel("Time", color="white")
-        axes[row, col].set_ylabel("Counts", color="white")
-        axes[row, col].set_title(f"Channel {result['channel'] + 1}", color="white")
-        axes[row, col].legend(facecolor="grey", edgecolor="white")
-        axes[row, col].set_facecolor("black")
-        axes[row, col].grid(color="white", linestyle="--", linewidth=0.5)
-        axes[row, col].tick_params(colors="white")
+        axes[row, col].set_xlabel("Time")
+        axes[row, col].set_ylabel("Counts")
+        axes[row, col].set_title(f"Channel {result['channel'] + 1}")
+        axes[row, col].legend(edgecolor="white")
+        axes[row, col].grid( linestyle="--", linewidth=0.5)
+        axes[row, col].tick_params()
 
         residuals = result["residuals"]  
         residual_axes[row, col].plot(
-            truncated_x_values, residuals, color="cyan", linewidth=1
+            truncated_x_values, residuals, color="blue", linewidth=1
         )
-        residual_axes[row, col].axhline(0, color="white", linestyle="--", linewidth=0.5)
-        residual_axes[row, col].set_xlabel("Time", color="white")
-        residual_axes[row, col].set_ylabel("Residuals", color="white")
-        residual_axes[row, col].set_facecolor("black")
-        residual_axes[row, col].grid(color="white", linestyle="--", linewidth=0.5)
-        residual_axes[row, col].tick_params(colors="white")
+        residual_axes[row, col].axhline(0, linestyle="--", linewidth=0.5)
+        residual_axes[row, col].set_xlabel("Time")
+        residual_axes[row, col].set_ylabel("Residuals")
+        residual_axes[row, col].grid( linestyle="--", linewidth=0.5)
+        residual_axes[row, col].tick_params()
 
-        text_box_props = dict(boxstyle="round", facecolor="black", alpha=0.8)
+        text_box_props = dict(boxstyle="round",  facecolor="white", alpha=0.8)
         residual_axes[row, col].text(
             0.02,
             -0.6,
@@ -329,7 +327,6 @@ def plot_fitting_data(data, show_plot=True):
             fontsize=10,
             va="top",
             ha="left",
-            color="white",
             bbox=text_box_props,
         )
     for i in range(num_plots, num_rows * plots_per_row):
@@ -337,8 +334,7 @@ def plot_fitting_data(data, show_plot=True):
         col = i % plots_per_row
         axes[row, col].axis("off")
         residual_axes[row, col].axis("off")
-
-    fig.patch.set_facecolor("black")
+  
 
     plt.tight_layout(rect=[0, 0.1, 1, 1])        
     if show_plot:

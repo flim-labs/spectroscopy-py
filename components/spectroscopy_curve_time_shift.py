@@ -62,18 +62,19 @@ class SpectroscopyTimeShift(QWidget):
                 decay_curve = self.app.decay_curves[self.app.tab_selected][self.channel]
                 x, y = decay_curve.getData()
                 if x is not None and y is not None:
-                    cached_decay_curve = self.app.cached_decay_values[self.app.tab_selected][channel]
-                    decay_widget = self.app.decay_widgets[channel]
-                    if lin_log_mode == 'LIN':
-                        ticks, y_data = LinLogControl.calculate_lin_mode(cached_decay_curve)
-                        decay_widget.showGrid(x=False, y=False)
-                    else:
-                        ticks, y_data, _ = LinLogControl.calculate_log_mode(cached_decay_curve)
-                        decay_widget.showGrid(x=False, y=True, alpha=0.3)     
-                    decay_widget.getAxis("left").setTicks([ticks])    
-                    y = np.roll(y_data, value)
-                    decay_curve.setData(x, y)
-                    self.app.set_plot_y_range(decay_widget)
+                    if channel in self.app.cached_decay_values[self.app.tab_selected]:
+                        cached_decay_curve = self.app.cached_decay_values[self.app.tab_selected][channel]
+                        decay_widget = self.app.decay_widgets[channel]
+                        if lin_log_mode == 'LIN':
+                            ticks, y_data = LinLogControl.calculate_lin_mode(cached_decay_curve)
+                            decay_widget.showGrid(x=False, y=False)
+                        else:
+                            ticks, y_data, _ = LinLogControl.calculate_log_mode(cached_decay_curve)
+                            decay_widget.showGrid(x=False, y=True, alpha=0.3)     
+                        decay_widget.getAxis("left").setTicks([ticks])    
+                        y = np.roll(y_data, value)
+                        decay_curve.setData(x, y)
+                        self.app.set_plot_y_range(decay_widget)
         self.app.settings.setValue(SETTINGS_TIME_SHIFTS, json.dumps(self.app.time_shifts))
         
     

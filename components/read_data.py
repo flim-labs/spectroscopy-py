@@ -247,6 +247,7 @@ class ReadData:
                         "y": y_values,
                         "title": "Channel " + str(channels[channel]  + 1),
                         "channel_index": channels[channel] ,
+                        "time_shift": 0
                     }
                 )
         return data        

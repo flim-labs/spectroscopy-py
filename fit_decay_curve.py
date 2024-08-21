@@ -21,15 +21,13 @@ model_formulas = {
     decay_model_4_with_B: "A1 * exp(-t / tau1) + A2 * exp(-t / tau2) + A3 * exp(-t / tau3) + A4 * exp(-t / tau4) + B",
 }
 
-def fit_decay_curve(x_values, y_values, channel):
-
+def fit_decay_curve(x_values, y_values, channel, y_shift=0):
     decay_models = [
         (decay_model_1_with_B, [1, 1, 1]),
         (decay_model_2_with_B, [1, 1, 1, 1, 1]),
         (decay_model_3_with_B, [1, 1, 1, 1, 1, 1, 1]),
         (decay_model_4_with_B, [1, 1, 1, 1, 1, 1, 1, 1, 1]),
     ]
-
     decay_start = np.argmax(y_values)
 
     # if y_values is all zeros, return an error

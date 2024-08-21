@@ -357,6 +357,7 @@ class SpectroscopyWindow(QWidget):
 
     def create_control_inputs(self):
         from components.buttons import ExportPlotImageButton
+
         controls_row = QHBoxLayout()
         controls_row.setContentsMargins(0, 10, 0, 0)
         controls_row.addSpacing(10)
@@ -585,8 +586,7 @@ class SpectroscopyWindow(QWidget):
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self)
         bin_metadata_button.setVisible(bin_metadata_btn_visible)
         # EXPORT PLOT IMG BUTTON
-        export_plot_img_button = ExportPlotImageButton(
-            self)
+        export_plot_img_button = ExportPlotImageButton(self)
         # READ BIN BUTTON
         read_bin_button = QPushButton("READ/PLOT")
         read_bin_button.setObjectName("btn")
@@ -770,7 +770,7 @@ class SpectroscopyWindow(QWidget):
             self.acquisition_stopped = True
             self.stop_spectroscopy_experiment()
 
-    def acquired_spectroscopy_data_to_fit(self):
+    def acquired_spectroscopy_data_to_fit(self, read):
         data = []
         channels_shown = [
             channel
@@ -778,17 +778,23 @@ class SpectroscopyWindow(QWidget):
             if channel in self.selected_channels
         ]
         for channel, channel_index in enumerate(channels_shown):
+            time_shift = (
+                0
+                if channel_index not in self.time_shifts
+                else self.time_shifts[channel_index]
+            )
             x, _ = self.decay_curves[self.tab_selected][channel_index].getData()
             y = self.cached_decay_values[self.tab_selected][channel_index]
             data.append(
                 {
-                    "x": x,
+                    "x": x * 1000 if read else x,
                     "y": y,
                     "title": "Channel " + str(channel_index + 1),
                     "channel_index": channel_index,
+                    'time_shift': time_shift
                 }
             )
-        return data
+        return data, time_shift
 
     def read_spectroscopy_data_to_fit(self):
         data = ReadData.get_spectroscopy_data_to_fit(self)
@@ -796,9 +802,10 @@ class SpectroscopyWindow(QWidget):
 
     def on_fit_btn_click(self):
         data = []
+        time_shift = 0
         if self.acquire_read_mode == "read":
             if self.reader_data["fitting"]["data"]["spectroscopy_data"]:
-                data = self.read_spectroscopy_data_to_fit()
+                data, time_shift = self.acquired_spectroscopy_data_to_fit(read=True)
             else:
                 active_channels = ReadData.get_fitting_active_channels(self)
                 for channel in active_channels:
@@ -806,12 +813,13 @@ class SpectroscopyWindow(QWidget):
                         {
                             "x": [0],
                             "y": [0],
+                            "time_shift": 0,
                             "title": "Channel " + str(channel + 1),
                             "channel_index": channel,
                         }
                     )
         else:
-            data = self.acquired_spectroscopy_data_to_fit()
+            data, time_shift = self.acquired_spectroscopy_data_to_fit(read=False)
         # check if every x len is the same as y len
         if not all(len(data[0]["x"]) == len(data[i]["x"]) for i in range(1, len(data))):
             BoxMessage.setup(
@@ -824,8 +832,12 @@ class SpectroscopyWindow(QWidget):
         preloaded_fitting_results = ReadData.preloaded_fitting_data(self)
         read_mode = True if preloaded_fitting_results is not None else False
         self.fitting_config_popup = FittingDecayConfigPopup(
-            self, data, read_mode=read_mode, preloaded_fitting=preloaded_fitting_results,
-            save_plot_img=self.acquire_read_mode == "read"
+            self,
+            data,
+            read_mode=read_mode,
+            preloaded_fitting=preloaded_fitting_results,
+            save_plot_img=self.acquire_read_mode == "read",
+            y_data_shift=time_shift
         )
         self.fitting_config_popup.show()
 
@@ -1674,13 +1686,13 @@ class SpectroscopyWindow(QWidget):
         )
         frequency_mhz = self.get_frequency_mhz()
         if frequency_mhz == 0.0:
-                BoxMessage.setup(
-                    "Error",
-                    "Frequency not detected",
-                    QMessageBox.Icon.Warning,
-                    GUIStyles.set_msg_box_style(),
-                )
-                return        
+            BoxMessage.setup(
+                "Error",
+                "Frequency not detected",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
+            return
         laser_period_ns = mhz_to_ns(frequency_mhz)
         if len(self.selected_channels) == 0:
             BoxMessage.setup(
