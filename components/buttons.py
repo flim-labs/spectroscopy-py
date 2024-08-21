@@ -175,7 +175,8 @@ class ExportPlotImageButton(QWidget):
         export_img_button.clicked.connect(self.on_export_plot_image)
         button_visible = ReadDataControls.read_bin_metadata_enabled(self.app) and self.show
         export_img_button.setVisible(button_visible)
-        self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON] = export_img_button
+        if self.app.tab_selected != TAB_FITTING:
+            self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON] = export_img_button
         return export_img_button
     
     
