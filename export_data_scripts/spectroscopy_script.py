@@ -2,22 +2,7 @@ import os
 import struct
 import matplotlib.pyplot as plt
 import numpy as np
-
-def get_recent_spectroscopy_file():
-    data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
-    files = [
-        f
-        for f in os.listdir(data_folder)
-        if f.startswith("spectroscopy") and not ("calibration" in f) and not ("phasors" in f)
-    ]
-    files.sort(
-        key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
-    )
-    return os.path.join(data_folder, files[0])
-
-file_path = get_recent_spectroscopy_file()
-# file_path = "INSERT DATA FILE PATH HERE" # You can also manually insert the path to the data file here
-print("Using data file: " + file_path)
+file_path = "<FILE-PATH>"
 
 with open(file_path, 'rb') as f:
     # first 4 bytes must be SP01
@@ -101,7 +86,3 @@ with open(file_path, 'rb') as f:
     plt.ylim(total_min * 0.99, total_max * 1.01) 
     plt.tight_layout()   
     plt.show()
-
-        
-        
-        

@@ -1,9 +1,11 @@
-
 import datetime
+import json
 import os
 import shutil
-from PyQt6.QtWidgets import QFileDialog
+from PyQt6.QtWidgets import QFileDialog, QMessageBox
 from components.file_utils import FileUtils
+from components.box_message import BoxMessage
+from components.gui_styles import GUIStyles
 from export_data_scripts.script_files_utils import ScriptFileUtils
 from settings import *
 
@@ -20,7 +22,59 @@ class ExportData:
         elif active_tab == TAB_PHASORS:
             ExportData.save_phasors_data(app)
         else:
-            ExportData.save_fitting_data()
+            ExportData.save_fitting_data(app)
+
+    @staticmethod
+    def save_fitting_data(app):
+        try:
+            spectroscopy_file = FileUtils.get_recent_spectroscopy_file()
+            new_spectroscopy_file_path, save_dir, save_name = (
+                ExportData.rename_and_move_file(
+                    spectroscopy_file, "Save Spectroscopy files", app
+                )
+            )
+            if not new_spectroscopy_file_path:
+                return
+            laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
+                app, save_name, save_dir
+            )
+            file_paths = {
+                "spectroscopy": new_spectroscopy_file_path,
+                "laserblood_metadata": laserblood_metadata_file_path,
+            }
+            ExportData.download_scripts(file_paths, save_name, save_dir, "fitting")
+        except Exception as e:
+            ScriptFileUtils.show_error_message(e)
+
+    @staticmethod
+    def save_fitting_config_json(fitting_data, window):
+        try:
+            dialog = QFileDialog()
+            save_path, _ = dialog.getSaveFileName(
+                window,
+                "Save fitting result file",
+                "",
+                "JSON Files (*.json)",
+                options=QFileDialog.Option.DontUseNativeDialog,
+            )
+            if save_path:
+                if not save_path.lower().endswith(".json"):
+                    save_path += ".json"
+                with open(save_path, "w") as file:
+                    json.dump(fitting_data, file, indent=4)
+                BoxMessage.setup(
+                    "Save file",
+                    "Fitting JSON data saved successfully",
+                    QMessageBox.Icon.Information,
+                    GUIStyles.set_msg_box_style(),
+                )
+        except Exception as e:
+            BoxMessage.setup(
+                "Error",
+                "Error saving fitting JSON",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
 
     @staticmethod
     def save_spectroscopy_data(app):
@@ -89,17 +143,19 @@ class ExportData:
                 return
             original_spectroscopy_ref_name = os.path.basename(spectroscopy_file_ref)
             filter_wavelength_input = next(
-            (
-                input
-                for input in app.laserblood_settings
-                if input["LABEL"] == "Emission filter wavelength"
-            ),
-            None,
+                (
+                    input
+                    for input in app.laserblood_settings
+                    if input["LABEL"] == "Emission filter wavelength"
+                ),
+                None,
             )
             laser_key, filter_key = FileUtils.get_laser_info_slug(
                 app, filter_wavelength_input
             )
-            new_spectroscopy_ref_name = f"{save_name}_{laser_key}_{filter_key}_{original_spectroscopy_ref_name}"
+            new_spectroscopy_ref_name = (
+                f"{save_name}_{laser_key}_{filter_key}_{original_spectroscopy_ref_name}"
+            )
             new_spectroscopy_ref_path = os.path.join(
                 save_dir, new_spectroscopy_ref_name
             )
@@ -116,10 +172,6 @@ class ExportData:
 
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
-
-    @staticmethod
-    def save_fitting_data():
-        pass
 
     @staticmethod
     def download_scripts(bin_file_paths, file_name, directory, script_type):
@@ -146,7 +198,3 @@ class ExportData:
             return new_file_path, save_dir, save_name
         else:
             return None, None, None
-
-
-
-

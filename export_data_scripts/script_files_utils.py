@@ -10,10 +10,12 @@ from components.resource_path import resource_path
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
 
-spectroscopy_py_script_path = resource_path("export_data_scripts/spectroscopy_py_script_for_export.py")  
-spectroscopy_m_script_path = resource_path("export_data_scripts/spectroscopy_m_script_for_export.m") 
-phasors_py_script_path = resource_path("export_data_scripts/phasors_py_script_for_export.py")  
-phasors_m_script_path = resource_path("export_data_scripts/phasors_m_script_for_export.m")  
+spectroscopy_py_script_path = resource_path("export_data_scripts/spectroscopy_script.py")  
+spectroscopy_m_script_path = resource_path("export_data_scripts/spectroscopy_script.m") 
+phasors_py_script_path = resource_path("export_data_scripts/phasors_script.py")  
+phasors_m_script_path = resource_path("export_data_scripts/phasors_script.m")  
+fitting_py_script_path = resource_path("export_data_scripts/fitting_script.py")  
+fitting_m_script_path = resource_path("export_data_scripts/fitting_script.m")  
 
 class ScriptFileUtils:
     
@@ -24,11 +26,14 @@ class ScriptFileUtils:
                 python_modifier, matlab_modifier = cls.get_spectroscopy_content_modifiers()
                 cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
                 cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
-            else:
+            elif script_type == 'phasors':
                 python_modifier, matlab_modifier = cls.get_phasors_content_modifiers()   
                 cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
                 cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
-                
+            else:
+                python_modifier, matlab_modifier = cls.get_fitting_content_modifiers()    
+                cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
+                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
             cls.show_success_message(file_name)                
         except Exception as e:
             cls.show_error_message(str(e))
@@ -84,6 +89,24 @@ class ScriptFileUtils:
             "requirements": [],
         }
         return python_modifier, matlab_modifier
+    
+    @classmethod    
+    def get_fitting_content_modifiers(cls):
+        python_modifier = {
+            "source_file": fitting_py_script_path,
+            "skip_pattern": "def get_recent_spectroscopy_file():",
+            "end_pattern": "with open(file_path, 'rb') as f:",
+            "replace_pattern": "with open(file_path, 'rb') as f:",
+            "requirements": ["matplotlib", "numpy", "scipy"],
+        }
+        matlab_modifier = {
+            "source_file": fitting_m_script_path,      
+            "skip_pattern": "% Get the recent spectroscopy file",
+            "end_pattern": "% Open the file",
+            "replace_pattern": "% Open the file",
+            "requirements": [],
+        }
+        return python_modifier, matlab_modifier    
 
     @classmethod
     def write_file(cls, file_name, content):
