@@ -148,7 +148,8 @@ class ExportData:
             save_dir = os.path.dirname(save_path)
             save_name = os.path.basename(save_path)
             original_filename = os.path.basename(original_file_path)
-            new_filename = f"{save_name}_{original_filename}"
+            replaced_filename = original_filename.replace("spectroscopy-phasors", "phasors-spectroscopy")
+            new_filename = f"{save_name}_{replaced_filename}"
             new_file_path = os.path.join(save_dir, new_filename)
             shutil.copyfile(original_file_path, new_file_path)
             return new_file_path, save_dir, save_name

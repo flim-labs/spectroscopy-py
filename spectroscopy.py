@@ -731,7 +731,7 @@ class SpectroscopyWindow(QWidget):
             channels_grid = self.widgets[CHANNELS_GRID]
             frequency_mhz = self.get_current_frequency_mhz()
             if frequency_mhz != 0:
-                laser_period_ns = mhz_to_ns(frequency_mhz)
+                laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
                 for _, channel in enumerate(self.plots_to_show):
                     self.draw_lifetime_points_in_phasors(
                         channel,
@@ -1693,7 +1693,7 @@ class SpectroscopyWindow(QWidget):
                 GUIStyles.set_msg_box_style(),
             )
             return
-        laser_period_ns = mhz_to_ns(frequency_mhz)
+        laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
         if len(self.selected_channels) == 0:
             BoxMessage.setup(
                 "Error",
@@ -2236,7 +2236,7 @@ class SpectroscopyWindow(QWidget):
 
     def on_harmonic_selector_change(self, value):
         frequency_mhz = self.get_current_frequency_mhz()
-        laser_period_ns = mhz_to_ns(frequency_mhz)
+        laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
         self.clear_phasors_points()
         if not self.phasors_widgets or value < 0:
             return
@@ -2307,7 +2307,7 @@ class SpectroscopyWindow(QWidget):
         )
         if self.is_phasors():
             frequency_mhz = self.get_current_frequency_mhz()
-            laser_period_ns = mhz_to_ns(frequency_mhz)
+            laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
             for _, channel_index in enumerate(self.plots_to_show):
                 self.draw_lifetime_points_in_phasors(
                     channel_index, 1, laser_period_ns, frequency_mhz
