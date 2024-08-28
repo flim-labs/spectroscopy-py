@@ -22,46 +22,34 @@ class ExportData:
         elif active_tab == TAB_PHASORS:
             ExportData.save_phasors_data(app)
         else:
-            ExportData.save_fitting_data(app)
+            return
 
     @staticmethod
-    def save_fitting_data(app):
+    def save_fitting_data(fitting_data, app):
         try:
             spectroscopy_file = get_recent_spectroscopy_file()
             new_spectroscopy_file_path, save_dir, save_name = (
                 ExportData.rename_and_move_file(
-                    spectroscopy_file, "Save Spectroscopy files", app
+                    spectroscopy_file, "Save Fitting files", app
                 )
             )
             if not new_spectroscopy_file_path:
                 return
+            ExportData.save_fitting_config_json(fitting_data, save_dir, save_name)
             file_paths = {"spectroscopy": new_spectroscopy_file_path}
             ExportData.download_scripts(file_paths, save_name, save_dir, "fitting")
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
 
     @staticmethod
-    def save_fitting_config_json(fitting_data, window):
+    def save_fitting_config_json(fitting_data, save_dir, save_name):
         try:
-            dialog = QFileDialog()
-            save_path, _ = dialog.getSaveFileName(
-                window,
-                "Save fitting result file",
-                "",
-                "JSON Files (*.json)",
-                options=QFileDialog.Option.DontUseNativeDialog,
+            file_name = f"{save_name}_fitting_result.json"
+            save_path = os.path.join(
+                save_dir, file_name
             )
-            if save_path:
-                if not save_path.lower().endswith('.json'):
-                    save_path += '.json'
-                with open(save_path, "w") as file:
-                    json.dump(fitting_data, file, indent=4)
-                BoxMessage.setup(
-                    "Save file",
-                    "Fitting JSON data saved successfully",
-                    QMessageBox.Icon.Information,
-                    GUIStyles.set_msg_box_style(),
-                )
+            with open(save_path, "w") as file:
+                json.dump(fitting_data, file, indent=4)
         except Exception as e:
             BoxMessage.setup(
                 "Error",
