@@ -486,6 +486,9 @@ class FittingDecayConfigPopup(QWidget):
         for ch, widget in self.roi_checkboxes.items():
             if widget is not None:
                 widget.setVisible(visible)
+        for ch, widget in self.roi_warnings.items():
+            if widget is not None:
+                widget.setVisible(visible)       
 
     def export_fitting_data(self):
         parsed_fitting_results = convert_fitting_result_into_json_serializable_item(
