@@ -768,7 +768,7 @@ class SpectroscopyWindow(QWidget):
             channels_grid = self.widgets[CHANNELS_GRID]
             frequency_mhz = self.get_current_frequency_mhz()
             if frequency_mhz != 0:
-                laser_period_ns = mhz_to_ns(frequency_mhz)
+                laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
                 for _, channel in enumerate(self.plots_to_show):
                     self.draw_lifetime_points_in_phasors(
                         channel,

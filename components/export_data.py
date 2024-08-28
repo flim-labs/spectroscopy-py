@@ -22,15 +22,15 @@ class ExportData:
         elif active_tab == TAB_PHASORS:
             ExportData.save_phasors_data(app)
         else:
-            ExportData.save_fitting_data(app)
+            return
 
     @staticmethod
-    def save_fitting_data(app):
+    def save_fitting_data(fitting_data, window, app):
         try:
             spectroscopy_file = FileUtils.get_recent_spectroscopy_file()
             new_spectroscopy_file_path, save_dir, save_name = (
                 ExportData.rename_and_move_file(
-                    spectroscopy_file, "Save Spectroscopy files", app
+                    spectroscopy_file, "Save Fitting files", window, app
                 )
             )
             if not new_spectroscopy_file_path:
@@ -38,6 +38,7 @@ class ExportData:
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
                 app, save_name, save_dir
             )
+            ExportData.save_fitting_config_json(fitting_data, save_dir, save_name, app)
             file_paths = {
                 "spectroscopy": new_spectroscopy_file_path,
                 "laserblood_metadata": laserblood_metadata_file_path,
@@ -47,27 +48,15 @@ class ExportData:
             ScriptFileUtils.show_error_message(e)
 
     @staticmethod
-    def save_fitting_config_json(fitting_data, window):
+    def save_fitting_config_json(fitting_data, save_dir, save_name, app):
         try:
-            dialog = QFileDialog()
-            save_path, _ = dialog.getSaveFileName(
-                window,
-                "Save fitting result file",
-                "",
-                "JSON Files (*.json)",
-                options=QFileDialog.Option.DontUseNativeDialog,
+            laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
+            file_name = f"{save_name}_{laser_key}_{filter_key}_fitting_result.json"
+            save_path = os.path.join(
+                save_dir, file_name
             )
-            if save_path:
-                if not save_path.lower().endswith(".json"):
-                    save_path += ".json"
-                with open(save_path, "w") as file:
-                    json.dump(fitting_data, file, indent=4)
-                BoxMessage.setup(
-                    "Save file",
-                    "Fitting JSON data saved successfully",
-                    QMessageBox.Icon.Information,
-                    GUIStyles.set_msg_box_style(),
-                )
+            with open(save_path, "w") as file:
+                json.dump(fitting_data, file, indent=4)
         except Exception as e:
             BoxMessage.setup(
                 "Error",
@@ -82,7 +71,7 @@ class ExportData:
             spectroscopy_file = FileUtils.get_recent_spectroscopy_file()
             new_spectroscopy_file_path, save_dir, save_name = (
                 ExportData.rename_and_move_file(
-                    spectroscopy_file, "Save Spectroscopy files", app
+                    spectroscopy_file, "Save Spectroscopy files", app, app
                 )
             )
             if not new_spectroscopy_file_path:
@@ -111,17 +100,7 @@ class ExportData:
             lines = f.readlines()
             reference_file = lines[0].split("=")[1].strip()
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filter_wavelength_input = next(
-            (
-                input
-                for input in app.laserblood_settings
-                if input["LABEL"] == "Emission filter wavelength"
-            ),
-            None,
-        )
-        laser_key, filter_key = FileUtils.get_laser_info_slug(
-            app, filter_wavelength_input
-        )
+        laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
         full_path = os.path.join(
             directory,
             f"{file_name}_{laser_key}_{filter_key}__spectroscopy_{timestamp}.reference.json",
@@ -131,18 +110,10 @@ class ExportData:
             with open(full_path, "w") as f2:
                 f2.write(f.read())
 
+
     @staticmethod
-    def save_phasors_data(app):
-        try:
-            spectroscopy_file_ref = FileUtils.get_recent_spectroscopy_file()
-            phasors_file = FileUtils.get_recent_phasors_file()
-            new_phasors_file_path, save_dir, save_name = (
-                ExportData.rename_and_move_file(phasors_file, "Save Phasors Files", app)
-            )
-            if not new_phasors_file_path:
-                return
-            original_spectroscopy_ref_name = os.path.basename(spectroscopy_file_ref)
-            filter_wavelength_input = next(
+    def get_laser_filter_type_info(app):
+        filter_wavelength_input = next(
                 (
                     input
                     for input in app.laserblood_settings
@@ -150,9 +121,23 @@ class ExportData:
                 ),
                 None,
             )
-            laser_key, filter_key = FileUtils.get_laser_info_slug(
-                app, filter_wavelength_input
+        laser_key, filter_key = FileUtils.get_laser_info_slug(
+            app, filter_wavelength_input
+        )
+        return laser_key, filter_key
+
+    @staticmethod
+    def save_phasors_data(app):
+        try:
+            spectroscopy_file_ref = FileUtils.get_recent_spectroscopy_file()
+            phasors_file = FileUtils.get_recent_phasors_file()
+            new_phasors_file_path, save_dir, save_name = (
+                ExportData.rename_and_move_file(phasors_file, "Save Phasors Files", app, app)
             )
+            if not new_phasors_file_path:
+                return
+            original_spectroscopy_ref_name = os.path.basename(spectroscopy_file_ref)
+            laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
             new_spectroscopy_ref_name = (
                 f"{save_name}_{laser_key}_{filter_key}_{original_spectroscopy_ref_name}"
             )
@@ -180,10 +165,10 @@ class ExportData:
         )
 
     @staticmethod
-    def rename_and_move_file(original_file_path, file_dialog_prompt, app):
+    def rename_and_move_file(original_file_path, file_dialog_prompt, window, app):
         dialog = QFileDialog()
         save_path, _ = dialog.getSaveFileName(
-            app,
+            window,
             file_dialog_prompt,
             "",
             "All Files (*);;Binary Files (*.bin)",
@@ -192,7 +177,10 @@ class ExportData:
         if save_path:
             save_dir = os.path.dirname(save_path)
             save_name = os.path.basename(save_path)
-            new_filename = FileUtils.rename_bin_file(original_file_path, save_name, app)
+            original_filename = os.path.basename(original_file_path)
+            replaced_filename = original_filename.replace("spectroscopy-phasors", "phasors-spectroscopy")
+            laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
+            new_filename = f"{save_name}_{laser_key}_{filter_key}_{replaced_filename}"
             new_file_path = os.path.join(save_dir, new_filename)
             shutil.copyfile(original_file_path, new_file_path)
             return new_file_path, save_dir, save_name
