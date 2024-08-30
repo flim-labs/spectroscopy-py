@@ -38,7 +38,7 @@ from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
-from components.helpers import format_size, mhz_to_ns
+from components.helpers import format_size, get_realtime_adjustment_value, mhz_to_ns
 from components.input_number_control import InputNumberControl, InputFloatControl
 from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
 from components.lin_log_control import LinLogControl
@@ -2156,7 +2156,7 @@ class SpectroscopyWindow(QWidget):
         bin_width_micros = int(
             self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
         )
-        adjustment = REALTIME_ADJUSTMENT / bin_width_micros
+        adjustment = get_realtime_adjustment_value(self.selected_channels, self.tab_selected == TAB_PHASORS) / bin_width_micros
         curve = tuple(x / adjustment for x in curve)
         if self.tab_selected in self.intensity_lines:
             if channel_index in self.intensity_lines[self.tab_selected]:

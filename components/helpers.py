@@ -46,3 +46,29 @@ def convert_py_num_to_np_num(output_data):
             else np.int64(output_data)
         )
     return output_data
+
+
+
+def get_realtime_adjustment_value(enabled_channels, is_phasors):
+    if is_phasors:
+        if len(enabled_channels) == 1:
+            return 100 * 1000
+        elif len(enabled_channels) == 2:
+            return 200 * 1000
+        elif len(enabled_channels) == 3:
+            return 300 * 1000
+        elif len(enabled_channels) >= 4:
+            return 400 * 1000
+        else:
+            return 0       
+    else:
+        if len(enabled_channels) == 1:
+            return 50 * 1000
+        elif len(enabled_channels) == 2:
+            return 100 * 1000
+        elif len(enabled_channels) == 3:
+            return 150 * 1000
+        elif len(enabled_channels) >= 4:
+            return 200 * 1000
+        else:
+            return 0
