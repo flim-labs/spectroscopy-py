@@ -36,7 +36,7 @@ from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
-from components.helpers import format_size, mhz_to_ns
+from components.helpers import format_size, get_realtime_adjustment_value, mhz_to_ns
 from components.input_number_control import InputNumberControl, InputFloatControl
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
 from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
@@ -130,6 +130,14 @@ class SpectroscopyWindow(QWidget):
         self.lin_log_mode = (
             {int(key): value for key, value in json.loads(default_lin_log_mode).items()}
             if default_lin_log_mode is not None
+            else {}
+        )
+        # ROI
+        default_roi = self.settings.value(SETTINGS_ROI, DEFAULT_ROI
+        )
+        self.roi = (
+            {int(key): value for key, value in json.loads(default_roi).items()}
+            if default_roi is not None
             else {}
         )
         self.decay_curves_queue = queue.Queue()
@@ -770,6 +778,11 @@ class SpectroscopyWindow(QWidget):
             if frequency_mhz != 0:
                 laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
                 for _, channel in enumerate(self.plots_to_show):
+                    if self.acquire_read_mode == "acquire":
+                        if channel in self.phasors_widgets:
+                            self.phasors_widgets[channel].setCursor(Qt.CursorShape.BlankCursor)
+                            self.generate_coords(channel)
+                            self.create_phasor_crosshair(channel, self.phasors_widgets[channel])
                     self.draw_lifetime_points_in_phasors(
                         channel,
                         self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1,
@@ -1373,7 +1386,6 @@ class SpectroscopyWindow(QWidget):
                 phasors_widget.setLabel("left", "s", units="")
                 phasors_widget.setLabel("bottom", "g", units="")
                 phasors_widget.setTitle(f"Channel {channel + 1} phasors")
-                phasors_widget.setCursor(Qt.CursorShape.BlankCursor)
                 self.draw_semi_circle(phasors_widget)
                 self.phasors_charts[channel] = phasors_widget.plot(
                     [],
@@ -1387,15 +1399,10 @@ class SpectroscopyWindow(QWidget):
                 self.phasors_widgets[channel] = phasors_widget
                 v_layout.addWidget(phasors_widget, 4)
                 v_widget.setLayout(v_layout)
-                self.generate_coords(channel)
-                # create crosshair for phasors (a circle)
-                crosshair = pg.TextItem("", anchor=(0.5, 0.5), color=(30, 144, 255))
-                font = QFont()
-                font.setPixelSize(25)
-                crosshair.setFont(font)
-                crosshair.setZValue(3)
-                phasors_widget.addItem(crosshair, ignoreBounds=True)
-                self.phasors_crosshairs[channel] = crosshair
+                if self.acquire_read_mode == "read":
+                    phasors_widget.setCursor(Qt.CursorShape.BlankCursor)
+                    self.generate_coords(channel)
+                    self.create_phasor_crosshair(channel, self.phasors_widgets[channel])
             col_length = 1
             if len(self.plots_to_show) == 2:
                 col_length = 2
@@ -1405,6 +1412,8 @@ class SpectroscopyWindow(QWidget):
                 col_length = 2
             v_widget.setStyleSheet(GUIStyles.chart_wrapper_style())
             self.grid_layout.addWidget(v_widget, i // col_length, i % col_length)
+            
+            
 
     def calculate_phasors_points_mean(self, channel_index, harmonic):
         x = [p[0] for p in self.all_phasors_points[channel_index][harmonic]]
@@ -1489,6 +1498,16 @@ class SpectroscopyWindow(QWidget):
                 legend_item.setPos(0.1, 0)
                 self.phasors_widgets[channel_index].addItem(legend_item)
                 self.phasors_legends[channel_index] = legend_item
+                
+
+    def create_phasor_crosshair(self, channel_index, phasors_widget):
+        crosshair = pg.TextItem("", anchor=(0.5, 0.5), color=(30, 144, 255))
+        font = QFont()
+        font.setPixelSize(25)
+        crosshair.setFont(font)
+        crosshair.setZValue(3)
+        phasors_widget.addItem(crosshair, ignoreBounds=True)
+        self.phasors_crosshairs[channel_index] = crosshair                       
 
     def generate_coords(self, channel_index):
         font = QFont()
@@ -2231,7 +2250,7 @@ class SpectroscopyWindow(QWidget):
         bin_width_micros = int(
             self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
         )
-        adjustment = REALTIME_ADJUSTMENT / bin_width_micros
+        adjustment = get_realtime_adjustment_value(self.selected_channels, self.tab_selected == TAB_PHASORS) / bin_width_micros
         curve = tuple(x / adjustment for x in curve)
         if self.tab_selected in self.intensity_lines:
             if channel_index in self.intensity_lines[self.tab_selected]:
@@ -2384,6 +2403,9 @@ class SpectroscopyWindow(QWidget):
             frequency_mhz = self.get_current_frequency_mhz()
             laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
             for _, channel_index in enumerate(self.plots_to_show):
+                self.phasors_widgets[channel_index].setCursor(Qt.CursorShape.BlankCursor)
+                self.generate_coords(channel_index)
+                self.create_phasor_crosshair(channel_index, self.phasors_widgets[channel_index])
                 self.draw_lifetime_points_in_phasors(
                     channel_index, 1, laser_period_ns, frequency_mhz
                 )

@@ -157,7 +157,7 @@ for i in range(number_of_channels):
     if min_val < total_min:        
         total_min = min_val
     ax.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")   
-ax.set_ylim(total_min * 0.99, total_max * 1.01)        
+ax.set_ylim(total_min * 0.99, total_max * 1.01)     
 ax.legend()
 
 # Phasors plots
@@ -168,6 +168,7 @@ for i, (channel, harmonics) in enumerate(phasors_data.items(), start=1):
     x = np.linspace(0, 1, 1000)
     y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
     ax.plot(x, y)
+    ax.set_aspect('equal') 
  
     for harmonic, values in harmonics.items():
         if values:

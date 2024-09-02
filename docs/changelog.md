@@ -1,4 +1,22 @@
-# Intensity Tracing Changelog
+# Spectroscopy Changelog
+
+## Version 1.5
+- Realtime improvements during Spectroscopy/Phasors acquisitions
+- Improvements on the Fitting algorithm
+- Last ROIs chosen during Fitting analysis are now saved in memory
+
+## Version 1.4
+- User can choose "Reader" mode to read external files for each tab (Spectroscopy/Phasors/Fitting)
+- Improvements on Fitting functionality
+- User can set a CPS threshold to highlight values ​​that exceed the limit
+- User can view the acquisition time countdown
+- Enhanced user-friendliness of bin file/scripts export
+
+## Version 1.3
+- Spectroscopy/Phasors/Fitting mode analysis
+- More user friendly and customizable UI
+- Download Python/Matlab scripts to reconstruct the acquisition
+- User can specify a folder and filename for data export
 
 ## Version 1.0
 
