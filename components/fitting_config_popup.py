@@ -338,6 +338,7 @@ class FittingDecayConfigPopup(QWidget):
             if result is not None:
                 min_x, max_x = result
                 roi.setRegion([min_x, max_x])
+                self.set_roi_mask(roi, x, y, channel) 
             roi.setVisible(False)    
             roi.sigRegionChanged.connect(
                 lambda: self.on_roi_selection_changed(roi, x, y, channel)
@@ -458,12 +459,22 @@ class FittingDecayConfigPopup(QWidget):
             return self.app.roi[channel]
         else:
             return None
-                
 
     def on_roi_selection_changed(self, roi, x, y, channel):
+        self.set_roi_mask(roi, x, y, channel)
+        self.app.settings.setValue(SETTINGS_ROI, json.dumps(self.app.roi))    
+        
+    def set_roi_mask(self, roi, x, y, channel):
         if not roi.isVisible():
             return
         min_x, max_x = roi.getRegion()
+        mask = (x >= min_x) & (x <= max_x)
+        selected_x = x[mask]
+        selected_y = y[mask]
+        self.cut_data_x[channel] = selected_x
+        self.cut_data_y[channel] = selected_y
+        self.app.roi[channel] = (min_x, max_x)        
+                
         
         mask = (x >= min_x) & (x <= max_x)
         selected_x = x[mask]
