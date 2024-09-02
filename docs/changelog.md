@@ -1,5 +1,10 @@
 # Spectroscopy Changelog
 
+## Version 1.5
+- Realtime improvements during Spectroscopy/Phasors acquisitions
+- Improvements on the Fitting algorithm
+- Last ROIs chosen during Fitting analysis are now saved in memory
+
 ## Version 1.4
 - User can choose "Reader" mode to read external files for each tab (Spectroscopy/Phasors/Fitting)
 - Improvements on Fitting functionality
