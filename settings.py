@@ -63,6 +63,9 @@ DEFAULT_PLOTS_TO_SHOW = "[]"
 SETTINGS_LIN_LOG_MODE = "lin_log_mode"
 DEFAULT_LIN_LOG_MODE = "{}"
 
+SETTINGS_ROI = "roi"
+DEFAULT_ROI = "{}"
+
 CHANNELS_GRID = "channels_grid"
 
 

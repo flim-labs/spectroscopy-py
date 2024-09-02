@@ -1,3 +1,4 @@
+import json
 import os
 import numpy as np
 import pyqtgraph as pg
@@ -24,7 +25,7 @@ from fit_decay_curve import (
     convert_fitting_result_into_json_serializable_item,
     fit_decay_curve,
 )
-from settings import FITTING_POPUP, PALETTE_RED_1, TAB_FITTING
+from settings import FITTING_POPUP, PALETTE_RED_1, TAB_FITTING, SETTINGS_ROI
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
@@ -333,7 +334,11 @@ class FittingDecayConfigPopup(QWidget):
             x, y = self.display_spectroscopy_curve(plot_widget, channel)
             # Roi selection
             roi = pg.LinearRegionItem([2, 8])
-            roi.setVisible(False)
+            result = self.get_saved_roi(channel)
+            if result is not None:
+                min_x, max_x = result
+                roi.setRegion([min_x, max_x])
+            roi.setVisible(False)    
             roi.sigRegionChanged.connect(
                 lambda: self.on_roi_selection_changed(roi, x, y, channel)
             )
@@ -447,16 +452,26 @@ class FittingDecayConfigPopup(QWidget):
             f"font-size: 20px; color: red; background-color: {DARK_THEME_BG_COLOR}; margin-left: 10px;"
         )
         self.errors_layout.addWidget(self.error_label)
+        
+    def get_saved_roi(self, channel):
+        if channel in self.app.roi:
+            return self.app.roi[channel]
+        else:
+            return None
+                
 
     def on_roi_selection_changed(self, roi, x, y, channel):
         if not roi.isVisible():
             return
         min_x, max_x = roi.getRegion()
+        
         mask = (x >= min_x) & (x <= max_x)
         selected_x = x[mask]
         selected_y = y[mask]
         self.cut_data_x[channel] = selected_x
         self.cut_data_y[channel] = selected_y
+        self.app.roi[channel] = (min_x, max_x)
+        self.app.settings.setValue(SETTINGS_ROI, json.dumps(self.app.roi))        
 
     def create_roi_checkbox(self, channel):
         checkbox = QCheckBox("ROI")

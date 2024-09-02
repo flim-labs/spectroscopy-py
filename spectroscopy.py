@@ -114,6 +114,14 @@ class SpectroscopyWindow(QWidget):
             if default_lin_log_mode is not None
             else {}
         )
+        # ROI
+        default_roi = self.settings.value(SETTINGS_ROI, DEFAULT_ROI
+        )
+        self.roi = (
+            {int(key): value for key, value in json.loads(default_roi).items()}
+            if default_roi is not None
+            else {}
+        )
         self.decay_curves_queue = queue.Queue()
         self.harmonic_selector_value = int(
             self.settings.value(SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT)
