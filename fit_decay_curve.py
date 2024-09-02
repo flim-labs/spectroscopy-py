@@ -90,19 +90,28 @@ def fit_decay_curve(x_values, y_values, channel, y_shift=0):
 
     fitted_params_text += f'X² = {best_chi2:.4f}\n'
     fitted_params_text += f'Model = {model_formulas[best_model]}\n'
+    
+    residuals = np.array(y_data) - best_fit
+    # R^2
+    SStot = np.sum((y_data - np.mean(y_data))**2)
+    SSres = np.sum(residuals**2)
+    r2 = 1 - SSres / SStot    
+    
+    fitted_params_text += f'R² = {r2:.4f}\n'
 
     return {
         'x_values': x_values,
         't_data': t_data,
         'y_data': y_data,
         'fitted_values': best_fit,
-        'residuals': np.array(y_data) - best_fit,
+        'residuals': residuals,
         'fitted_params_text': fitted_params_text,
         'output_data': output_data,
         'scale_factor': scale_factor,
         'decay_start': decay_start,
         'channel': channel,
         'chi2': best_chi2,
+        'r2': r2,
         'model': model_formulas[best_model]  
     }
 
