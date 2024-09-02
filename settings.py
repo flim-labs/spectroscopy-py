@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 
-VERSION = "1.4"
+VERSION = "1.5"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
 TOP_BAR_HEIGHT = 250
@@ -62,6 +62,9 @@ DEFAULT_PLOTS_TO_SHOW = "[]"
 
 SETTINGS_LIN_LOG_MODE = "lin_log_mode"
 DEFAULT_LIN_LOG_MODE = "{}"
+
+SETTINGS_ROI = "roi"
+DEFAULT_ROI = "{}"
 
 CHANNELS_GRID = "channels_grid"
 

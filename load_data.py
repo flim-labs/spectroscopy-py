@@ -167,6 +167,7 @@ def plot_phasors_data(
         x = np.linspace(0, 1, 1000)
         y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
         ax.plot(x, y)
+        ax.set_aspect('equal') 
         # Plot only the selected harmonic
         for harmonic, values in harmonics.items():
             if selected_harmonic is not None and harmonic != selected_harmonic:

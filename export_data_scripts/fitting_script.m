@@ -94,7 +94,6 @@ function result = fit_decay_curve(x_values, y_values, channel)
     % Start fitting at the point where y_values is maximal
     decay_start = find(y_values == max(y_values), 1, 'first');
 
-
     % check if all y_values are zero
     if sum(y_values) == 0
         result.error = 'All counts are zero.';
@@ -111,12 +110,11 @@ function result = fit_decay_curve(x_values, y_values, channel)
     t_data = x_values(decay_start:end);
     y_data = y_values(decay_start:end);
 
-
     best_chi2 = inf;
     best_fit = [];
     best_model = [];
     best_popt = [];
-
+    tau_similarity_threshold = 0.01;  % Definisci una soglia di somiglianza per i valori di tau
 
     for i = 1:length(decay_models)
         model = decay_models{i}{1};
@@ -153,8 +151,22 @@ function result = fit_decay_curve(x_values, y_values, channel)
         return;
     end
 
-    % Prepare output data
+    % Check for τ values similarity
     num_components = (length(best_popt) - 1) / 2;
+    tau_values = best_popt(2:2:end-1);
+    tau_are_similar = all(abs(tau_values - tau_values(1)) / tau_values(1) < tau_similarity_threshold);
+
+    % If τ values are similar use decay_model_1_with_B by default 
+    if tau_are_similar && num_components > 1
+        model = decay_model_1_with_B;
+        initial_guess = [1, 1, 1];
+        [best_popt, ~, residual, ~] = lsqcurvefit(model, initial_guess, t_data, y_data, [], [], opts);
+        best_fit = model(best_popt, t_data);
+        best_model = model;
+        best_chi2 = sum((y_data - best_fit).^2 ./ (best_fit + epsilon)) / (length(y_data) - length(best_popt));
+    end
+
+    % Prepare output data
     output_data = struct();
     fitted_params_text = '';
 
@@ -171,26 +183,35 @@ function result = fit_decay_curve(x_values, y_values, channel)
     fitted_params_text = sprintf('%sB = %.2f%% of total\n', fitted_params_text, percentage_tau * 100);
     output_data.component_B = best_popt(end);
 
-    fitted_params_text = sprintf('%sX² = %.4f\n', fitted_params_text, best_chi2);
+    fitted_params_text = sprintf('%sX² = %.4f, ', fitted_params_text, best_chi2);
     model_index = find(cellfun(@(f) isequal(f, best_model), decay_models(:,1)), 1);
+    residuals = y_data - best_fit;
+    SStot = sum((y_data - mean(y_data)).^2);
+    SSres = sum(residuals.^2); 
+    % R^2
+    r2 = 1 - SSres / SStot;
+    fitted_params_text = sprintf('%sR² = %.4f\n', fitted_params_text, r2);
+    
     if isempty(model_index)
         model_str = 'Unknown model';
     else
         model_str = model_formulas{model_index};
     end
+
     % Return results
     result = struct( ...
         'x_values', x_values, ...
         't_data', t_data, ...
         'y_data', y_data, ...
         'fitted_values', best_fit, ...
-        'residuals', y_data - best_fit, ...
+        'residuals', residuals, ...
         'fitted_params_text', fitted_params_text, ...
         'output_data', output_data, ...
         'scale_factor', scale_factor, ...
         'decay_start', decay_start, ...
         'channel', channel, ...
         'chi2', best_chi2, ...
+        'r2', r2, ...
         'model', model_str ...
     );
 end

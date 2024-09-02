@@ -88,15 +88,13 @@ with open(file_path, "rb") as f:
         decay_model_4_with_B: "A1 * exp(-t / tau1) + A2 * exp(-t / tau2) + A3 * exp(-t / tau3) + A4 * exp(-t / tau4) + B",
     }
 
-    def fit_decay_curve(x_values, y_values, channel):
-
+    def fit_decay_curve(x_values, y_values, channel, tau_similarity_threshold=0.01):
         decay_models = [
             (decay_model_1_with_B, [1, 1, 1]),
             (decay_model_2_with_B, [1, 1, 1, 1, 1]),
             (decay_model_3_with_B, [1, 1, 1, 1, 1, 1, 1]),
             (decay_model_4_with_B, [1, 1, 1, 1, 1, 1, 1, 1, 1]),
         ]
-
         decay_start = np.argmax(y_values)
 
         # if y_values is all zeros, return an error
@@ -119,7 +117,7 @@ with open(file_path, "rb") as f:
 
         for model, initial_guess in decay_models:
             try:
-                popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=50000)
+                popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=1000000000)
                 fitted_values = model(t_data, *popt)
                 
                 # Chi-square (χ²) calculation to find best model
@@ -141,10 +139,27 @@ with open(file_path, "rb") as f:
         if best_fit is None:
             return {"error": "Optimal parameters not found for any model."}
 
-        output_data = {}
+        # Check for τ values similarity
         num_components = (len(best_popt) - 1) // 2
+        tau_values = [best_popt[2 * i + 1] for i in range(num_components)]
+        tau_are_similar = all(
+            abs(tau_values[i] - tau_values[j]) / tau_values[i] < tau_similarity_threshold
+            for i in range(len(tau_values))
+            for j in range(i + 1, len(tau_values))
+        )
 
+        # If τ values are similar use decay_model_1_with_B by default 
+        if tau_are_similar:
+            model = decay_model_1_with_B
+            initial_guess = [1, 1, 1]
+            popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=1000000000)
+            best_fit = model(t_data, *popt)
+            best_model = model
+            best_popt = popt
+
+        output_data = {}
         fitted_params_text = 'Fitted parameters:\n'
+        
         for i in range(num_components):
             y = i * 2
             SUM = sum(best_popt[even_index] for even_index in range(0, len(best_popt) - 1, 2))
@@ -159,19 +174,27 @@ with open(file_path, "rb") as f:
 
         fitted_params_text += f'X² = {best_chi2:.4f}\n'
         fitted_params_text += f'Model = {model_formulas[best_model]}\n'
+        
+        residuals = np.array(y_data) - best_fit
+        SStot = np.sum((y_data - np.mean(y_data))**2)
+        SSres = np.sum(residuals**2)
+        r2 = 1 - SSres / SStot    
+        
+        fitted_params_text += f'R² = {r2:.4f}\n'
 
         return {
             'x_values': x_values,
             't_data': t_data,
             'y_data': y_data,
             'fitted_values': best_fit,
-            'residuals': np.array(y_data) - best_fit,
+            'residuals': residuals,
             'fitted_params_text': fitted_params_text,
             'output_data': output_data,
             'scale_factor': scale_factor,
             'decay_start': decay_start,
             'channel': channel,
             'chi2': best_chi2,
+            'r2': r2,
             'model': model_formulas[best_model]  
         }
 
