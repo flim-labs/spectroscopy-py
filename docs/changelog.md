@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 1.6
+- Fixes on binned counts granularity
+
 ## Version 1.5
 - Realtime improvements during Spectroscopy/Phasors acquisitions
 - Improvements on the Fitting algorithm
