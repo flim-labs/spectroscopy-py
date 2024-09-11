@@ -1,6 +1,27 @@
 spectroscopy_file_path = '<SPECTROSCOPY-FILE-PATH>'
 phasors_file_path = '<PHASORS-FILE-PATH>'
+laserblood_metadata_file_path = '<LASERBLOOD-METADATA-FILE-PATH>'
 fprintf('Using data file: %s\n', phasors_file_path);
+
+% READ LASERBLOOD EXPERIMENT METADATA
+laserblood_metadata_str = fileread(laserblood_metadata_file_path);
+laserblood_data = jsondecode(laserblood_metadata_str);
+fprintf('\n');
+for i = 1:numel(laserblood_data)
+    item = laserblood_data(i);
+    label = item.label;
+    unit = strtrim(item.unit);
+    if ~isempty(unit)
+        label = sprintf('%s (%s)', label, unit);
+    end
+    value = item.value;
+    if isnumeric(value)
+        value = num2str(value);
+    elseif islogical(value)
+        value = mat2str(value);
+    end
+    fprintf('%s: %s\n', label, value);
+end
 
 % READ SPECTROSCOPY DATA
 spectroscopy_fid = fopen(spectroscopy_file_path, 'rb');

@@ -95,15 +95,15 @@ class ScriptFileUtils:
         python_modifier = {
             "source_file": fitting_py_script_path,
             "skip_pattern": "def get_recent_spectroscopy_file():",
-            "end_pattern": "with open(file_path, 'rb') as f:",
-            "replace_pattern": "with open(file_path, 'rb') as f:",
+            "end_pattern": "# Read laserblood experiment metadata:",
+            "replace_pattern": "# Read laserblood experiment metadata",
             "requirements": ["matplotlib", "numpy", "scipy"],
         }
         matlab_modifier = {
             "source_file": fitting_m_script_path,      
             "skip_pattern": "% Get the recent spectroscopy file",
-            "end_pattern": "% Open the file",
-            "replace_pattern": "% Open the file",
+            "end_pattern": "% READ LASERBLOOD EXPERIMENT METADATA",
+            "replace_pattern": "% READ LASERBLOOD EXPERIMENT METADATA",
             "requirements": [],
         }
         return python_modifier, matlab_modifier    

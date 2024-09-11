@@ -1,6 +1,26 @@
 % ⚠ WARNING: To run this script you need the "optim" package or the Optimization Toolbox installed ⚠
 
 file_path = '<FILE-PATH>';
+laserblood_metadata_file_path = '<LASERBLOOD-METADATA-FILE-PATH>';
+
+% READ LASERBLOOD EXPERIMENT METADATA
+laserblood_metadata_str = fileread(laserblood_metadata_file_path);
+laserblood_data = jsondecode(laserblood_metadata_str);
+fprintf('\n');
+for i = 1:numel(laserblood_data)
+    item = laserblood_data(i);
+    label = item.label;
+    unit = strtrim(item.unit);
+    if ~isempty(unit)
+        label = sprintf('%s (%s)', label, unit);
+    end
+    value = item.value;
+    if isnumeric(value)
+        value = num2str(value);
+    elseif islogical(value)
+        value = mat2str(value);
+    end
+    fprintf('%s: %s\n', label, value);
 
 % Open the file            
 fid = fopen(file_path, 'rb');

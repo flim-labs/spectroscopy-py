@@ -1,10 +1,11 @@
-import os
+import json
 import struct
 import matplotlib.pyplot as plt
 import numpy as np
 
 spectroscopy_file_path = "<SPECTROSCOPY-FILE-PATH>"
 phasors_file_path = "<PHASORS-FILE-PATH>"
+laserblood_metadata_file_path = "<LASERBLOOD-METADATA-FILE-PATH>"
 print("Using phasors_data file: " + phasors_file_path)
 
 def ns_to_mhz(laser_period_ns):
@@ -12,6 +13,15 @@ def ns_to_mhz(laser_period_ns):
     frequency_hz = 1 / period_s
     frequency_mhz = frequency_hz / 1e6
     return frequency_mhz
+
+
+# Read laserblood experiment metadata
+with open(laserblood_metadata_file_path, 'r', encoding='utf-8') as file:
+    print("\n") 
+    data = json.load(file)  
+    for item in data:
+        label = f"{item['label']} ({item['unit']})" if len(item['unit'].strip()) > 0 else f"{item['label']}"
+        print(f"{label}: {item['value']}")
 
 
 # READ PHASORS FILE

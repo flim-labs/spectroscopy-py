@@ -1,8 +1,20 @@
-import os
+import json
 import struct
 import matplotlib.pyplot as plt
 import numpy as np
+
 file_path = "<FILE-PATH>"
+laserblood_metadata_file_path = "<LASERBLOOD-METADATA-FILE-PATH>"
+
+
+# Read laserblood experiment metadata
+with open(laserblood_metadata_file_path, 'r', encoding='utf-8') as file:
+    print("\n") 
+    data = json.load(file)  
+    for item in data:
+        label = f"{item['label']} ({item['unit']})" if len(item['unit'].strip()) > 0 else f"{item['label']}"
+        print(f"{label}: {item['value']}")
+        
 
 with open(file_path, 'rb') as f:
     # first 4 bytes must be SP01
