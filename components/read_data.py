@@ -851,7 +851,8 @@ class ReaderPopup(QWidget):
             if fitting_data and not spectroscopy_data:
                 self.widgets["plot_btn"].setText("FIT DATA")   
             else: 
-                self.widgets["plot_btn"].setText("PLOT DATA")     
+                self.widgets["plot_btn"].setText("PLOT DATA")    
+                 
 
     def errors_in_data(self, file_type):
         if file_type == "phasors":
