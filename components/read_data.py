@@ -46,7 +46,8 @@ class ReadData:
         }
         if file_type not in file_info:
             return
-        result = ReadData.read_bin(window, app, *file_info[file_type], active_tab)
+        filter_string = ReadData.get_bin_filter_file_string(file_type)
+        result = ReadData.read_bin(window, app, *file_info[file_type], active_tab, filter_string)
         if not result:
             return
         file_name, file_type, *data, metadata = result
@@ -70,13 +71,22 @@ class ReadData:
             phasors_data = data[0]
             app.reader_data[active_tab]["data"]["phasors_data"] = phasors_data
             app.reader_data[active_tab]["phasors_metadata"] = metadata
-            
+   
+   
+    @staticmethod
+    def get_bin_filter_file_string(file_type):
+        if file_type == "spectroscopy":
+            return "_spectroscopy_"
+        elif file_type == "phasors":
+            return "phasors-spectroscopy"      
+        else:
+            return None 
             
     @staticmethod
     def read_laserblood_metadata(window, app, tab_selected):
         active_tab = ReadData.get_data_type(tab_selected)
-        result = ReadData.read_json(window, "Laserblood metadata")
-        if not result:
+        result = ReadData.read_json(window, "Laserblood metadata", "laserblood_metadata")
+        if None in result:
             return
         file_name, data = result
         app.reader_data[active_tab]["files"]["laserblood_metadata"] = file_name
@@ -84,20 +94,14 @@ class ReadData:
 
     @staticmethod
     def read_fitting_data(window, app):
-        result = ReadData.read_json(window, "Fitting")
-        if not result:
+        result = ReadData.read_json(window, "Fitting", "fitting_result")
+        if None in result:
             return
         file_name, data = result
         active_channels = [item["channel"] for item in data]
-        if not ReadData.are_spectroscopy_and_fitting_from_same_acquisition(
-            app, active_channels, "fitting"
-        ):
-            return
         app.reader_data["fitting"]["files"]["fitting"] = file_name
         app.reader_data["fitting"]["data"]["fitting_data"] = data
-        app.reader_data["fitting"]["metadata"]["channels"] = (
-            ReadData.get_fitting_active_channels(app)
-        )
+        app.reader_data["fitting"]["metadata"]["channels"] = active_channels
 
     @staticmethod
     def get_fitting_active_channels(app):
@@ -123,38 +127,33 @@ class ReadData:
                 "Channels mismatch",
                 "Active channels mismatching in Spectroscopy file and Fitting file. Files are not from the same acquisition",
             )
-
-        if data_origin == "spectroscopy":
-            fitting_channels = ReadData.get_fitting_active_channels(app)
-            if len(fitting_channels) == 0:
-                return True
-            if not (set(channels) == set(fitting_channels)):
-                show_error()
-                return False
-            return True
-        else:
-            spectroscopy_metadata = app.reader_data["fitting"]["spectroscopy_metadata"]
-            if spectroscopy_metadata and "channels" in spectroscopy_metadata:
-                spectroscopy_channels = spectroscopy_metadata["channels"]
-                if not (set(channels) == set(spectroscopy_channels)):
-                    show_error()
-                    return False
-                return True
-            return True
+        fitting_channels = ReadData.get_fitting_active_channels(app)
+        spectroscopy_metadata = app.reader_data["fitting"]["spectroscopy_metadata"]
+        spectroscopy_channels = spectroscopy_metadata["channels"]
+        if not (set(fitting_channels) == set(spectroscopy_channels)):
+            show_error()
+            return False
+        return True
 
     @staticmethod
-    def read_json(window, file_type):
+    def read_json(window, file_type, filter_string = None):
         dialog = QFileDialog()
         dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
-        dialog.setNameFilter("JSON files (*.json)")
+        if filter_string:
+            filter_pattern = f"JSON files (*{filter_string}*.json)"
+        else:
+            filter_pattern = "JSON files (*.json)"
+        dialog.setNameFilter(filter_pattern)        
         file_name, _ = dialog.getOpenFileName(
             window,
             f"Load {file_type} file",
             "",
-            "JSON files (*.json)",
+            filter_pattern,
             options=QFileDialog.Option.DontUseNativeDialog,
         )
-        if not file_name or not file_name.endswith(".json"):
+        if not file_name:
+            return None, None
+        if file_name is not None and not file_name.endswith(".json"):
             ReadData.show_warning_message(
                 "Invalid extension", "Invalid extension. File should be a .json"
             )
@@ -333,54 +332,28 @@ class ReadData:
             title, message, QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style()
         )
 
+  
+
+
     @staticmethod
-    def read_json(window, file_type):
+    def read_bin(window, app, magic_bytes, file_type, read_data_cb, tab_selected, filter_string = None):
         dialog = QFileDialog()
         dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
-        dialog.setNameFilter("JSON files (*.json)")
+        if filter_string:
+            filter_pattern = f"Bin files (*{filter_string}*.bin)"
+        else:
+            filter_pattern = "Bin files (*.bin)"
+        dialog.setNameFilter(filter_pattern)         
         file_name, _ = dialog.getOpenFileName(
             window,
             f"Load {file_type} file",
             "",
-            "JSON files (*.json)",
+            filter_pattern,
             options=QFileDialog.Option.DontUseNativeDialog,
         )
-        if not file_name or not file_name.endswith(".json"):
-            ReadData.show_warning_message(
-                "Invalid extension", "Invalid extension. File should be a .json"
-            )
-            return None, None
-
-        try:
-            with open(file_name, "r") as f:
-                data = json.load(f)
-                return file_name, data
-        except json.JSONDecodeError:
-            ReadData.show_warning_message(
-                "Invalid JSON", "The file could not be parsed as valid JSON."
-            )
-            return None, None
-        except Exception as e:
-            ReadData.show_warning_message(
-                "Error reading file", f"Error reading {file_type} file: {str(e)}"
-            )
-            return None, None
-
-
-
-    @staticmethod
-    def read_bin(window, app, magic_bytes, file_type, read_data_cb, tab_selected):
-        dialog = QFileDialog()
-        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
-        dialog.setNameFilter("Bin files (*.bin)")
-        file_name, _ = dialog.getOpenFileName(
-            window,
-            f"Load {file_type} file",
-            "",
-            "Bin files (*.bin)",
-            options=QFileDialog.Option.DontUseNativeDialog,
-        )
-        if not file_name or not file_name.endswith(".bin"):
+        if not file_name:
+            return None
+        if file_name is not None and not file_name.endswith(".bin"):
             ReadData.show_warning_message(
                 "Invalid extension", "Invalid extension. File should be a .bin"
             )
@@ -406,16 +379,6 @@ class ReadData:
         try:
             json_length = struct.unpack("I", file.read(4))[0]
             metadata = json.loads(file.read(json_length).decode("utf-8"))
-            if tab_selected == "phasors":
-                if not ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
-                    app, file_name, file_type.lower(), metadata
-                ):
-                    return None
-            if tab_selected == "fitting":
-                if not ReadData.are_spectroscopy_and_fitting_from_same_acquisition(
-                    app, metadata["channels"], "spectroscopy"
-                ):
-                    return None
             channel_curves = {i: [] for i in range(len(metadata["channels"]))}
             times = []
             number_of_channels = len(metadata["channels"])
@@ -443,10 +406,6 @@ class ReadData:
         try:
             json_length = struct.unpack("I", file.read(4))[0]
             metadata = json.loads(file.read(json_length).decode("utf-8"))
-            if not ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(
-                app, file_name, file_type.lower(), metadata
-            ):
-                return None
             while True:
                 bytes_read = file.read(32)
                 if not bytes_read:
@@ -828,9 +787,16 @@ class ReaderPopup(QWidget):
         else:
             for checkbox in self.channels_checkboxes:
                 checkbox.setEnabled(True)
-        if "plot_btn" in self.widgets:
+        if "plot_btn" in self.widgets:            
             plot_btn_enabled = len(self.app.plots_to_show) > 0
-            self.widgets["plot_btn"].setEnabled(plot_btn_enabled)
+            # If phasors tab is selected, both phasors and spectroscopy files must be loaded to be able to plot data
+            if self.data_type == "phasors":
+                phasors_file = self.app.reader_data["phasors"]["files"]["phasors"]
+                spectroscopy_file = self.app.reader_data["phasors"]["files"]["spectroscopy"]
+                both_files_present = len(phasors_file.strip()) > 0 and len(spectroscopy_file.strip()) > 0
+                self.widgets["plot_btn"].setEnabled(both_files_present and plot_btn_enabled)  
+            else:                 
+                self.widgets["plot_btn"].setEnabled(plot_btn_enabled)
         self.app.clear_plots()
         self.app.generate_plots()
         self.app.toggle_intensities_widgets_visibility()
@@ -847,10 +813,10 @@ class ReaderPopup(QWidget):
             self.app.generate_plots()
             self.app.toggle_intensities_widgets_visibility()
         self.app.reader_data[self.data_type]["files"][file_type] = text
+   
         
 
     def on_load_file_btn_clicked(self, file_type):
-        #TODO
         if file_type == "laserblood_metadata":
             ReadData.read_laserblood_metadata(self, self.app, self.tab_selected)
         if file_type == "fitting":
@@ -887,8 +853,25 @@ class ReaderPopup(QWidget):
             else: 
                 self.widgets["plot_btn"].setText("PLOT DATA")     
 
+    def errors_in_data(self, file_type):
+        if file_type == "phasors":
+            file = self.app.reader_data["phasors"]["files"]["phasors"]
+            metadata = self.app.reader_data["phasors"]["phasors_metadata"]
+            return not (ReadData.are_phasors_and_spectroscopy_ref_from_same_acquisition(self.app, file, file_type, metadata))
+        if file_type == "fitting":
+            file_fitting = self.app.reader_data["fitting"]["files"]["fitting"]
+            file_spectroscopy = self.app.reader_data["fitting"]["files"]["spectroscopy"]
+            if len(file_fitting.strip()) == 0 or len(file_spectroscopy.strip()) == 0:
+                return False
+            channels = ReadData.get_fitting_active_channels(self.app)
+            return not (ReadData.are_spectroscopy_and_fitting_from_same_acquisition(self.app, channels, file_type))
+        return False
+        
 
     def on_plot_data_btn_clicked(self):
+        file_type = self.data_type
+        if self.errors_in_data(file_type):
+            return
         fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
         spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]
         if fitting_data and not spectroscopy_data:
