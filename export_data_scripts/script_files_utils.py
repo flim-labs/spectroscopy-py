@@ -16,24 +16,31 @@ phasors_py_script_path = resource_path("export_data_scripts/phasors_script.py")
 phasors_m_script_path = resource_path("export_data_scripts/phasors_script.m")  
 fitting_py_script_path = resource_path("export_data_scripts/fitting_script.py")  
 fitting_m_script_path = resource_path("export_data_scripts/fitting_script.m")  
+time_tagger_py_script_path = resource_path("export_data_scripts/time_tagger_script.py")  
+time_tagger_m_script_path = resource_path("export_data_scripts/time_tagger_script.m")  
+
 
 class ScriptFileUtils:
     
     @classmethod
-    def export_scripts(cls, bin_file_paths, file_name, directory, script_type):
+    def export_scripts(cls, bin_file_paths, file_name, directory, script_type, time_tagger=False, time_tagger_file_path=""):
         try:
+            if time_tagger:
+                python_modifier, matlab_modifier = cls.get_time_tagger_content_modifiers()
+                cls.write_new_scripts_content(python_modifier, {"time_tagger": time_tagger_file_path}, file_name, directory, "py", "time_tagger")
+                cls.write_new_scripts_content(matlab_modifier, {"time_tagger": time_tagger_file_path}, file_name, directory, "m", "time_tagger")                     
             if script_type == 'spectroscopy':
-                python_modifier, matlab_modifier = cls.get_spectroscopy_content_modifiers()
+                python_modifier, matlab_modifier = cls.get_spectroscopy_content_modifiers(time_tagger)
                 cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
                 cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
             elif script_type == 'phasors':
-                python_modifier, matlab_modifier = cls.get_phasors_content_modifiers()   
+                python_modifier, matlab_modifier = cls.get_phasors_content_modifiers(time_tagger)   
                 cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
                 cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
             else:
-                python_modifier, matlab_modifier = cls.get_fitting_content_modifiers()    
+                python_modifier, matlab_modifier = cls.get_fitting_content_modifiers(time_tagger)    
                 cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
-                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
+                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)    
             cls.show_success_message(file_name)                
         except Exception as e:
             cls.show_error_message(str(e))
@@ -55,13 +62,13 @@ class ScriptFileUtils:
             cls.write_file(requirements_file_path, requirements_content)
         
     @classmethod
-    def get_spectroscopy_content_modifiers(cls):
+    def get_spectroscopy_content_modifiers(cls, time_tagger=False):
         python_modifier = {
             "source_file": spectroscopy_py_script_path,
             "skip_pattern": "def get_recent_spectroscopy_file():",
             "end_pattern": "with open(file_path, 'rb') as f:",
             "replace_pattern": "with open(file_path, 'rb') as f:",
-            "requirements": ["matplotlib", "numpy"],
+            "requirements": ["matplotlib", "numpy"] if not time_tagger else ["matplotlib", "numpy", "pandas"],
         }
         matlab_modifier = {
             "source_file": spectroscopy_m_script_path,      
@@ -73,13 +80,13 @@ class ScriptFileUtils:
         return python_modifier, matlab_modifier
     
     @classmethod    
-    def get_phasors_content_modifiers(cls):
+    def get_phasors_content_modifiers(cls, time_tagger=False):
         python_modifier = {
             "source_file": phasors_py_script_path,
             "skip_pattern": "get_recent_spectroscopy_file():",
             "end_pattern": "def ns_to_mhz(laser_period_ns):",
             "replace_pattern": "def ns_to_mhz(laser_period_ns):",
-            "requirements": ["matplotlib", "numpy"],
+            "requirements": ["matplotlib", "numpy"] if not time_tagger else ["matplotlib", "numpy", "pandas"],
         }
         matlab_modifier = {
             "source_file": phasors_m_script_path,
@@ -91,13 +98,13 @@ class ScriptFileUtils:
         return python_modifier, matlab_modifier
     
     @classmethod    
-    def get_fitting_content_modifiers(cls):
+    def get_fitting_content_modifiers(cls, time_tagger=False):
         python_modifier = {
             "source_file": fitting_py_script_path,
             "skip_pattern": "def get_recent_spectroscopy_file():",
             "end_pattern": "with open(file_path, 'rb') as f:",
             "replace_pattern": "with open(file_path, 'rb') as f:",
-            "requirements": ["matplotlib", "numpy", "scipy"],
+            "requirements": ["matplotlib", "numpy", "scipy"] if not time_tagger else ["matplotlib", "numpy", "scipy", "pandas"],
         }
         matlab_modifier = {
             "source_file": fitting_m_script_path,      
@@ -106,7 +113,25 @@ class ScriptFileUtils:
             "replace_pattern": "% Open the file",
             "requirements": [],
         }
-        return python_modifier, matlab_modifier    
+        return python_modifier, matlab_modifier   
+    
+    @classmethod    
+    def get_time_tagger_content_modifiers(cls):
+        python_modifier = {
+            "source_file": time_tagger_py_script_path,
+            "skip_pattern": "def get_recent_time_tagger_file():",
+            "end_pattern": "def read_time_tagger_bin(file_path, chunk_size=100000):",
+            "replace_pattern": "def read_time_tagger_bin(file_path, chunk_size=100000):",
+            "requirements": [],
+        }
+        matlab_modifier = {
+            "source_file": time_tagger_m_script_path,      
+            "skip_pattern": "% Get the recent time tagger file",
+            "end_pattern": "% Open the file",
+            "replace_pattern": "% Open the file",
+            "requirements": [],
+        }
+        return python_modifier, matlab_modifier      
 
     @classmethod
     def write_file(cls, file_name, content):
@@ -130,6 +155,8 @@ class ScriptFileUtils:
             if is_phasors:
                 line = line.replace("<SPECTROSCOPY-FILE-PATH>", file_paths['spectroscopy_phasors_ref'].replace("\\", "/"))
                 line = line.replace("<PHASORS-FILE-PATH>", file_paths['phasors'].replace("\\", "/"))
+            elif "time_tagger" in file_paths:
+               line = line.replace("<FILE-PATH>", file_paths['time_tagger'].replace("\\", "/"))    
             else:
                 line = line.replace("<FILE-PATH>", file_paths['spectroscopy'].replace("\\", "/"))
             manipulated_lines.append(line)

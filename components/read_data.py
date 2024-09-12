@@ -3,12 +3,10 @@ import json
 import os
 import re
 import struct
-import traceback
 from matplotlib import pyplot as plt
 import numpy as np
 from components.box_message import BoxMessage
 from components.file_utils import compare_file_timestamps
-from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gui_styles import GUIStyles
 from components.helpers import ns_to_mhz
 from components.input_text_control import InputTextControl

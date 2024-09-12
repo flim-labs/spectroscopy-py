@@ -45,6 +45,7 @@ from components.lin_log_control import LinLogControl
 from components.link_widget import LinkWidget
 from components.logo_utilities import OverlayWidget, TitlebarIcon
 from components.plots_config import PlotsConfigPopup
+from components.progress_bar import ProgressBar
 from components.read_data import (
     ReadData,
     ReadDataControls,
@@ -55,6 +56,7 @@ from components.resource_path import resource_path
 from components.select_control import SelectControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
 from components.switch_control import SwitchControl
+from components.time_tagger import TimeTaggerController
 from settings import *
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -147,6 +149,10 @@ class SpectroscopyWindow(QWidget):
         write_data_gui = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA)
         self.write_data_gui = write_data_gui == "true" or write_data_gui == True
         self.show_bin_file_size_helper = self.write_data_gui
+        # Time tagger
+        time_tagger = self.settings.value(SETTINGS_TIME_TAGGER, DEFAULT_TIME_TAGGER)
+        self.time_tagger = time_tagger == "true" or time_tagger == True
+        
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
         self.acquire_read_mode = self.settings.value(
@@ -197,6 +203,11 @@ class SpectroscopyWindow(QWidget):
         main_layout = QVBoxLayout()
         top_bar = self.create_top_bar()
         main_layout.addWidget(top_bar, 0, Qt.AlignmentFlag.AlignTop)
+        # Time tagger progress bar
+        time_tagger_progress_bar = ProgressBar(visible=False, indeterminate=True, label_text="Time tagger processing...")
+        self.widgets[TIME_TAGGER_PROGRESS_BAR] = time_tagger_progress_bar
+        main_layout.addWidget(time_tagger_progress_bar)
+        main_layout.addSpacing(5)
         grid_layout = QGridLayout()
         main_layout.addLayout(grid_layout)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -1881,8 +1892,11 @@ class SpectroscopyWindow(QWidget):
                 tau_ns=tau_ns,
                 reference_file=reference_file,
                 harmonics=int(self.harmonic_selector_value),
-                #write_bin=True
+                write_bin=self.time_tagger
             )
+            print(frequency_mhz) 
+            print(bin_width_micros)   
+            print(self.selected_channels)
         except Exception as e:
             BoxMessage.setup(
                 "Error",
@@ -2343,13 +2357,16 @@ class SpectroscopyWindow(QWidget):
             self.generate_phasors_legend(1)
         if harmonic_selected > 1:
             self.harmonic_selector_shown = True
-        if is_export_data_active:
+        if is_export_data_active and not self.time_tagger: 
             QTimer.singleShot(
                 300,
                 partial(
                     ExportData.save_acquisition_data, self, active_tab=self.tab_selected
                 ),
             )
+        if is_export_data_active and self.time_tagger:
+            self.widgets[TIME_TAGGER_PROGRESS_BAR].set_visible(True)
+            TimeTaggerController.init_time_tagger_processing(self)   
         if self.tab_selected == TAB_FITTING:
             self.fit_button_show()
 

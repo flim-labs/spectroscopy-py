@@ -1,5 +1,7 @@
 import numpy as np
 
+from settings import HETERODYNE_FACTOR
+
 
 def format_size(size_in_bytes):
     units = ["B", "KB", "MB", "GB", "TB"]
@@ -47,7 +49,17 @@ def convert_py_num_to_np_num(output_data):
         )
     return output_data
 
+def calc_micro_time_ns(bin, frequency_mhz):
+    laser_period_ns = 0.0 if frequency_mhz == 0.0 else mhz_to_ns(frequency_mhz)
+    return ((bin * laser_period_ns)/256) * HETERODYNE_FACTOR
 
+def calc_bin_from_micro_time_ns(micro_time_ns, frequency_mhz):
+    laser_period_ns = 0.0 if frequency_mhz == 0.0 else mhz_to_ns(frequency_mhz)
+    if laser_period_ns == 0.0:
+        return 0  
+    bin_value = (256 * micro_time_ns) / (laser_period_ns * HETERODYNE_FACTOR)
+    return max(0, min(255, int(round(bin_value))))
+   
 
 def get_realtime_adjustment_value(enabled_channels, is_phasors):
     if is_phasors:

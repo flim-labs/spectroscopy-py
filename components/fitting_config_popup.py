@@ -188,6 +188,8 @@ class FittingDecayConfigPopup(QWidget):
             controls_row.addSpacing(20)
         controls_bar.addLayout(controls_row)
         controls_bar.addWidget(draw_layout_separator())
+        
+        
         controls_bar_widget.setLayout(controls_bar)
         return controls_bar_widget
 
