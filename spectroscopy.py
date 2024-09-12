@@ -1881,6 +1881,7 @@ class SpectroscopyWindow(QWidget):
                 tau_ns=tau_ns,
                 reference_file=reference_file,
                 harmonics=int(self.harmonic_selector_value),
+                #write_bin=True
             )
         except Exception as e:
             BoxMessage.setup(
