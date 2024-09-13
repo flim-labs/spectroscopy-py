@@ -1,4 +1,3 @@
-import os
 import struct
 import matplotlib.pyplot as plt
 import numpy as np

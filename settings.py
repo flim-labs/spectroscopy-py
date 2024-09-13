@@ -39,6 +39,7 @@ SETTINGS_CPS_THRESHOLD = "cps_threshold"
 DEFAULT_CPS_THRESHOLD = 0
 
 TIME_TAGGER_PROGRESS_BAR = "time_tagger_progress_bar"
+TIME_TAGGER_WIDGET = "time_tagger_widget"
 
 FIT_BTN = "fit_button"
 FIT_BTN_PLACEHOLDER = "fit_button_placeholder"

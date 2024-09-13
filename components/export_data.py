@@ -29,19 +29,40 @@ class ExportData:
             return
 
     @staticmethod
-    def save_fitting_data(fitting_data, app):
+    def save_fitting_data(fitting_data, window, app):
         try:
+            time_tagger = app.time_tagger
+
             spectroscopy_file = get_recent_spectroscopy_file()
             new_spectroscopy_file_path, save_dir, save_name = (
                 ExportData.rename_and_move_file(
-                    spectroscopy_file, "Save Fitting files", app
+                    spectroscopy_file, "Save Fitting files", window
                 )
             )
             if not new_spectroscopy_file_path:
                 return
             ExportData.save_fitting_config_json(fitting_data, save_dir, save_name)
+
+            if time_tagger:
+                time_tagger_file = get_recent_time_tagger_file()
+                new_time_tagger_path = ExportData.copy_file(
+                    time_tagger_file, save_name, save_dir
+                )
+            new_time_tagger_path = (
+                ""
+                if not time_tagger or not new_time_tagger_path
+                else new_time_tagger_path
+            )
+
             file_paths = {"spectroscopy": new_spectroscopy_file_path}
-            ExportData.download_scripts(file_paths, save_name, save_dir, "fitting")
+            ExportData.download_scripts(
+                file_paths,
+                save_name,
+                save_dir,
+                "fitting",
+                time_tagger=time_tagger,
+                time_tagger_file_path=new_time_tagger_path,
+            )
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
 
@@ -117,6 +138,8 @@ class ExportData:
     @staticmethod
     def save_phasors_data(app):
         try:
+            time_tagger = app.time_tagger
+
             spectroscopy_file_ref = get_recent_spectroscopy_file()
             phasors_file = get_recent_phasors_file()
             new_phasors_file_path, save_dir, save_name = (
@@ -127,19 +150,50 @@ class ExportData:
             new_spectroscopy_ref_path = ExportData.copy_file(
                 spectroscopy_file_ref, save_name, save_dir
             )
+
+            if time_tagger:
+                time_tagger_file = get_recent_time_tagger_file()
+                new_time_tagger_path = ExportData.copy_file(
+                    time_tagger_file, save_name, save_dir
+                )
+            new_time_tagger_path = (
+                ""
+                if not time_tagger or not new_time_tagger_path
+                else new_time_tagger_path
+            )
+
             file_paths = {
                 "spectroscopy_phasors_ref": new_spectroscopy_ref_path,
                 "phasors": new_phasors_file_path,
             }
-            ExportData.download_scripts(file_paths, save_name, save_dir, "phasors")
+            ExportData.download_scripts(
+                file_paths,
+                save_name,
+                save_dir,
+                "phasors",
+                time_tagger=time_tagger,
+                time_tagger_file_path=new_time_tagger_path,
+            )
 
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
 
     @staticmethod
-    def download_scripts(bin_file_paths, file_name, directory, script_type, time_tagger=False, time_tagger_file_path=""):
+    def download_scripts(
+        bin_file_paths,
+        file_name,
+        directory,
+        script_type,
+        time_tagger=False,
+        time_tagger_file_path="",
+    ):
         ScriptFileUtils.export_scripts(
-            bin_file_paths, file_name, directory,script_type, time_tagger, time_tagger_file_path
+            bin_file_paths,
+            file_name,
+            directory,
+            script_type,
+            time_tagger,
+            time_tagger_file_path,
         )
 
     @staticmethod

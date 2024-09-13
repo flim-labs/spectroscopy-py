@@ -488,3 +488,42 @@ class GUIStyles:
                 color: transparent;
             }}               
         """
+        
+    @staticmethod
+    def time_tagger_style():
+        return f"""
+            QWidget#container {{
+                border-radius: 5px;
+                border: 2px solid #0053a4;
+                padding: 0;
+                
+            }} 
+            QWidget {{
+                background-color: white;
+                padding: 0;
+            }}    
+            QCheckBox {{
+                spacing: 10px;
+                color: #0053a4;
+                font-family: "Montserrat";
+                font-weight: 800;
+                font-size: 14px;
+                letter-spacing: 0.1em;
+                border: none;
+                border-radius: 5px;
+                padding: 0 10px 0 0;
+            }}
+            QCheckBox::indicator {{
+                width: 20px;
+                height: 20px;
+                border-radius: 10px;  
+            }}
+
+            QCheckBox::indicator:unchecked {{
+                background-color: #6b6a6a;
+            }}
+
+            QCheckBox::indicator:checked {{
+                background-color: #11468F;
+            }}                   
+        """        

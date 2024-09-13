@@ -32,6 +32,7 @@ from components.box_message import BoxMessage
 from components.buttons import (
     CollapseButton,
     ReadAcquireModeButton,
+    TimeTaggerWidget,
 )
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
@@ -295,11 +296,15 @@ class SpectroscopyWindow(QWidget):
 
         info_link_widget, export_data_control = self.create_export_data_input()
         file_size_info_layout = self.create_file_size_info_row()
-        top_bar_header.addWidget(info_link_widget)
+        top_bar_header.addWidget(info_link_widget,alignment= Qt.AlignmentFlag.AlignBottom)
         top_bar_header.addLayout(export_data_control)
         export_data_control.addSpacing(10)
         top_bar_header.addLayout(file_size_info_layout)
-        top_bar_header.addSpacing(10)
+        top_bar_header.addSpacing(10)    
+        # Time Tagger
+        time_tagger = TimeTaggerWidget(self)
+        top_bar_header.addWidget(time_tagger)
+        top_bar_header.addSpacing(10)   
         top_bar.addLayout(top_bar_header)
         channels_widget = QWidget()
         sync_buttons_widget = QWidget()
@@ -326,14 +331,16 @@ class SpectroscopyWindow(QWidget):
         ctl = QLabel(pixmap=pixmap)
         row.addWidget(ctl)
         row.addSpacing(10)
+        ctl_layout = QVBoxLayout()
+        ctl_layout.setContentsMargins(0,10,0,0)
         ctl = GradientText(
             self,
             text="SPECTROSCOPY",
             colors=[(0.7, "#1E90FF"), (1.0, PALETTE_RED_1)],
             stylesheet=GUIStyles.set_main_title_style(),
         )
-        ctl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        row.addWidget(ctl)
+        ctl_layout.addWidget(ctl)
+        row.addLayout(ctl_layout)
         ctl = QWidget()
         ctl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         row.addWidget(ctl)
@@ -349,23 +356,27 @@ class SpectroscopyWindow(QWidget):
         info_link_widget.setCursor(Qt.CursorShape.PointingHandCursor)
         info_link_widget.show()
         # Export data switch control
-        export_data_control = QHBoxLayout()
+        export_data_control = QVBoxLayout()
+        export_data_control.setContentsMargins(0,0,0,0)
+        export_data_control.setSpacing(0)        
         export_data_label = QLabel("Export data:")
         inp = SwitchControl(
             active_color=PALETTE_BLUE_1, width=70, height=30, checked=export_data_active
         )
         inp.toggled.connect(self.on_export_data_changed)
         export_data_control.addWidget(export_data_label)
-        export_data_control.addSpacing(8)
+        export_data_control.addSpacing(5)
         export_data_control.addWidget(inp)
-        export_data_control.addSpacing(8)
         return info_link_widget, export_data_control
 
     def create_file_size_info_row(self):
         export_data_active = self.write_data_gui
-        file_size_info_layout = QHBoxLayout()
+        file_size_info_layout = QVBoxLayout()
+        file_size_info_layout.setContentsMargins(0,0,0,0)
+        file_size_info_layout.setSpacing(0)
         self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
         self.bin_file_size_label.setStyleSheet("QLabel { color : #f8f8f8; }")
+        file_size_info_layout.addSpacing(15)
         file_size_info_layout.addWidget(self.bin_file_size_label)
         (
             self.bin_file_size_label.show()
@@ -969,6 +980,8 @@ class SpectroscopyWindow(QWidget):
     def on_export_data_changed(self, state):
         self.settings.setValue(SETTINGS_WRITE_DATA, state)
         self.write_data_gui = state
+        if TIME_TAGGER_WIDGET in self.widgets:
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(state)
         self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
         self.calc_exported_file_size() if state else None
 
@@ -1894,9 +1907,6 @@ class SpectroscopyWindow(QWidget):
                 harmonics=int(self.harmonic_selector_value),
                 write_bin=self.time_tagger
             )
-            print(frequency_mhz) 
-            print(bin_width_micros)   
-            print(self.selected_channels)
         except Exception as e:
             BoxMessage.setup(
                 "Error",
