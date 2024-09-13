@@ -184,6 +184,8 @@ class ReadAcquireModeButton(QWidget):
         self.app.control_inputs[READ_BUTTON].setStyleSheet(style)
 
     def on_acquire_btn_pressed(self, checked):
+        self.app.reset_time_shifts_values()
+        self.app.change_time_shift_inputs_range()        
         self.app.control_inputs[ACQUIRE_BUTTON].setChecked(checked)
         self.app.control_inputs[READ_BUTTON].setChecked(not checked)
         self.app.acquire_read_mode = "acquire" if checked else "read"
@@ -200,6 +202,8 @@ class ReadAcquireModeButton(QWidget):
         )
 
     def on_read_btn_pressed(self, checked):
+        self.app.reset_time_shifts_values()
+        self.app.change_time_shift_inputs_range()            
         self.app.control_inputs[ACQUIRE_BUTTON].setChecked(not checked)
         self.app.control_inputs[READ_BUTTON].setChecked(checked)
         self.app.acquire_read_mode = "read" if checked else "acquire"
