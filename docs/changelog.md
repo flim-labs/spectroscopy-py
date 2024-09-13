@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 1.7
+- Improvements and fixes on Read Data mode
+
 ## Version 1.6
 - Fixes on binned counts granularity
 
