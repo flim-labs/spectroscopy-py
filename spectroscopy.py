@@ -1065,13 +1065,6 @@ class SpectroscopyWindow(QWidget):
             for _, widget in self.control_inputs["time_shift_inputs"].items():
                 widget.setEnabled(enabled)
 
-    def change_time_shift_inputs_range(self):
-        if "time_shift_inputs" in self.control_inputs:
-            for _, inp in self.control_inputs["time_shift_inputs"].items():
-                inp.setRange(
-                    SpectroscopyTimeShift.get_time_shift_ns_value(self, 0),
-                    SpectroscopyTimeShift.get_time_shift_ns_value(self, 256),
-                )
                 
     def reset_time_shifts_values(self):
         if "time_shift_sliders" in self.control_inputs:
@@ -1127,9 +1120,7 @@ class SpectroscopyWindow(QWidget):
                     )
             else:
                 self.time_shifts_set_enabled(False)
-            self.reset_time_shifts_values()     
-            self.change_time_shift_inputs_range()  
-                                     
+            self.reset_time_shifts_values()                          
 
         if self.selected_sync == sync and sync == "sync_in":
             self.start_sync_in_dialog()
