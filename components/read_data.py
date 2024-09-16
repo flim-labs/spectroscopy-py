@@ -92,6 +92,17 @@ class ReadData:
         app.reader_data[active_tab]["files"]["laserblood_metadata"] = file_name
         app.reader_data[active_tab]["laserblood_metadata"] = data
 
+    
+    
+    @staticmethod
+    def get_bin_filter_file_string(file_type):
+        if file_type == "spectroscopy":
+            return "_spectroscopy_"
+        elif file_type == "phasors":
+            return "phasors-spectroscopy"      
+        else:
+            return None     
+
     @staticmethod
     def read_fitting_data(window, app):
         result = ReadData.read_json(window, "Fitting", "fitting_result")
@@ -121,7 +132,7 @@ class ReadData:
             return None
 
     @staticmethod
-    def are_spectroscopy_and_fitting_from_same_acquisition(app, channels, data_origin):
+    def are_spectroscopy_and_fitting_from_same_acquisition(app):
         def show_error():
             ReadData.show_warning_message(
                 "Channels mismatch",
@@ -331,9 +342,6 @@ class ReadData:
         BoxMessage.setup(
             title, message, QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style()
         )
-
-  
-
 
     @staticmethod
     def read_bin(window, app, magic_bytes, file_type, read_data_cb, tab_selected, filter_string = None):
@@ -994,7 +1002,6 @@ class ReaderMetadataPopup(QWidget):
         screen_geometry = QApplication.primaryScreen().availableGeometry().center()
         window_geometry.moveCenter(screen_geometry)
         self.move(window_geometry.topLeft())    
-    
     
     
 

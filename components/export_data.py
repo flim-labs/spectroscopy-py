@@ -27,23 +27,38 @@ class ExportData:
     @staticmethod
     def save_fitting_data(fitting_data, window, app):
         try:
+            time_tagger = app.time_tagger
             spectroscopy_file = FileUtils.get_recent_spectroscopy_file()
             new_spectroscopy_file_path, save_dir, save_name = (
                 ExportData.rename_and_move_file(
-                    spectroscopy_file, "Save Fitting files", window, app
-                )
-            )
+                    spectroscopy_file, "Save Fitting files", window, app))
             if not new_spectroscopy_file_path:
                 return
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
                 app, save_name, save_dir
             )
             ExportData.save_fitting_config_json(fitting_data, save_dir, save_name, app)
-            file_paths = {
-                "spectroscopy": new_spectroscopy_file_path,
-                "laserblood_metadata": laserblood_metadata_file_path,
-            }
-            ExportData.download_scripts(file_paths, save_name, save_dir, "fitting")
+            
+            if time_tagger:
+                time_tagger_file = FileUtils.get_recent_time_tagger_file()
+                new_time_tagger_path = ExportData.copy_file(
+                    time_tagger_file, save_name, save_dir, app
+                )
+            new_time_tagger_path = (
+                ""
+                if not time_tagger or not new_time_tagger_path
+                else new_time_tagger_path
+            )
+
+            file_paths = {"spectroscopy": new_spectroscopy_file_path, "laserblood_metadata": laserblood_metadata_file_path,}
+            ExportData.download_scripts(
+                file_paths,
+                save_name,
+                save_dir,
+                "fitting",
+                time_tagger=time_tagger,
+                time_tagger_file_path=new_time_tagger_path,
+            )
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
 
@@ -69,6 +84,7 @@ class ExportData:
     def save_spectroscopy_data(app):
         try:
             spectroscopy_file = FileUtils.get_recent_spectroscopy_file()
+            time_tagger = app.time_tagger
             new_spectroscopy_file_path, save_dir, save_name = (
                 ExportData.rename_and_move_file(
                     spectroscopy_file, "Save Spectroscopy files", app, app
@@ -76,16 +92,35 @@ class ExportData:
             )
             if not new_spectroscopy_file_path:
                 return
-            if app.control_inputs["calibration"].currentIndex() == 1:
-                ExportData.save_spectroscopy_reference(save_name, save_dir, app)
+
+            if time_tagger:
+                time_tagger_file = FileUtils.get_recent_time_tagger_file()
+                new_time_tagger_path = ExportData.copy_file(
+                    time_tagger_file, save_name, save_dir, app
+                )
+            new_time_tagger_path = (
+                ""
+                if not time_tagger or not new_time_tagger_path
+                else new_time_tagger_path
+            )
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
                 app, save_name, save_dir
-            )
+            )            
+            if app.control_inputs["calibration"].currentIndex() == 1:
+                ExportData.save_spectroscopy_reference(save_name, save_dir, app)
+            
             file_paths = {
                 "spectroscopy": new_spectroscopy_file_path,
                 "laserblood_metadata": laserblood_metadata_file_path,
-            }
-            ExportData.download_scripts(file_paths, save_name, save_dir, "spectroscopy")
+            }            
+            ExportData.download_scripts(
+                file_paths,
+                save_name,
+                save_dir,
+                "spectroscopy",
+                time_tagger=time_tagger,
+                time_tagger_file_path=new_time_tagger_path,
+            )
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
 
@@ -131,11 +166,14 @@ class ExportData:
         try:
             spectroscopy_file_ref = FileUtils.get_recent_spectroscopy_file()
             phasors_file = FileUtils.get_recent_phasors_file()
+            time_tagger = app.time_tagger
+        
             new_phasors_file_path, save_dir, save_name = (
                 ExportData.rename_and_move_file(phasors_file, "Save Phasors Files", app, app)
             )
             if not new_phasors_file_path:
                 return
+            
             original_spectroscopy_ref_name = os.path.basename(spectroscopy_file_ref)
             laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
             new_spectroscopy_ref_name = (
@@ -145,24 +183,65 @@ class ExportData:
                 save_dir, new_spectroscopy_ref_name
             )
             shutil.copyfile(spectroscopy_file_ref, new_spectroscopy_ref_path)
+      
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
                 app, save_name, save_dir
             )
+
+            if time_tagger:
+                time_tagger_file = FileUtils.get_recent_time_tagger_file()
+                new_time_tagger_path = ExportData.copy_file(
+                    time_tagger_file, save_name, save_dir, app
+                )
+            new_time_tagger_path = (
+                ""
+                if not time_tagger or not new_time_tagger_path
+                else new_time_tagger_path
+            )
+
             file_paths = {
                 "spectroscopy_phasors_ref": new_spectroscopy_ref_path,
                 "phasors": new_phasors_file_path,
                 "laserblood_metadata": laserblood_metadata_file_path,
             }
-            ExportData.download_scripts(file_paths, save_name, save_dir, "phasors")
+            ExportData.download_scripts(
+                file_paths,
+                save_name,
+                save_dir,
+                "phasors",
+                time_tagger=time_tagger,
+                time_tagger_file_path=new_time_tagger_path,
+            )
 
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
 
     @staticmethod
-    def download_scripts(bin_file_paths, file_name, directory, script_type):
+    def download_scripts(
+        bin_file_paths,
+        file_name,
+        directory,
+        script_type,
+        time_tagger=False,
+        time_tagger_file_path="",
+    ):
         ScriptFileUtils.export_scripts(
-            bin_file_paths, file_name, directory, script_type
+            bin_file_paths,
+            file_name,
+            directory,
+            script_type,
+            time_tagger,
+            time_tagger_file_path,
         )
+
+    @staticmethod
+    def copy_file(origin_file_path, save_name, save_dir, app):
+        laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
+        origin_file_name = os.path.basename(origin_file_path)
+        new_file_name = f"{save_name}_{laser_key}_{filter_key}_{origin_file_name}"
+        new_file_path = os.path.join(save_dir, new_file_name)
+        shutil.copyfile(origin_file_path, new_file_path)
+        return new_file_path
 
     @staticmethod
     def rename_and_move_file(original_file_path, file_dialog_prompt, window, app):
