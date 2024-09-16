@@ -37,6 +37,20 @@ def get_recent_phasors_file():
     return os.path.join(data_folder, files[0])
 
 
+def get_recent_time_tagger_file():
+    data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
+    files = [
+        f
+        for f in os.listdir(data_folder)
+        if f.startswith("time_tagger_spectroscopy")
+    ]
+    files.sort(
+        key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
+    )
+    return os.path.join(data_folder, files[0])
+
+
+
 def rename_bin_file(source_file, new_filename):
     _, file_extension = os.path.splitext(source_file)
     base_name = os.path.basename(source_file).replace(file_extension, "")

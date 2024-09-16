@@ -3,12 +3,10 @@ import json
 import os
 import re
 import struct
-import traceback
 from matplotlib import pyplot as plt
 import numpy as np
 from components.box_message import BoxMessage
 from components.file_utils import compare_file_timestamps
-from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gui_styles import GUIStyles
 from components.helpers import ns_to_mhz
 from components.input_text_control import InputTextControl
@@ -842,6 +840,8 @@ class ReaderPopup(QWidget):
         return False
 
     def on_plot_data_btn_clicked(self):
+        self.app.reset_time_shifts_values()
+        self.app.change_time_shift_inputs_range()
         file_type = self.data_type
         if self.errors_in_data(file_type):
             return        

@@ -1,9 +1,10 @@
 import json
 import numpy as np
 from functools import partial
-from PyQt6.QtWidgets import QHBoxLayout, QSlider, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QSlider, QWidget, QLabel
 from PyQt6.QtCore import Qt
 from components.gui_styles import GUIStyles
+from components.helpers import calc_micro_time_ns
 from components.input_number_control import InputNumberControl
 from components.lin_log_control import LinLogControl
 from settings import *
@@ -22,6 +23,8 @@ class SpectroscopyTimeShift(QWidget):
             self.app.control_inputs["time_shift_sliders"] = {}
         if "time_shift_inputs" not in self.app.control_inputs:
             self.app.control_inputs["time_shift_inputs"] = {}
+        if TIME_SHIFTS_NS not in self.app.control_inputs:
+            self.app.control_inputs[TIME_SHIFTS_NS] = {}
 
     def create_controls(self):
         time_shift = self.app.time_shifts.get(self.channel, 0)
@@ -39,8 +42,14 @@ class SpectroscopyTimeShift(QWidget):
             spacing=0
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style()) 
+        # Time shifts ns
+        time_shift_ns = QLabel(f"{SpectroscopyTimeShift.get_time_shift_ns_value(self.app, time_shift):.6f} ns")
+        time_shift_ns.setStyleSheet("color: #285da6; font-weight: 600")
+        h_layout.addSpacing(5)
+        h_layout.addWidget(time_shift_ns)
         self.app.control_inputs["time_shift_sliders"][self.channel] = slider
         self.app.control_inputs["time_shift_inputs"][self.channel] = inp
+        self.app.control_inputs[TIME_SHIFTS_NS][self.channel] = time_shift_ns
         return h_layout
 
     def setup_slider(self, time_shift):
@@ -57,6 +66,7 @@ class SpectroscopyTimeShift(QWidget):
             self.app.control_inputs["time_shift_inputs"][self.channel].setValue(value)
         else:
             self.app.control_inputs["time_shift_sliders"][self.channel].setValue(value)
+        SpectroscopyTimeShift.update_time_shift_ns_value(self.app, value, channel)    
         if self.app.tab_selected in self.app.decay_curves: 
             if self.channel in self.app.decay_curves[self.app.tab_selected]:
                 decay_curve = self.app.decay_curves[self.app.tab_selected][self.channel]
@@ -77,7 +87,22 @@ class SpectroscopyTimeShift(QWidget):
                         self.app.set_plot_y_range(decay_widget)
         self.app.settings.setValue(SETTINGS_TIME_SHIFTS, json.dumps(self.app.time_shifts))
         
+
+    @staticmethod
+    def update_time_shift_ns_value(app, bin_value, channel): 
+        if TIME_SHIFTS_NS in app.control_inputs:
+            time_shifts_ns_labels = app.control_inputs[TIME_SHIFTS_NS]
+            if channel in time_shifts_ns_labels:
+                ns_value = SpectroscopyTimeShift.get_time_shift_ns_value(app, bin_value)
+                time_shifts_ns_labels[channel].setText(f"{ns_value:.6f} ns")
+
+    @staticmethod
+    def get_time_shift_ns_value(app, time_bin: int):
+        frequency_mhz = app.get_frequency_mhz()
+        time_shift_ns = calc_micro_time_ns(time_bin, frequency_mhz)
+        return time_shift_ns
     
+        
     @staticmethod
     def get_channel_time_shift(app, channel):
         return app.time_shifts[channel] if channel in app.time_shifts else 0    

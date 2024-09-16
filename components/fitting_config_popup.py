@@ -188,6 +188,8 @@ class FittingDecayConfigPopup(QWidget):
             controls_row.addSpacing(20)
         controls_bar.addLayout(controls_row)
         controls_bar.addWidget(draw_layout_separator())
+        
+        
         controls_bar_widget.setLayout(controls_bar)
         return controls_bar_widget
 
@@ -520,7 +522,7 @@ class FittingDecayConfigPopup(QWidget):
         parsed_fitting_results = convert_fitting_result_into_json_serializable_item(
             self.fitting_results
         )
-        ExportData.save_fitting_data(parsed_fitting_results, self)
+        ExportData.save_fitting_data(parsed_fitting_results, self, self.app)
 
     def reset(self):
         for ch, plot in self.plot_widgets.items():

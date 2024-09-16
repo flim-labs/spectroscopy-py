@@ -32,6 +32,7 @@ from components.box_message import BoxMessage
 from components.buttons import (
     CollapseButton,
     ReadAcquireModeButton,
+    TimeTaggerWidget,
 )
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
@@ -45,6 +46,7 @@ from components.lin_log_control import LinLogControl
 from components.link_widget import LinkWidget
 from components.logo_utilities import OverlayWidget, TitlebarIcon
 from components.plots_config import PlotsConfigPopup
+from components.progress_bar import ProgressBar
 from components.read_data import (
     ReadData,
     ReadDataControls,
@@ -55,6 +57,7 @@ from components.resource_path import resource_path
 from components.select_control import SelectControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
 from components.switch_control import SwitchControl
+from components.time_tagger import TimeTaggerController
 from settings import *
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -115,8 +118,7 @@ class SpectroscopyWindow(QWidget):
             else {}
         )
         # ROI
-        default_roi = self.settings.value(SETTINGS_ROI, DEFAULT_ROI
-        )
+        default_roi = self.settings.value(SETTINGS_ROI, DEFAULT_ROI)
         self.roi = (
             {int(key): value for key, value in json.loads(default_roi).items()}
             if default_roi is not None
@@ -147,6 +149,10 @@ class SpectroscopyWindow(QWidget):
         write_data_gui = self.settings.value(SETTINGS_WRITE_DATA, DEFAULT_WRITE_DATA)
         self.write_data_gui = write_data_gui == "true" or write_data_gui == True
         self.show_bin_file_size_helper = self.write_data_gui
+        # Time tagger
+        time_tagger = self.settings.value(SETTINGS_TIME_TAGGER, DEFAULT_TIME_TAGGER)
+        self.time_tagger = time_tagger == "true" or time_tagger == True
+
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
         self.acquire_read_mode = self.settings.value(
@@ -197,6 +203,13 @@ class SpectroscopyWindow(QWidget):
         main_layout = QVBoxLayout()
         top_bar = self.create_top_bar()
         main_layout.addWidget(top_bar, 0, Qt.AlignmentFlag.AlignTop)
+        # Time tagger progress bar
+        time_tagger_progress_bar = ProgressBar(
+            visible=False, indeterminate=True, label_text="Time tagger processing..."
+        )
+        self.widgets[TIME_TAGGER_PROGRESS_BAR] = time_tagger_progress_bar
+        main_layout.addWidget(time_tagger_progress_bar)
+        main_layout.addSpacing(5)
         grid_layout = QGridLayout()
         main_layout.addLayout(grid_layout)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -284,10 +297,16 @@ class SpectroscopyWindow(QWidget):
 
         info_link_widget, export_data_control = self.create_export_data_input()
         file_size_info_layout = self.create_file_size_info_row()
-        top_bar_header.addWidget(info_link_widget)
+        top_bar_header.addWidget(
+            info_link_widget, alignment=Qt.AlignmentFlag.AlignBottom
+        )
         top_bar_header.addLayout(export_data_control)
         export_data_control.addSpacing(10)
         top_bar_header.addLayout(file_size_info_layout)
+        top_bar_header.addSpacing(10)
+        # Time Tagger
+        time_tagger = TimeTaggerWidget(self)
+        top_bar_header.addWidget(time_tagger)
         top_bar_header.addSpacing(10)
         top_bar.addLayout(top_bar_header)
         channels_widget = QWidget()
@@ -315,14 +334,16 @@ class SpectroscopyWindow(QWidget):
         ctl = QLabel(pixmap=pixmap)
         row.addWidget(ctl)
         row.addSpacing(10)
+        ctl_layout = QVBoxLayout()
+        ctl_layout.setContentsMargins(0, 10, 0, 0)
         ctl = GradientText(
             self,
             text="SPECTROSCOPY",
             colors=[(0.7, "#1E90FF"), (1.0, PALETTE_RED_1)],
             stylesheet=GUIStyles.set_main_title_style(),
         )
-        ctl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        row.addWidget(ctl)
+        ctl_layout.addWidget(ctl)
+        row.addLayout(ctl_layout)
         ctl = QWidget()
         ctl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         row.addWidget(ctl)
@@ -338,23 +359,27 @@ class SpectroscopyWindow(QWidget):
         info_link_widget.setCursor(Qt.CursorShape.PointingHandCursor)
         info_link_widget.show()
         # Export data switch control
-        export_data_control = QHBoxLayout()
+        export_data_control = QVBoxLayout()
+        export_data_control.setContentsMargins(0, 0, 0, 0)
+        export_data_control.setSpacing(0)
         export_data_label = QLabel("Export data:")
         inp = SwitchControl(
             active_color=PALETTE_BLUE_1, width=70, height=30, checked=export_data_active
         )
         inp.toggled.connect(self.on_export_data_changed)
         export_data_control.addWidget(export_data_label)
-        export_data_control.addSpacing(8)
+        export_data_control.addSpacing(5)
         export_data_control.addWidget(inp)
-        export_data_control.addSpacing(8)
         return info_link_widget, export_data_control
 
     def create_file_size_info_row(self):
         export_data_active = self.write_data_gui
-        file_size_info_layout = QHBoxLayout()
+        file_size_info_layout = QVBoxLayout()
+        file_size_info_layout.setContentsMargins(0, 0, 0, 0)
+        file_size_info_layout.setSpacing(0)
         self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
         self.bin_file_size_label.setStyleSheet("QLabel { color : #f8f8f8; }")
+        file_size_info_layout.addSpacing(15)
         file_size_info_layout.addWidget(self.bin_file_size_label)
         (
             self.bin_file_size_label.show()
@@ -743,9 +768,13 @@ class SpectroscopyWindow(QWidget):
                 for _, channel in enumerate(self.plots_to_show):
                     if self.acquire_read_mode == "acquire":
                         if channel in self.phasors_widgets:
-                            self.phasors_widgets[channel].setCursor(Qt.CursorShape.BlankCursor)
+                            self.phasors_widgets[channel].setCursor(
+                                Qt.CursorShape.BlankCursor
+                            )
                             self.generate_coords(channel)
-                            self.create_phasor_crosshair(channel, self.phasors_widgets[channel])
+                            self.create_phasor_crosshair(
+                                channel, self.phasors_widgets[channel]
+                            )
                     self.draw_lifetime_points_in_phasors(
                         channel,
                         self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1,
@@ -804,7 +833,7 @@ class SpectroscopyWindow(QWidget):
                     "y": y,
                     "title": "Channel " + str(channel_index + 1),
                     "channel_index": channel_index,
-                    'time_shift': time_shift
+                    "time_shift": time_shift,
                 }
             )
         return data, time_shift
@@ -850,7 +879,7 @@ class SpectroscopyWindow(QWidget):
             read_mode=read_mode,
             preloaded_fitting=preloaded_fitting_results,
             save_plot_img=self.acquire_read_mode == "read",
-            y_data_shift=time_shift
+            y_data_shift=time_shift,
         )
         self.fitting_config_popup.show()
 
@@ -958,6 +987,8 @@ class SpectroscopyWindow(QWidget):
     def on_export_data_changed(self, state):
         self.settings.setValue(SETTINGS_WRITE_DATA, state)
         self.write_data_gui = state
+        if TIME_TAGGER_WIDGET in self.widgets:
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(state)
         self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
         self.calc_exported_file_size() if state else None
 
@@ -1026,6 +1057,23 @@ class SpectroscopyWindow(QWidget):
                 not self.get_free_running_state()
             )
 
+    def time_shifts_set_enabled(self, enabled: bool):
+        if "time_shift_sliders" in self.control_inputs:
+            for _, widget in self.control_inputs["time_shift_sliders"].items():
+                widget.setEnabled(enabled)
+        if "time_shift_inputs" in self.control_inputs:
+            for _, widget in self.control_inputs["time_shift_inputs"].items():
+                widget.setEnabled(enabled)
+
+                
+    def reset_time_shifts_values(self):
+        if "time_shift_sliders" in self.control_inputs:
+            for _, widget in self.control_inputs["time_shift_sliders"].items():
+                widget.setValue(0)
+        if "time_shift_inputs" in self.control_inputs:
+            for _, widget in self.control_inputs["time_shift_inputs"].items():
+                widget.setValue(0)                
+
     def top_bar_set_enabled(self, enabled: bool):
         self.sync_buttons_set_enabled(enabled)
         self.channel_selector_set_enabled(enabled)
@@ -1063,12 +1111,16 @@ class SpectroscopyWindow(QWidget):
         def update_phasors_lifetimes():
             frequency_mhz = self.get_current_frequency_mhz()
             if frequency_mhz != 0.0:
+                self.time_shifts_set_enabled(True)
                 laser_period_ns = mhz_to_ns(frequency_mhz)
                 harmonic = self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1
                 for _, channel in enumerate(self.plots_to_show):
                     self.draw_lifetime_points_in_phasors(
                         channel, harmonic, laser_period_ns, frequency_mhz
                     )
+            else:
+                self.time_shifts_set_enabled(False)
+            self.reset_time_shifts_values()                          
 
         if self.selected_sync == sync and sync == "sync_in":
             self.start_sync_in_dialog()
@@ -1090,8 +1142,10 @@ class SpectroscopyWindow(QWidget):
 
     def update_sync_in_button(self):
         if self.sync_in_frequency_mhz == 0.0:
+            self.time_shifts_set_enabled(False)
             self.sync_buttons[0][0].setText("Sync In (not detected)")
         else:
+            self.time_shifts_set_enabled(True)
             self.sync_buttons[0][0].setText(
                 f"Sync In ({self.sync_in_frequency_mhz} MHz)"
             )
@@ -1371,8 +1425,6 @@ class SpectroscopyWindow(QWidget):
                 col_length = 2
             v_widget.setStyleSheet(GUIStyles.chart_wrapper_style())
             self.grid_layout.addWidget(v_widget, i // col_length, i % col_length)
-            
-            
 
     def calculate_phasors_points_mean(self, channel_index, harmonic):
         x = [p[0] for p in self.all_phasors_points[channel_index][harmonic]]
@@ -1457,7 +1509,6 @@ class SpectroscopyWindow(QWidget):
                 legend_item.setPos(0.1, 0)
                 self.phasors_widgets[channel_index].addItem(legend_item)
                 self.phasors_legends[channel_index] = legend_item
-                
 
     def create_phasor_crosshair(self, channel_index, phasors_widget):
         crosshair = pg.TextItem("", anchor=(0.5, 0.5), color=(30, 144, 255))
@@ -1466,7 +1517,7 @@ class SpectroscopyWindow(QWidget):
         crosshair.setFont(font)
         crosshair.setZValue(3)
         phasors_widget.addItem(crosshair, ignoreBounds=True)
-        self.phasors_crosshairs[channel_index] = crosshair                       
+        self.phasors_crosshairs[channel_index] = crosshair
 
     def generate_coords(self, channel_index):
         font = QFont()
@@ -1881,7 +1932,7 @@ class SpectroscopyWindow(QWidget):
                 tau_ns=tau_ns,
                 reference_file=reference_file,
                 harmonics=int(self.harmonic_selector_value),
-                #write_bin=True
+                write_bin=self.time_tagger,
             )
         except Exception as e:
             BoxMessage.setup(
@@ -2176,7 +2227,12 @@ class SpectroscopyWindow(QWidget):
         bin_width_micros = int(
             self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
         )
-        adjustment = get_realtime_adjustment_value(self.selected_channels, self.tab_selected == TAB_PHASORS) / bin_width_micros
+        adjustment = (
+            get_realtime_adjustment_value(
+                self.selected_channels, self.tab_selected == TAB_PHASORS
+            )
+            / bin_width_micros
+        )
         curve = tuple(x / adjustment for x in curve)
         if self.tab_selected in self.intensity_lines:
             if channel_index in self.intensity_lines[self.tab_selected]:
@@ -2329,9 +2385,13 @@ class SpectroscopyWindow(QWidget):
             frequency_mhz = self.get_current_frequency_mhz()
             laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
             for _, channel_index in enumerate(self.plots_to_show):
-                self.phasors_widgets[channel_index].setCursor(Qt.CursorShape.BlankCursor)
+                self.phasors_widgets[channel_index].setCursor(
+                    Qt.CursorShape.BlankCursor
+                )
                 self.generate_coords(channel_index)
-                self.create_phasor_crosshair(channel_index, self.phasors_widgets[channel_index])
+                self.create_phasor_crosshair(
+                    channel_index, self.phasors_widgets[channel_index]
+                )
                 self.draw_lifetime_points_in_phasors(
                     channel_index, 1, laser_period_ns, frequency_mhz
                 )
@@ -2343,13 +2403,16 @@ class SpectroscopyWindow(QWidget):
             self.generate_phasors_legend(1)
         if harmonic_selected > 1:
             self.harmonic_selector_shown = True
-        if is_export_data_active:
+        if is_export_data_active and not self.time_tagger:
             QTimer.singleShot(
                 300,
                 partial(
                     ExportData.save_acquisition_data, self, active_tab=self.tab_selected
                 ),
             )
+        if is_export_data_active and self.time_tagger:
+            self.widgets[TIME_TAGGER_PROGRESS_BAR].set_visible(True)
+            TimeTaggerController.init_time_tagger_processing(self)
         if self.tab_selected == TAB_FITTING:
             self.fit_button_show()
 
