@@ -1,6 +1,5 @@
 from functools import partial
 from PyQt6.QtCore import (
-    Qt,
     QRunnable,
     QThreadPool,
     pyqtSignal,

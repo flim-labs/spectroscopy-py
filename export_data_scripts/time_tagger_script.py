@@ -49,7 +49,7 @@ def read_time_tagger_bin(file_path, chunk_size=100000):
         record_generator(file_path, record_size)
     ):
         channel, micro_time, macro_time = record
-        records.append((f"ch{channel + 1}", round(micro_time, 1), round(macro_time, 1)))
+        records.append((f"ch{channel + 1}", round(micro_time, 6), round(macro_time, 6)))
 
         if (i + 1) % chunk_size == 0:
             yield pd.DataFrame(

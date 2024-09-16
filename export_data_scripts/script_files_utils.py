@@ -17,7 +17,7 @@ phasors_m_script_path = resource_path("export_data_scripts/phasors_script.m")
 fitting_py_script_path = resource_path("export_data_scripts/fitting_script.py")  
 fitting_m_script_path = resource_path("export_data_scripts/fitting_script.m")  
 time_tagger_py_script_path = resource_path("export_data_scripts/time_tagger_script.py")  
-time_tagger_m_script_path = resource_path("export_data_scripts/time_tagger_script.m")  
+
 
 
 class ScriptFileUtils:
