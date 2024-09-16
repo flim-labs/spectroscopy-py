@@ -841,7 +841,6 @@ class ReaderPopup(QWidget):
 
     def on_plot_data_btn_clicked(self):
         self.app.reset_time_shifts_values()
-        self.app.change_time_shift_inputs_range()
         file_type = self.data_type
         if self.errors_in_data(file_type):
             return        
