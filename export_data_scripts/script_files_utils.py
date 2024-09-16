@@ -67,7 +67,7 @@ class ScriptFileUtils:
             "skip_pattern": "def get_recent_spectroscopy_file():",
             "end_pattern": "with open(file_path, 'rb') as f:",
             "replace_pattern": "with open(file_path, 'rb') as f:",
-            "requirements": ["matplotlib", "numpy"] if not time_tagger else ["matplotlib", "numpy", "pandas", "tqdm", "pyarrow",  "colorama", "keyboard"],
+            "requirements": ["matplotlib", "numpy"] if not time_tagger else ["matplotlib", "numpy", "pandas", "tqdm", "pyarrow",  "colorama"],
         }
         matlab_modifier = {
             "source_file": spectroscopy_m_script_path,      
@@ -85,7 +85,7 @@ class ScriptFileUtils:
             "skip_pattern": "get_recent_spectroscopy_file():",
             "end_pattern": "def ns_to_mhz(laser_period_ns):",
             "replace_pattern": "def ns_to_mhz(laser_period_ns):",
-            "requirements": ["matplotlib", "numpy"] if not time_tagger else ["matplotlib", "numpy", "pandas", "tqdm", "pyarrow",  "colorama", "keyboard"],
+            "requirements": ["matplotlib", "numpy"] if not time_tagger else ["matplotlib", "numpy", "pandas", "tqdm", "pyarrow",  "colorama"],
         }
         matlab_modifier = {
             "source_file": phasors_m_script_path,
@@ -103,7 +103,7 @@ class ScriptFileUtils:
             "skip_pattern": "def get_recent_spectroscopy_file():",
             "end_pattern": "with open(file_path, 'rb') as f:",
             "replace_pattern": "with open(file_path, 'rb') as f:",
-            "requirements": ["matplotlib", "numpy", "scipy"] if not time_tagger else ["matplotlib", "numpy", "scipy", "pandas", "tqdm", "pyarrow",  "colorama", "keyboard"],
+            "requirements": ["matplotlib", "numpy", "scipy"] if not time_tagger else ["matplotlib", "numpy", "scipy", "pandas", "tqdm", "pyarrow",  "colorama"],
         }
         matlab_modifier = {
             "source_file": fitting_m_script_path,      
