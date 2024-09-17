@@ -152,6 +152,9 @@ class SpectroscopyWindow(QWidget):
         # Time tagger
         time_tagger = self.settings.value(SETTINGS_TIME_TAGGER, DEFAULT_TIME_TAGGER)
         self.time_tagger = time_tagger == "true" or time_tagger == True
+        # SBR
+        show_SBR = self.settings.value(SETTINGS_SHOW_SBR, DEFAULT_SHOW_SBR)
+        self.show_SBR = show_SBR == "true" or show_SBR == True
 
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
@@ -451,8 +454,25 @@ class SpectroscopyWindow(QWidget):
             controls_row,
             self.on_cps_threshold_change,
         )
-        inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="120px"))
-        self.control_inputs[SETTINGS_CPS_THRESHOLD] = inp
+        inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="100px"))
+        self.control_inputs[SETTINGS_CPS_THRESHOLD] = inp        
+        
+        #SHOW SBR 
+        show_SBR_control = QVBoxLayout()
+        show_SBR_control.setContentsMargins(0, 0, 0, 0)
+        show_SBR_control.setSpacing(0)
+        show_SBR_label = QLabel("Show SBR:")
+        inp = SwitchControl(
+            active_color=PALETTE_BLUE_1, width=70, height=30, checked=self.show_SBR
+        )
+        self.control_inputs[SETTINGS_SHOW_SBR] = inp
+        inp.toggled.connect(self.on_show_SBR_changed)
+        show_SBR_control.addWidget(show_SBR_label)
+        show_SBR_control.addSpacing(5)
+        show_SBR_control.addWidget(inp)    
+        controls_row.addLayout(show_SBR_control)   
+        controls_row.addSpacing(20) 
+    
         # QUANTIZE PHASORS
         quantize_phasors_switch_control = QVBoxLayout()
         inp_quantize = SwitchControl(
@@ -991,6 +1011,10 @@ class SpectroscopyWindow(QWidget):
             self.widgets[TIME_TAGGER_WIDGET].setVisible(state)
         self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
         self.calc_exported_file_size() if state else None
+        
+    def on_show_SBR_changed(self, state):
+        self.settings.setValue(SETTINGS_SHOW_SBR, state)
+        self.show_SBR = state
 
     def create_channel_selector(self):
         grid = QHBoxLayout()
@@ -1065,14 +1089,13 @@ class SpectroscopyWindow(QWidget):
             for _, widget in self.control_inputs["time_shift_inputs"].items():
                 widget.setEnabled(enabled)
 
-                
     def reset_time_shifts_values(self):
         if "time_shift_sliders" in self.control_inputs:
             for _, widget in self.control_inputs["time_shift_sliders"].items():
                 widget.setValue(0)
         if "time_shift_inputs" in self.control_inputs:
             for _, widget in self.control_inputs["time_shift_inputs"].items():
-                widget.setValue(0)                
+                widget.setValue(0)
 
     def top_bar_set_enabled(self, enabled: bool):
         self.sync_buttons_set_enabled(enabled)
@@ -1120,7 +1143,7 @@ class SpectroscopyWindow(QWidget):
                     )
             else:
                 self.time_shifts_set_enabled(False)
-            self.reset_time_shifts_values()                          
+            self.reset_time_shifts_values()
 
         if self.selected_sync == sync and sync == "sync_in":
             self.start_sync_in_dialog()

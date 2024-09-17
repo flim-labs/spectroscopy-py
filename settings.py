@@ -37,6 +37,9 @@ DEFAULT_TIME_TAGGER = True
 SETTINGS_TIME_SHIFTS = "time_shift"
 SETTINGS_CPS_THRESHOLD = "cps_threshold"
 DEFAULT_CPS_THRESHOLD = 0
+SETTINGS_SHOW_SBR = "show_SBR"
+DEFAULT_SHOW_SBR = False
+
 
 TIME_TAGGER_PROGRESS_BAR = "time_tagger_progress_bar"
 TIME_TAGGER_WIDGET = "time_tagger_widget"

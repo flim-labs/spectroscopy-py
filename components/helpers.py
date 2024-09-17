@@ -58,6 +58,11 @@ def calc_bin_from_micro_time_ns(micro_time_ns, frequency_mhz):
     if laser_period_ns == 0.0:
         return 0  
     return (micro_time_ns * 256) / (HETERODYNE_FACTOR * laser_period_ns)
+
+def calc_SBR(y):
+    signal = np.mean(y)
+    noise = np.std(y)
+    return 10 * np.log10(signal / noise)
    
 
 def get_realtime_adjustment_value(enabled_channels, is_phasors):
