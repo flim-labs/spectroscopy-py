@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 
-VERSION = "1.7"
+VERSION = "1.8"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
 TOP_BAR_HEIGHT = 250

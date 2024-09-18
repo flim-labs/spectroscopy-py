@@ -1378,7 +1378,7 @@ class SpectroscopyWindow(QWidget):
                 v_decay_layout.addWidget(time_shift_layout)
                 if self.acquire_read_mode != "read":
                     #SBR 
-                    SBR_label = QLabel("0 SBR")
+                    SBR_label = QLabel("SBR: 0 ㏈")
                     SBR_label.setStyleSheet(GUIStyles.SBR_label())
                     if not self.show_SBR:
                         SBR_label.hide()
@@ -1433,7 +1433,7 @@ class SpectroscopyWindow(QWidget):
                 self.decay_widgets[channel] = curve_widget
                 if self.acquire_read_mode != "read":
                     #SBR 
-                    SBR_label = QLabel("0 SBR")
+                    SBR_label = QLabel("SBR: 0 ㏈")
                     SBR_label.setStyleSheet(GUIStyles.SBR_label(font_size="16px", background_color="#000000"))
                     if not self.show_SBR:
                         SBR_label.hide()
@@ -2243,7 +2243,7 @@ class SpectroscopyWindow(QWidget):
     def update_SBR(self, channel_index, curve):
         if channel_index in self.SBR_items:
             SBR_value = calc_SBR(np.array(curve))
-            self.SBR_items[channel_index].setText(f"{SBR_value:.2f} SBR")
+            self.SBR_items[channel_index].setText(f"SBR: {SBR_value:.2f} ㏈")
 
 
     def update_cps(self, channel_index, time_ns, curve):
