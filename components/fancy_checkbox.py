@@ -137,7 +137,7 @@ class FancyButton(QPushButton):
                 font-weight: thin;
                 border: 1px solid {color};
                 border-radius: 0px;
-                height: 20px;
+                height: 24px;
                 color: white;
                 padding: 5px;
                 background-color: {bg_color};

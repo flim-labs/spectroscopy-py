@@ -116,6 +116,8 @@ DEFAULT_ACQUIRE_READ_MODE = "acquire"
 ACQUIRE_BUTTON = "acquire_button"
 READ_BUTTON = "read_button"
 EXPORT_PLOT_IMG_BUTTON = "export_plot_img_button"
+CHECK_CARD_BUTTON = "check_card_button"
+CHECK_CARD_MESSAGE = "check_card_message"
 
 
 READER_DATA = {

@@ -540,4 +540,19 @@ class GUIStyles:
                 padding: 2px;
             }} 
                      
-        """        
+        """     
+        
+    @staticmethod
+    def check_card_message(color):
+        return f"""
+            QLabel {{
+                color: {color}; 
+                background-color: #242424;
+                border-left: 1px solid {color}; 
+                border-right: 1px solid {color}; 
+                border-radius: 0; 
+                padding: 0 4px;
+                font-weight: 800;
+                font-size: 14px;
+            }}                
+        """                  
