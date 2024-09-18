@@ -61,6 +61,8 @@ def calc_bin_from_micro_time_ns(micro_time_ns, frequency_mhz):
 
 def calc_SBR(y):
     signal = np.mean(y)
+    if signal == 0:
+        return 0
     noise = np.std(y)
     return 10 * np.log10(signal / noise)
    

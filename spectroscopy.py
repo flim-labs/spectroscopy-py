@@ -1418,6 +1418,9 @@ class SpectroscopyWindow(QWidget):
                 )
                 countdown_label.setVisible(False)
                 self.acquisition_time_countdown_widgets[channel] = countdown_label
+                curve_widget_container = QVBoxLayout()
+                curve_widget_container.setContentsMargins(0,0,0,0)
+                curve_widget_container.setSpacing(0)
                 curve_widget = pg.PlotWidget()
                 curve_widget.setLabel("left", "Photon counts", units="")
                 curve_widget.setLabel("bottom", "Time", units="ns")
@@ -1428,10 +1431,19 @@ class SpectroscopyWindow(QWidget):
                 )
                 self.decay_curves[self.tab_selected][channel] = static_curve
                 self.decay_widgets[channel] = curve_widget
+                if self.acquire_read_mode != "read":
+                    #SBR 
+                    SBR_label = QLabel("0 SBR")
+                    SBR_label.setStyleSheet(GUIStyles.SBR_label(font_size="16px", background_color="#000000"))
+                    if not self.show_SBR:
+                        SBR_label.hide()
+                    self.SBR_items[channel] = SBR_label                 
+                    curve_widget_container.addWidget(SBR_label)  
+                curve_widget_container.addWidget(curve_widget)
                 cps_contdown_v_box.addWidget(cps_label)
                 cps_contdown_v_box.addWidget(countdown_label)
                 h_layout.addLayout(cps_contdown_v_box, stretch=1)
-                h_layout.addWidget(curve_widget, stretch=1)
+                h_layout.addLayout(curve_widget_container, stretch=1)
                 v_layout.addLayout(h_layout, 1)
                 # add a phasors chart
                 phasors_widget = pg.PlotWidget()
@@ -1450,8 +1462,8 @@ class SpectroscopyWindow(QWidget):
                     symbolSize=1,
                     symbolBrush="#1E90FF",
                 )
-                self.phasors_widgets[channel] = phasors_widget
-                v_layout.addWidget(phasors_widget, 4)
+                self.phasors_widgets[channel] = phasors_widget                
+                v_layout.addWidget(phasors_widget, 3)
                 v_widget.setLayout(v_layout)
                 if self.acquire_read_mode == "read":
                     phasors_widget.setCursor(Qt.CursorShape.BlankCursor)

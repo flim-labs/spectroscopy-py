@@ -529,14 +529,14 @@ class GUIStyles:
         """        
         
     @staticmethod
-    def SBR_label():
+    def SBR_label(font_size="22px", background_color="#0a0a0a", color="#f72828"):
         return f"""
             QLabel {{
-                color: #f72828;
+                color: {color};
                 font-family: "Montserrat";
-                font-size: 22px;
+                font-size: {font_size};
                 font-weight: bold;
-                background-color: #0a0a0a; 
+                background-color: {background_color}; 
                 padding: 2px;
             }} 
                      
