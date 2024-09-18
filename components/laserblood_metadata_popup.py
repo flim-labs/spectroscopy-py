@@ -661,23 +661,25 @@ class LaserbloodMetadataPopup(QWidget):
  
     @staticmethod
     def set_average_CPS(cps_counts, app):
-        channel_averages = {}
-        all_cps = []
-        for ch in cps_counts:
-            channel_values = cps_counts[ch]
-            if all(value == 0 for value in channel_values):
-                continue
-            avg_channel = sum(channel_values) / len(channel_values)
-            channel_averages[ch] = round(avg_channel, 2)
-            all_cps.extend(channel_values)
-        if all_cps:
-            total_avg = sum(all_cps) / len(all_cps)
+        if cps_counts:
+            total_avg = sum(cps_counts) / len(cps_counts)
             total_avg_rounded = round(total_avg, 2)
         else:
             total_avg_rounded = 0
         next((setting.update({"VALUE": total_avg_rounded}) for setting in app.laserblood_settings if setting.get("LABEL") == "Average CPS"), None)
         app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))
         
+
+    @staticmethod
+    def set_average_SBR(SBR_counts, app):
+        if SBR_counts:
+            total_avg = sum(SBR_counts) / len(SBR_counts)
+            total_avg_rounded = round(total_avg, 2)
+        else:
+            total_avg_rounded = 0   
+        next((setting.update({"VALUE": total_avg_rounded}) for setting in app.laserblood_settings if setting.get("LABEL") == "Average SBR"), None)
+        app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))        
+
         
     @staticmethod     
     def set_FPGA_firmware(app):

@@ -1,5 +1,9 @@
 # Spectroscopy Changelog
 
+## Version 1.8
+- Time Tagger feature (.bin export/reader script) added
+- SBR (Signal-to-Background Ratio) value calculation added
+
 ## Version 1.7
 - Improvements and fixes on Read Data mode
 

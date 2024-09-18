@@ -109,6 +109,7 @@ SETTINGS_SAMPLE_VOL = {
     "REMOVABLE": False,
     "REQUIRED": True,
 }
+
 CUVETTE_TOTAL_VOL = {
     "LABEL": "Cuvette total volume",
     "UNIT": "µL",
@@ -549,6 +550,21 @@ CPS_THRESHOLD = {
     "REQUIRED": True,
 }
 
+SBR = {
+    "LABEL": "Average SBR",
+    "UNIT": "㏈",
+    "VALUE": 0,
+    "INPUT_TYPE": "float",
+    "OPTIONS": [],
+    "MIN": -10000000,
+    "MAX": 10000000,
+    "POSITION": (8, 0, 1, 1),
+    "STRETCH": 3,
+    "ENABLED": False,
+    "REMOVABLE": False,
+    "REQUIRED": True,
+}
+
 NOTES = {
     "LABEL": "Notes",
     "UNIT": None,
@@ -557,7 +573,7 @@ NOTES = {
     "OPTIONS": [],
     "MIN": None,
     "MAX": None,
-    "POSITION": (8, 0, 1, 4),
+    "POSITION": (9, 0, 1, 4),
     "STRETCH": 3,
     "ENABLED": True,
     "REMOVABLE": False,
@@ -598,6 +614,7 @@ LASERBLOOD_METADATA = [
     EMISSION_FILTER,
     SPA_DETECTOR_TYPE,
     CPS_THRESHOLD,
+    SBR,
     NOTES,
 ]
 
