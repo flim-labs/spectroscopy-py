@@ -39,7 +39,7 @@ from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
-from components.helpers import format_size, get_realtime_adjustment_value, mhz_to_ns
+from components.helpers import calc_SBR, format_size, get_realtime_adjustment_value, mhz_to_ns
 from components.input_number_control import InputNumberControl, InputFloatControl
 from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
 from components.lin_log_control import LinLogControl
@@ -92,6 +92,7 @@ class SpectroscopyWindow(QWidget):
         self.phasors_clusters_center = {}
         self.phasors_crosshairs = {}
         self.quantization_images = {}
+        self.SBR_items = {}
         self.cps_widgets = {}
         self.cps_widgets_animation = {}
         self.cps_counts = {}
@@ -152,6 +153,9 @@ class SpectroscopyWindow(QWidget):
         # Time tagger
         time_tagger = self.settings.value(SETTINGS_TIME_TAGGER, DEFAULT_TIME_TAGGER)
         self.time_tagger = time_tagger == "true" or time_tagger == True
+        # SBR
+        show_SBR = self.settings.value(SETTINGS_SHOW_SBR, DEFAULT_SHOW_SBR)
+        self.show_SBR = show_SBR == "true" or show_SBR == True
 
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
@@ -451,8 +455,25 @@ class SpectroscopyWindow(QWidget):
             controls_row,
             self.on_cps_threshold_change,
         )
-        inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="120px"))
-        self.control_inputs[SETTINGS_CPS_THRESHOLD] = inp
+        inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="100px"))
+        self.control_inputs[SETTINGS_CPS_THRESHOLD] = inp        
+        
+        #SHOW SBR 
+        show_SBR_control = QVBoxLayout()
+        show_SBR_control.setContentsMargins(0, 0, 0, 0)
+        show_SBR_control.setSpacing(0)
+        show_SBR_label = QLabel("Show SBR:")
+        inp = SwitchControl(
+            active_color=PALETTE_BLUE_1, width=70, height=30, checked=self.show_SBR
+        )
+        self.control_inputs[SETTINGS_SHOW_SBR] = inp
+        inp.toggled.connect(self.on_show_SBR_changed)
+        show_SBR_control.addWidget(show_SBR_label)
+        show_SBR_control.addSpacing(5)
+        show_SBR_control.addWidget(inp)    
+        controls_row.addLayout(show_SBR_control)   
+        controls_row.addSpacing(20) 
+    
         # QUANTIZE PHASORS
         quantize_phasors_switch_control = QVBoxLayout()
         inp_quantize = SwitchControl(
@@ -991,6 +1012,11 @@ class SpectroscopyWindow(QWidget):
             self.widgets[TIME_TAGGER_WIDGET].setVisible(state)
         self.bin_file_size_label.show() if state else self.bin_file_size_label.hide()
         self.calc_exported_file_size() if state else None
+        
+    def on_show_SBR_changed(self, state):
+        self.settings.setValue(SETTINGS_SHOW_SBR, state)
+        self.show_SBR = state
+        self.SBR_set_visible(state)
 
     def create_channel_selector(self):
         grid = QHBoxLayout()
@@ -1056,6 +1082,11 @@ class SpectroscopyWindow(QWidget):
             self.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(
                 not self.get_free_running_state()
             )
+            
+    def SBR_set_visible(self, visible):
+        for _, widget in self.SBR_items.items():
+            if  widget is not None:
+                widget.setVisible(visible)        
 
     def time_shifts_set_enabled(self, enabled: bool):
         if "time_shift_sliders" in self.control_inputs:
@@ -1065,14 +1096,13 @@ class SpectroscopyWindow(QWidget):
             for _, widget in self.control_inputs["time_shift_inputs"].items():
                 widget.setEnabled(enabled)
 
-                
     def reset_time_shifts_values(self):
         if "time_shift_sliders" in self.control_inputs:
             for _, widget in self.control_inputs["time_shift_sliders"].items():
                 widget.setValue(0)
         if "time_shift_inputs" in self.control_inputs:
             for _, widget in self.control_inputs["time_shift_inputs"].items():
-                widget.setValue(0)                
+                widget.setValue(0)
 
     def top_bar_set_enabled(self, enabled: bool):
         self.sync_buttons_set_enabled(enabled)
@@ -1120,7 +1150,7 @@ class SpectroscopyWindow(QWidget):
                     )
             else:
                 self.time_shifts_set_enabled(False)
-            self.reset_time_shifts_values()                          
+            self.reset_time_shifts_values()
 
         if self.selected_sync == sync and sync == "sync_in":
             self.start_sync_in_dialog()
@@ -1338,11 +1368,22 @@ class SpectroscopyWindow(QWidget):
                     self.set_plot_y_range(curve_widget)
                 curve_widget.plotItem.getAxis("left").enableAutoSIPrefix(False)
                 curve_widget.plotItem.getAxis("bottom").enableAutoSIPrefix(False)
+                
                 self.decay_curves[self.tab_selected][channel] = static_curve
                 self.decay_widgets[channel] = curve_widget
                 time_shift_layout = SpectroscopyTimeShift(self, channel)
+        
                 v_decay_layout = QVBoxLayout()
+                v_decay_layout.setSpacing(0)
                 v_decay_layout.addWidget(time_shift_layout)
+                if self.acquire_read_mode != "read":
+                    #SBR 
+                    SBR_label = QLabel("SBR: 0 ㏈")
+                    SBR_label.setStyleSheet(GUIStyles.SBR_label())
+                    if not self.show_SBR:
+                        SBR_label.hide()
+                    self.SBR_items[channel] = SBR_label                      
+                    v_decay_layout.addWidget(SBR_label)
                 v_decay_layout.addWidget(curve_widget)
                 h_decay_layout.addWidget(lin_log_widget, 1)
                 h_decay_layout.addLayout(v_decay_layout, 11)
@@ -1377,6 +1418,9 @@ class SpectroscopyWindow(QWidget):
                 )
                 countdown_label.setVisible(False)
                 self.acquisition_time_countdown_widgets[channel] = countdown_label
+                curve_widget_container = QVBoxLayout()
+                curve_widget_container.setContentsMargins(0,0,0,0)
+                curve_widget_container.setSpacing(0)
                 curve_widget = pg.PlotWidget()
                 curve_widget.setLabel("left", "Photon counts", units="")
                 curve_widget.setLabel("bottom", "Time", units="ns")
@@ -1387,10 +1431,19 @@ class SpectroscopyWindow(QWidget):
                 )
                 self.decay_curves[self.tab_selected][channel] = static_curve
                 self.decay_widgets[channel] = curve_widget
+                if self.acquire_read_mode != "read":
+                    #SBR 
+                    SBR_label = QLabel("SBR: 0 ㏈")
+                    SBR_label.setStyleSheet(GUIStyles.SBR_label(font_size="16px", background_color="#000000"))
+                    if not self.show_SBR:
+                        SBR_label.hide()
+                    self.SBR_items[channel] = SBR_label                 
+                    curve_widget_container.addWidget(SBR_label)  
+                curve_widget_container.addWidget(curve_widget)
                 cps_contdown_v_box.addWidget(cps_label)
                 cps_contdown_v_box.addWidget(countdown_label)
                 h_layout.addLayout(cps_contdown_v_box, stretch=1)
-                h_layout.addWidget(curve_widget, stretch=1)
+                h_layout.addLayout(curve_widget_container, stretch=1)
                 v_layout.addLayout(h_layout, 1)
                 # add a phasors chart
                 phasors_widget = pg.PlotWidget()
@@ -1409,8 +1462,8 @@ class SpectroscopyWindow(QWidget):
                     symbolSize=1,
                     symbolBrush="#1E90FF",
                 )
-                self.phasors_widgets[channel] = phasors_widget
-                v_layout.addWidget(phasors_widget, 4)
+                self.phasors_widgets[channel] = phasors_widget                
+                v_layout.addWidget(phasors_widget, 3)
                 v_widget.setLayout(v_layout)
                 if self.acquire_read_mode == "read":
                     phasors_widget.setCursor(Qt.CursorShape.BlankCursor)
@@ -1650,6 +1703,7 @@ class SpectroscopyWindow(QWidget):
         self.cps_widgets_animation.clear()
         self.cps_widgets.clear()
         self.cps_counts.clear()
+        self.SBR_items.clear()
         self.acquisition_time_countdown_widgets.clear()
         if deep_clear:
             self.intensity_lines = deepcopy(DEFAULT_INTENSITY_LINES)
@@ -2185,6 +2239,12 @@ class SpectroscopyWindow(QWidget):
                 countdown_widget.setText(
                     f"Remaining time: {seconds:02}:{milliseconds:02} (s)"
                 )
+                
+    def update_SBR(self, channel_index, curve):
+        if channel_index in self.SBR_items:
+            SBR_value = calc_SBR(np.array(curve))
+            self.SBR_items[channel_index].setText(f"SBR: {SBR_value:.2f} ㏈")
+
 
     def update_cps(self, channel_index, time_ns, curve):
         # check if there is channel_index'th element in cps_counts
@@ -2211,6 +2271,9 @@ class SpectroscopyWindow(QWidget):
                     self.cps_widgets_animation[channel_index].start()
                 else:
                     self.cps_widgets_animation[channel_index].stop()
+            #SBR
+            if self.show_SBR:
+                self.update_SBR(channel_index, curve)        
             cps["last_time_ns"] = time_ns
             cps["last_count"] = cps["current_count"]
 
@@ -2415,6 +2478,7 @@ class SpectroscopyWindow(QWidget):
             TimeTaggerController.init_time_tagger_processing(self)
         if self.tab_selected == TAB_FITTING:
             self.fit_button_show()
+   
 
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
