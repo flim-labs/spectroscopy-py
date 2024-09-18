@@ -34,7 +34,7 @@ class CheckCard(QWidget):
         GUIStyles.set_start_btn_style(self.check_button)
         self.app.widgets[CHECK_CARD_BUTTON] = self.check_button
         # Check message
-        self.check_message = QLabel("Card ID: 12345")
+        self.check_message = QLabel("")
         self.check_message.setStyleSheet(GUIStyles.check_card_message(color="#285da6"))
         self.app.widgets[CHECK_CARD_MESSAGE] = self.check_message
         self.layout.addWidget(self.check_button)
