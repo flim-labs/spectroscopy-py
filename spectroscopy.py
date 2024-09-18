@@ -34,6 +34,7 @@ from components.buttons import (
     ReadAcquireModeButton,
     TimeTaggerWidget,
 )
+from components.check_card import CheckCard
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
@@ -190,6 +191,10 @@ class SpectroscopyWindow(QWidget):
         )
         self.toggle_intensities_widgets_visibility()
         self.refresh_reader_popup_plots = False
+        
+        # Check card connection
+        self.check_card_connection()
+        
 
     @staticmethod
     def get_empty_phasors_points():
@@ -1182,6 +1187,10 @@ class SpectroscopyWindow(QWidget):
 
     def create_sync_buttons(self):
         buttons_layout = QHBoxLayout()
+        # CHECK CARD
+        check_card_widget = CheckCard(self)
+        buttons_layout.addWidget(check_card_widget)   
+        buttons_layout.addSpacing(20)
         sync_in_button = FancyButton("Sync In")
         buttons_layout.addWidget(sync_in_button)
         self.sync_buttons.append((sync_in_button, "sync_in"))
@@ -2479,6 +2488,16 @@ class SpectroscopyWindow(QWidget):
         if self.tab_selected == TAB_FITTING:
             self.fit_button_show()
    
+
+    def check_card_connection(self):
+        try:
+            card_serial_number = flim_labs.check_card()
+            CheckCard.update_check_message(self, str(card_serial_number), error=False)
+        except Exception as e:
+            if str(e) == "CardNotFound":
+                CheckCard.update_check_message(self, "Card Not Found", error=True)
+            else:
+                CheckCard.update_check_message(self, str(e), error=True)
 
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
