@@ -1814,6 +1814,7 @@ class SpectroscopyWindow(QWidget):
             return frequency_mhz
 
     def begin_spectroscopy_experiment(self):
+        self.check_card_connection()
         bin_width_micros = int(
             self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
         )
@@ -1998,6 +1999,7 @@ class SpectroscopyWindow(QWidget):
                 write_bin=self.time_tagger,
             )
         except Exception as e:
+            self.check_card_connection()
             BoxMessage.setup(
                 "Error",
                 "Error starting spectroscopy: " + str(e),
