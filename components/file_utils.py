@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+import re
 from PyQt6.QtWidgets import QFileDialog
 from laserblood_settings import LASER_TYPES
 from settings import DEFAULT_BIN_WIDTH, SETTINGS_BIN_WIDTH, SETTINGS_TAU_NS
@@ -69,12 +70,12 @@ class FileUtils:
 
             
     @staticmethod
-    def save_laserblood_metadata_json(filename, dest_path, window):
+    def save_laserblood_metadata_json(filename, dest_path, window, timestamp):
         filter_wavelength_input = next((input for input in window.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
         parsed_data = FileUtils.parse_metadata_output(window)
-        laser_key, filter_key = FileUtils.get_laser_info_slug(window, filter_wavelength_input)    
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        new_filename = f"{filename}_{laser_key}_{filter_key}_{timestamp}.laserblood_metadata.json"
+        laser_key, filter_key = FileUtils.get_laser_info_slug(window, filter_wavelength_input)   
+        filename = FileUtils.clean_filename(f"{filename}_{laser_key}_{filter_key}_{timestamp}_laserblood_metadata") 
+        new_filename = f"{filename}.json"
         file_path = os.path.join(dest_path, new_filename)
         with open(file_path, 'w') as json_file:
             json.dump(parsed_data, json_file, indent=4)
@@ -140,6 +141,11 @@ class FileUtils:
         time_diff = abs(ctime1 - ctime2)
         return time_diff
                     
+                    
+    @staticmethod
+    def clean_filename(filename):
+        # Keep only letters, numbers and underscores
+        return re.sub(r'[^a-zA-Z0-9_]', '', filename)                    
                 
                 
                 

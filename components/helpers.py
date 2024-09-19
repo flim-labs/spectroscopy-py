@@ -1,4 +1,5 @@
 import numpy as np
+from datetime import datetime
 
 from settings import HETERODYNE_FACTOR
 
@@ -65,6 +66,10 @@ def calc_SBR(y):
         return 0
     noise = np.std(y)
     return 10 * np.log10(signal / noise)
+
+
+def calc_timestamp():
+    return int(datetime.now().timestamp())
    
 
 def get_realtime_adjustment_value(enabled_channels, is_phasors):
