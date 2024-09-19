@@ -32,6 +32,7 @@ from components.buttons import (
     ReadAcquireModeButton,
     TimeTaggerWidget,
 )
+from components.check_card import CheckCard
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
@@ -211,6 +212,8 @@ class SpectroscopyWindow(QWidget):
         self.toggle_intensities_widgets_visibility()
         self.refresh_reader_popup_plots = False
         LaserbloodMetadataPopup.set_FPGA_firmware(self)
+        # Check card connection
+        self.check_card_connection()        
 
     @staticmethod
     def get_empty_phasors_points():
@@ -1230,6 +1233,10 @@ class SpectroscopyWindow(QWidget):
 
     def create_sync_buttons(self):
         buttons_layout = QHBoxLayout()
+        # CHECK CARD
+        check_card_widget = CheckCard(self)
+        buttons_layout.addWidget(check_card_widget)   
+        buttons_layout.addSpacing(20)        
         sync_in_button = FancyButton("Sync In")
         buttons_layout.addWidget(sync_in_button)
         self.sync_buttons.append((sync_in_button, "sync_in"))
@@ -1874,6 +1881,7 @@ class SpectroscopyWindow(QWidget):
         )
 
     def begin_spectroscopy_experiment(self):
+        self.check_card_connection()
         is_export_data_active = self.write_data_gui
         bin_width_micros = int(
             self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
@@ -2070,6 +2078,7 @@ class SpectroscopyWindow(QWidget):
                 write_bin=self.time_tagger,
             )
         except Exception as e:
+            self.check_card_connection()
             BoxMessage.setup(
                 "Error",
                 "Error starting spectroscopy: " + str(e),
@@ -2563,8 +2572,19 @@ class SpectroscopyWindow(QWidget):
             self.fit_button_show()
         LaserbloodMetadataPopup.set_FPGA_firmware(self)            
         LaserbloodMetadataPopup.set_average_CPS(self.all_cps_counts, self) 
-        LaserbloodMetadataPopup.set_average_SBR(self.all_SBR_counts, self)         
+        LaserbloodMetadataPopup.set_average_SBR(self.all_SBR_counts, self)       
+          
 
+    def check_card_connection(self):
+        try:
+            card_serial_number = flim_labs.check_card()
+            CheckCard.update_check_message(self, str(card_serial_number), error=False)
+        except Exception as e:
+            if str(e) == "CardNotFound":
+                CheckCard.update_check_message(self, "Card Not Found", error=True)
+            else:
+                CheckCard.update_check_message(self, str(e), error=True)
+                
 
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
