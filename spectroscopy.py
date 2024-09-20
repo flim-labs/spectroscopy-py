@@ -58,6 +58,7 @@ from components.resource_path import resource_path
 from components.select_control import SelectControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
 from components.switch_control import SwitchControl
+from components.sync_in_popup import SyncInDialog
 from components.time_tagger import TimeTaggerController
 from settings import *
 
@@ -2538,62 +2539,6 @@ class SpectroscopyWindow(QWidget):
             return super().eventFilter(source, event)
         except:
             pass
-
-
-class SyncInDialog(QDialog):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Sync In Measure Frequency")
-        self.setFixedSize(300, 200)
-        self.setWindowModality(Qt.WindowModality.ApplicationModal)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-        self.label = QLabel("Do you want to start to measure frequency?")
-        self.layout.addWidget(self.label)
-        self.label.setWordWrap(True)
-        self.button_layout = QHBoxLayout()
-        self.layout.addLayout(self.button_layout)
-        self.no_button = QPushButton("No")
-        self.no_button.clicked.connect(self.on_no_button_click)
-        self.button_layout.addWidget(self.no_button)
-        self.yes_button = QPushButton("Do it")
-        self.yes_button.clicked.connect(self.on_yes_button_click)
-        self.button_layout.addWidget(self.yes_button)
-        self.frequency_mhz = 0.0
-        GUIStyles.customize_theme(self)
-        GUIStyles.set_fonts()
-
-    def on_yes_button_click(self):
-        self.label.setText(
-            "Measuring frequency... The process can take a few seconds. Please wait. After 30 seconds, the process "
-            "will be interrupted automatically."
-        )
-        self.yes_button.setEnabled(False)
-        self.no_button.setEnabled(False)
-        QApplication.processEvents()
-        try:
-            res = flim_labs.detect_laser_frequency()
-            if res is None or res == 0.0:
-                self.frequency_mhz = 0.0
-                self.label.setText(
-                    "Frequency not detected. Please check the connection and try again."
-                )
-                self.no_button.setText("Cancel")
-            else:
-                self.frequency_mhz = round(res, 3)
-                self.label.setText(f"Frequency detected: {self.frequency_mhz} MHz")
-                self.no_button.setText("Done")
-        except Exception as e:
-            self.frequency_mhz = 0.0
-            self.label.setText("Error: " + str(e))
-            self.no_button.setText("Cancel")
-        self.yes_button.setEnabled(True)
-        self.yes_button.setText("Retry again")
-        self.no_button.setEnabled(True)
-
-    def on_no_button_click(self):
-        self.close()
 
 
 if __name__ == "__main__":
