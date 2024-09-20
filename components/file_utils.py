@@ -65,4 +65,5 @@ def compare_file_timestamps(file_path1, file_path2):
 
 def clean_filename(filename):
     # Keep only letters, numbers and underscores
+    filename = filename.replace(" ", "_")
     return re.sub(r"[^a-zA-Z0-9_]", "", filename)
