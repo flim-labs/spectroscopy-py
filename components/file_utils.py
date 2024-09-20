@@ -145,6 +145,7 @@ class FileUtils:
     @staticmethod
     def clean_filename(filename):
         # Keep only letters, numbers and underscores
+        filename = filename.replace(" ", "_")
         return re.sub(r'[^a-zA-Z0-9_]', '', filename)                    
                 
                 
