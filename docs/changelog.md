@@ -1,5 +1,10 @@
 # Spectroscopy Changelog
 
+## Version 1.9
+- Add automatic card connection detection
+- Fix Sync In laser frequency detection for low frequencies
+- Improvements/simplification on exported data naming system
+
 ## Version 1.8
 - Time Tagger feature (.bin export/reader script) added
 - SBR (Signal-to-Background Ratio) value calculation added
