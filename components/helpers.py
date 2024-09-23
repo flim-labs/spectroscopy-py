@@ -1,5 +1,5 @@
 import numpy as np
-
+from datetime import datetime
 from settings import HETERODYNE_FACTOR
 
 
@@ -49,15 +49,18 @@ def convert_py_num_to_np_num(output_data):
         )
     return output_data
 
+
 def calc_micro_time_ns(bin, frequency_mhz):
     laser_period_ns = 0.0 if frequency_mhz == 0.0 else mhz_to_ns(frequency_mhz)
-    return ((bin * laser_period_ns)/256) * HETERODYNE_FACTOR
+    return ((bin * laser_period_ns) / 256) * HETERODYNE_FACTOR
+
 
 def calc_bin_from_micro_time_ns(micro_time_ns, frequency_mhz):
     laser_period_ns = 0.0 if frequency_mhz == 0.0 else mhz_to_ns(frequency_mhz)
     if laser_period_ns == 0.0:
-        return 0  
+        return 0
     return (micro_time_ns * 256) / (HETERODYNE_FACTOR * laser_period_ns)
+
 
 def calc_SBR(y):
     signal = np.mean(y)
@@ -65,7 +68,11 @@ def calc_SBR(y):
         return 0
     noise = np.std(y)
     return 10 * np.log10(signal / noise)
-   
+
+
+def calc_timestamp():
+    return int(datetime.now().timestamp())
+
 
 def get_realtime_adjustment_value(enabled_channels, is_phasors):
     if is_phasors:
@@ -78,7 +85,7 @@ def get_realtime_adjustment_value(enabled_channels, is_phasors):
         elif len(enabled_channels) >= 4:
             return 1000 * 1000
         else:
-            return 0       
+            return 0
     else:
         if len(enabled_channels) == 1:
             return 50 * 1000

@@ -1,4 +1,5 @@
 import os
+import re
 from PyQt6.QtWidgets import QFileDialog
 
 
@@ -40,15 +41,12 @@ def get_recent_phasors_file():
 def get_recent_time_tagger_file():
     data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
     files = [
-        f
-        for f in os.listdir(data_folder)
-        if f.startswith("time_tagger_spectroscopy")
+        f for f in os.listdir(data_folder) if f.startswith("time_tagger_spectroscopy")
     ]
     files.sort(
         key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
     )
     return os.path.join(data_folder, files[0])
-
 
 
 def rename_bin_file(source_file, new_filename):
@@ -63,7 +61,9 @@ def compare_file_timestamps(file_path1, file_path2):
     ctime2 = os.path.getctime(file_path2)
     time_diff = abs(ctime1 - ctime2)
     return time_diff
-        
- 
 
 
+def clean_filename(filename):
+    # Keep only letters, numbers and underscores
+    filename = filename.replace(" ", "_")
+    return re.sub(r"[^a-zA-Z0-9_]", "", filename)

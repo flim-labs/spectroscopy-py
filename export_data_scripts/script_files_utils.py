@@ -27,7 +27,7 @@ class ScriptFileUtils:
         try:
             if time_tagger:
                 python_modifier = cls.get_time_tagger_content_modifiers()
-                cls.write_new_scripts_content(python_modifier, {"time_tagger": time_tagger_file_path}, file_name, directory, "py", "time_tagger")
+                cls.write_new_scripts_content(python_modifier, {"time_tagger": time_tagger_file_path}, file_name, directory, "py", "time_tagger_spectroscopy")
             if script_type == 'spectroscopy':
                 python_modifier, matlab_modifier = cls.get_spectroscopy_content_modifiers(time_tagger)
                 cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
