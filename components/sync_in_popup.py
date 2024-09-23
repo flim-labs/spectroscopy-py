@@ -25,6 +25,8 @@ class SyncInDialog(QDialog):
         super().__init__()
         self.setWindowTitle("Sync In Measure Frequency")
         self.setWindowIcon(QIcon(resource_path("assets/wave-icon.png")))
+        self.setMinimumSize(300, 200)  
+        self.setMaximumSize(400, 300)  
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
