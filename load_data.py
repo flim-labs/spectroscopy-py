@@ -158,6 +158,7 @@ def plot_phasors_data(
             total_min = min_val
         ax.plot(x_values, sum_curve, label=f"Channel {active_channels[i] + 1}")
     ax.set_ylim(total_min * 0.99, total_max * 1.01)
+    ax.set_xlim(0, laser_period)
     ax.legend()
     # Phasors plots
     for i, (channel, harmonics) in enumerate(phasors_data.items(), start=1):
@@ -257,6 +258,7 @@ def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
         ax.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")
         ax.legend()
     ax.set_ylim(total_min * 0.99, total_max * 1.01)
+    ax.set_xlim(0, metadata["laser_period_ns"])
     fig.tight_layout()
     if show_plot:
         plt.show()
