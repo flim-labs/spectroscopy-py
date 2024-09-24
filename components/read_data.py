@@ -45,8 +45,7 @@ class ReadData:
         }
         if file_type not in file_info:
             return
-        filter_string = ReadData.get_bin_filter_file_string(file_type)
-        result = ReadData.read_bin(window, app, *file_info[file_type], active_tab, filter_string)
+        result = ReadData.read_bin(window, app, *file_info[file_type], active_tab)
         if not result:
             return
         file_name, file_type, *data, metadata = result
@@ -76,9 +75,9 @@ class ReadData:
     @staticmethod
     def get_bin_filter_file_string(file_type):
         if file_type == "spectroscopy":
-            return "_spectroscopy_"
+            return "_spectroscopy"
         elif file_type == "phasors":
-            return "phasors-spectroscopy"      
+            return "phasors_spectroscopy"      
         else:
             return None     
 
