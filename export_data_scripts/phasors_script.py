@@ -156,7 +156,8 @@ for i in range(number_of_channels):
     if min_val < total_min:        
         total_min = min_val
     ax.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")   
-ax.set_ylim(total_min * 0.99, total_max * 1.01)     
+ax.set_ylim(total_min * 0.99, total_max * 1.01)  
+ax.set_xlim(0, spectroscopy_laser_period)   
 ax.legend()
 
 # Phasors plots

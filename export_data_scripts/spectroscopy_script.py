@@ -83,5 +83,6 @@ with open(file_path, 'rb') as f:
         plt.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")  
         plt.legend()  
     plt.ylim(total_min * 0.99, total_max * 1.01) 
+    plt.xlim(0, laser_period_ns)
     plt.tight_layout()   
     plt.show()
