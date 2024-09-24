@@ -16,7 +16,8 @@ phasors_py_script_path = resource_path("export_data_scripts/phasors_script.py")
 phasors_m_script_path = resource_path("export_data_scripts/phasors_script.m")  
 fitting_py_script_path = resource_path("export_data_scripts/fitting_script.py")  
 fitting_m_script_path = resource_path("export_data_scripts/fitting_script.m")  
-time_tagger_py_script_path = resource_path("export_data_scripts/time_tagger_script.py")  
+time_tagger_py_script_path = resource_path("export_data_scripts/time_tagger_script.py") 
+spectroscopy_macro_py_script_path = resource_path("export_data_scripts/macro_spectroscopy_script.py")   
 
 
 
@@ -25,6 +26,9 @@ class ScriptFileUtils:
     @classmethod
     def export_scripts(cls, bin_file_paths, file_name, directory, script_type, time_tagger=False, time_tagger_file_path=""):
         try:
+            # Spectroscopy macro
+            python_modifier = cls.get_spectroscopy_macro_content_modifiers()
+            cls.write_new_scripts_content(python_modifier, None, "macro", directory, "py", "spectroscopy")
             if time_tagger:
                 python_modifier = cls.get_time_tagger_content_modifiers()
                 cls.write_new_scripts_content(python_modifier, {"time_tagger": time_tagger_file_path}, file_name, directory, "py", "time_tagger_spectroscopy")
@@ -48,7 +52,10 @@ class ScriptFileUtils:
     def write_new_scripts_content(cls, content_modifier, bin_file_paths, file_name, directory, file_extension, script_type):
         is_phasors = script_type == "phasors"
         content = cls.read_file_content(content_modifier["source_file"])
-        new_content = cls.manipulate_file_content(content, bin_file_paths, is_phasors)
+        if bin_file_paths is not None:
+            new_content = cls.manipulate_file_content(content, bin_file_paths, is_phasors)
+        else:
+            new_content = content    
         script_file_name = f"{file_name}_{script_type}_script.{file_extension}"
         script_file_path = os.path.join(directory, script_file_name)
         cls.write_file(script_file_path, new_content)
@@ -67,7 +74,7 @@ class ScriptFileUtils:
             "skip_pattern": "def get_recent_spectroscopy_file():",
             "end_pattern": "# Read laserblood experiment metadata",
             "replace_pattern": "# Read laserblood experiment metadata",
-            "requirements": ["matplotlib", "numpy"] if not time_tagger else ["matplotlib", "numpy", "pandas", "tqdm", "pyarrow",  "colorama"],
+            "requirements": ["matplotlib", "numpy", "pandas", "tqdm", "pyarrow",  "colorama", "openpyxl"],
         }
         matlab_modifier = {
             "source_file": spectroscopy_m_script_path,      
@@ -85,7 +92,7 @@ class ScriptFileUtils:
             "skip_pattern": "get_recent_spectroscopy_file():",
             "end_pattern": "def ns_to_mhz(laser_period_ns):",
             "replace_pattern": "def ns_to_mhz(laser_period_ns):",
-            "requirements": ["matplotlib", "numpy"] if not time_tagger else ["matplotlib", "numpy", "pandas", "tqdm", "pyarrow",  "colorama"],
+            "requirements":  ["matplotlib", "numpy", "pandas", "tqdm", "pyarrow",  "colorama", "openpyxl"],
         }
         matlab_modifier = {
             "source_file": phasors_m_script_path,
@@ -103,7 +110,7 @@ class ScriptFileUtils:
             "skip_pattern": "def get_recent_spectroscopy_file():",
             "end_pattern": "# Read laserblood experiment metadata:",
             "replace_pattern": "# Read laserblood experiment metadata",
-            "requirements": ["matplotlib", "numpy", "scipy"] if not time_tagger else ["matplotlib", "numpy", "scipy", "pandas", "tqdm", "pyarrow",  "colorama"],
+            "requirements": ["matplotlib", "numpy", "scipy", "pandas", "tqdm", "pyarrow",  "colorama", "openpyxl"],
         }
         matlab_modifier = {
             "source_file": fitting_m_script_path,      
@@ -123,7 +130,18 @@ class ScriptFileUtils:
             "replace_pattern": "init(autoreset=True)",
             "requirements": [],
         }
-        return python_modifier      
+        return python_modifier 
+    
+    @classmethod    
+    def get_spectroscopy_macro_content_modifiers(cls):
+        python_modifier = {
+            "source_file": spectroscopy_macro_py_script_path,
+            "skip_pattern": "",
+            "end_pattern": "# Create a directory for output files ('summary analysis') if it does not exist",
+            "replace_pattern": "# Create a directory for output files ('summary analysis') if it does not exist",
+            "requirements": [],
+        }
+        return python_modifier             
 
     @classmethod
     def write_file(cls, file_name, content):
