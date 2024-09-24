@@ -46,8 +46,7 @@ class ReadData:
         }
         if file_type not in file_info:
             return
-        filter_string = ReadData.get_bin_filter_file_string(file_type)
-        result = ReadData.read_bin(window, app, *file_info[file_type], active_tab, filter_string)
+        result = ReadData.read_bin(window, app, *file_info[file_type], active_tab)
         if not result:
             return
         file_name, file_type, *data, metadata = result
@@ -109,10 +108,11 @@ class ReadData:
         if None in result:
             return
         file_name, data = result
-        active_channels = [item["channel"] for item in data]
-        app.reader_data["fitting"]["files"]["fitting"] = file_name
-        app.reader_data["fitting"]["data"]["fitting_data"] = data
-        app.reader_data["fitting"]["metadata"]["channels"] = active_channels
+        if data is not None:
+            active_channels = [item["channel"] for item in data]
+            app.reader_data["fitting"]["files"]["fitting"] = file_name
+            app.reader_data["fitting"]["data"]["fitting_data"] = data
+            app.reader_data["fitting"]["metadata"]["channels"] = active_channels
 
     @staticmethod
     def get_fitting_active_channels(app):
