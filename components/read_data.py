@@ -87,10 +87,11 @@ class ReadData:
         if not result:
             return
         file_name, data = result
-        active_channels = [item["channel"] for item in data]
-        app.reader_data["fitting"]["files"]["fitting"] = file_name
-        app.reader_data["fitting"]["data"]["fitting_data"] = data
-        app.reader_data["fitting"]["metadata"]["channels"] = active_channels
+        if data is not None:
+            active_channels = [item["channel"] for item in data]
+            app.reader_data["fitting"]["files"]["fitting"] = file_name
+            app.reader_data["fitting"]["data"]["fitting_data"] = data
+            app.reader_data["fitting"]["metadata"]["channels"] = active_channels
 
     @staticmethod
     def get_fitting_active_channels(app):
