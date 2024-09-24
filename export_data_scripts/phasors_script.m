@@ -136,6 +136,7 @@ for i = 1:spectro_num_channels
     plot(x_values, sum_curve, 'DisplayName', sprintf('Channel %d', spectroscopy_metadata.channels(i) + 1));
 end
 ylim([total_min * 0.99, total_max * 1.01]);
+xlim([0, laser_period_ns]);
 hold off;
 legend('Location', 'southeast', 'FontSize', 12);
 
