@@ -10,7 +10,7 @@ from math import floor, log
 import flim_labs
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent, QThreadPool
+from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent, QThreadPool, QtMsgType, qInstallMessageHandler
 from PyQt6.QtGui import QPixmap, QFont, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
@@ -2551,6 +2551,12 @@ if __name__ == "__main__":
         os.remove(".pid")
     app = QApplication(sys.argv)
     window = SpectroscopyWindow()
+    def custom_message_handler(msg_type, context, message):
+        if msg_type == QtMsgType.QtWarningMsg:
+            if "QWindowsWindow::setGeometry" in message:
+                return  
+        print(message) 
+    qInstallMessageHandler(custom_message_handler)    
     window.showMaximized()
     window.show()
     app.exec()

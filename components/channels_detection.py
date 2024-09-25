@@ -8,15 +8,17 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QLabel,
     QDialog,
+    QRadioButton
 )
 from PyQt6.QtGui import QIcon, QPixmap, QTransform
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 import flim_labs
 
 
+from components.fancy_checkbox import FancyButton
 from components.gui_styles import GUIStyles
 from components.helpers import extract_channel_from_label
-from components.layout_utilities import clear_layout_widgets
+from components.layout_utilities import clear_layout_widgets, draw_layout_separator
 from components.resource_path import resource_path
 from settings import *
 
@@ -43,8 +45,7 @@ class DetectChannelsDialog(QDialog):
         self.app = app
         self.setWindowTitle("Detect Channels")
         self.setWindowIcon(QIcon(resource_path("assets/channel-icon-blue.png")))
-        self.setMinimumSize(300, 250)
-        self.setMaximumSize(400, 350)
+        self.setMinimumWidth(350)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
@@ -108,7 +109,7 @@ class DetectChannelsDialog(QDialog):
         self.result_layout = QVBoxLayout()
         self.result_layout.setSpacing(5)
         self.layout.addLayout(self.result_layout)
-        self.layout.addSpacing(20)
+        self.layout.addSpacing(5)
 
         # Buttons
         self.button_layout = QHBoxLayout()
@@ -130,12 +131,11 @@ class DetectChannelsDialog(QDialog):
         self.connections_obj = None
         GUIStyles.customize_theme(self)
         GUIStyles.set_fonts()
-
         self.worker = None
         self.flip_timer = QTimer(self)
         self.flip_timer.timeout.connect(self.flip_loader)
-
         self.flipped = False
+        self.connection_type = None
 
     def flip_loader(self):
         transform = QTransform()
@@ -154,6 +154,9 @@ class DetectChannelsDialog(QDialog):
     def on_yes_button_click(self):
         self.error_icon.setVisible(False)
         self.success_icon.setVisible(False)
+        self.connection_type = None
+        if hasattr(self, 'connection_type_choose_container'):
+            self.choose_connection_container.setVisible(False)
         clear_layout_widgets(self.result_layout)
         self.label.setVisible(True)
         self.label.setText(
@@ -171,6 +174,7 @@ class DetectChannelsDialog(QDialog):
         self.worker.error.connect(self.on_detection_error)
         self.worker.start()
 
+
     def on_detection_complete(self, result):
         self.connections_obj = result
         self.flip_timer.stop()
@@ -179,6 +183,8 @@ class DetectChannelsDialog(QDialog):
         if self.connections_obj is None:
             self.error_icon.setVisible(True)
             self.success_icon.setVisible(False)
+            if hasattr(self, 'connection_type_choose_container'):
+                        self.choose_connection_container.setVisible(False)            
             self.label.setText(
                 "Channels connections not detected. Please check the connection and try again."
             )
@@ -190,42 +196,83 @@ class DetectChannelsDialog(QDialog):
             self.success_icon.setVisible(True)
             detection_result = self.process_detection_result(self.connections_obj)
             self.label.setVisible(False)
-            for key, status, connection_type in detection_result:
-                result_text = f"{key} {status if status else ''} {'(' + connection_type + ')' if connection_type != 'Not Detected' else connection_type}"
-                result_label = QLabel(result_text)
-                if connection_type != "Not Detected":
-                    result_label.setStyleSheet(
-                        "font-family: Montserrat; font-size: 14px; font-weight: bold; color: #0096FF;"
+            channels_usb_sma = False
+            for result_group in detection_result:
+                for key, status, connection_type in result_group:
+                    if key == "Channels:":
+                        channels_usb_sma = status != '[]'
+                    result_text = f"{key} {status if status else ''} {'(' + connection_type + ')' if connection_type != 'Not Detected' else connection_type}"
+                    result_label = QLabel(result_text)
+                    if connection_type != "Not Detected":
+                        result_label.setStyleSheet(
+                            "font-family: Montserrat; font-size: 14px; font-weight: bold; color: #0096FF;"
+                        )
+                    else:
+                        result_label.setStyleSheet(
+                            "font-family: Montserrat; font-size: 14px; color: #cecece;"
+                        )
+                    self.result_layout.addWidget(
+                        result_label, alignment=Qt.AlignmentFlag.AlignHCenter
                     )
-                else:
-                    result_label.setStyleSheet(
-                        "font-family: Montserrat; font-size: 14px; color: #cecece;"
-                    )
-
-                self.result_layout.addWidget(
-                    result_label, alignment=Qt.AlignmentFlag.AlignHCenter
-                )
+            if channels_usb_sma:
+                connection_type_choose_container = self.choose_connection_layout()
+                self.result_layout.addWidget(connection_type_choose_container) 
+                self.no_button.setEnabled(self.connection_type is  not None)
+            else:
+                self.no_button.setEnabled(True)              
             self.yes_button.setEnabled(True)
             self.yes_button.setVisible(True)
             self.yes_button.setText(" RETRY")
             self.yes_button.setIcon((QIcon(resource_path("assets/refresh-icon.png"))))
             GUIStyles.set_stop_btn_style(self.yes_button)
-        self.no_button.setEnabled(True)
         GUIStyles.set_start_btn_style(self.no_button)
         self.no_button.setText("UPDATE SETTINGS")
-        channels_str = detection_result[0][1]
-        connection = detection_result[0][2]
         self.no_button.clicked.connect(
-            partial(self.update_settings, channels_str, connection)
+            partial(self.update_settings, detection_result)
         )
 
-    def update_settings(self, channels_str, connection_type):
+    def choose_connection_layout(self):
+        self.choose_connection_container = QWidget()
+        layout = QVBoxLayout()
+        layout.addWidget(draw_layout_separator())
+        layout.addSpacing(5)
+        label = QLabel("USB and SMA connections detected. Choose one:")
+        layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignHCenter)
+        buttons_row = QHBoxLayout()
+        connections = ["USB", "SMA"]
+        self.connection_type_buttons = []
+        for c in connections:
+            button = FancyButton(c)
+            buttons_row.addWidget(button)
+            self.connection_type_buttons.append((button, c))
+        for button, name in self.connection_type_buttons:
+            def on_toggle(toggled_name):
+                for b, n in self.connection_type_buttons:
+                    b.set_selected(n == toggled_name)
+                self.connection_type = toggled_name
+                self.no_button.setEnabled(True)
+            button.clicked.connect(lambda _, n=name: on_toggle(n))
+            button.set_selected(self.connection_type == name)     
+        layout.addLayout(buttons_row)
+        layout.addSpacing(5) 
+        layout.addWidget(draw_layout_separator()) 
+        self.choose_connection_container.setLayout(layout)                    
+        return self.choose_connection_container
+
+    
+    def update_settings(self, detection_result):
+        channel_sma_str = detection_result[0][0][1]
+        channels_usb_str = detection_result[0][1][1]
+        if self.connection_type == None:
+            channels_str = channel_sma_str if channel_sma_str != "[]" else channels_usb_str
+        else:
+            channels_str = channel_sma_str if self.connection_type == "SMA"   else channels_usb_str  
         self.update_selected_channels(channels_str)
-        self.update_channel_connection_type(connection_type)
+        self.update_channel_connection_type(self.connection_type)
         self.close()
 
     def update_selected_channels(self, channels_str):
-        channels_str_clean = channels_str.replace('[', '').replace(']', '').strip()
+        channels_str_clean = channels_str.replace("[", "").replace("]", "").strip()
         channels = [int(num) - 1 for num in channels_str_clean.split(",")]
         channels.sort()
         for ch_checkbox in self.app.channel_checkboxes:
@@ -265,6 +312,8 @@ class DetectChannelsDialog(QDialog):
 
     def on_detection_error(self, error_msg):
         self.flip_timer.stop()
+        if hasattr(self, 'connection_type_choose_container'):
+            self.choose_connection_container.setVisible(False)        
         self.loader_label.setVisible(False)
         self.error_icon.setVisible(True)
         self.success_icon.setVisible(False)
@@ -276,9 +325,6 @@ class DetectChannelsDialog(QDialog):
         self.no_button.setText("CANCEL")
 
     def on_no_button_click(self):
-        self.error_icon.setVisible(False)
-        self.success_icon.setVisible(False)
-        self.loader_label.setVisible(False)
         self.close()
 
     def closeEvent(self, event):
@@ -338,7 +384,7 @@ class ChannelsDetection:
 
     def parse_data(self):
         # Channels
-        channels_data = self.get_first_non_empty_channel()
+        channels_data = self.get_channels_connection()
         # Frame
         frame_data = self.get_frame_connection()
         # Line
@@ -358,48 +404,64 @@ class ChannelsDetection:
             sync_out_data,
         ]
 
+    def get_channels_connection(self):
+        results = []
+        if len(self.sma_channels) > 0:
+            results.append(
+                ("Channels:", str([ch + 1 for ch in self.sma_channels]), "SMA")
+            )
+        if len(self.usb_channels) > 0:
+            results.append(
+                ("Channels:", str([ch + 1 for ch in self.usb_channels]), "USB")
+            )
+        if not results:
+            results.append(("Channels:", None, "Not Detected"))
+        return results
+
     def get_frame_connection(self):
-        if self.sma_frame == True:
-            return ("REF 1 (Frame):", "Detected", "SMA")
-        elif self.usb_frame == True:
-            return ("REF 1 (Frame):", "Detected", "USB")
-        else:
-            return ("REF 1 (Frame):", None, "Not Detected")
+        results = []
+        if self.sma_frame:
+            results.append(("REF 1 (Frame):", "Detected", "SMA"))
+        if self.usb_frame:
+            results.append(("REF 1 (Frame):", "Detected", "USB"))
+        if not results:
+            results.append(("REF 1 (Frame):", None, "Not Detected"))
+        return results
 
     def get_line_connection(self):
-        if self.sma_line == True:
-            return ("REF 2 (Line):", "Detected", "SMA")
-        elif self.usb_line == True:
-            return ("REF 2 (Line):", "Detected", "USB")
-        else:
-            return ("REF 2 (Line):", None, "Not Detected")
+        results = []
+        if self.sma_line:
+            results.append(("REF 2 (Line):", "Detected", "SMA"))
+        if self.usb_line:
+            results.append(("REF 2 (Line):", "Detected", "USB"))
+        if not results:
+            results.append(("REF 2 (Line):", None, "Not Detected"))
+        return results
 
     def get_pixel_connection(self):
-        if self.sma_pixel == True:
-            return ("REF 3 (Pixel):", "Detected", "SMA")
-        elif self.usb_pixel == True:
-            return ("REF 3 (Pixel):", "Detected", "USB")
-        else:
-            return ("REF 3 (Pixel):", None, "Not Detected")
-
-    def get_first_non_empty_channel(self):
-        if len(self.sma_channels) > 0:
-            return ("Channels:", str([ch + 1 for ch in self.sma_channels]), "SMA")
-        elif len(self.usb_channels) > 0:
-            return ("Channels:", str([ch + 1 for ch in self.usb_channels]), "USB")
-        else:
-            return ("Channels:", None, "Not Detected")
+        results = []
+        if self.sma_pixel:
+            results.append(("REF 3 (Pixel):", "Detected", "SMA"))
+        if self.usb_pixel:
+            results.append(("REF 3 (Pixel):", "Detected", "USB"))
+        if not results:
+            results.append(("REF 3 (Pixel):", None, "Not Detected"))
+        return results
 
     def get_sync_in_connection(self):
-        if self.sma_laser_sync_in == True:
-            return ("Sync In:", "Detected", "SMA")
-        elif self.usb_laser_sync_in == True:
-            return ("Sync In:", "Detected", "USB")
-        else:
-            return ("Sync In:", None, "Not Detected")
+        results = []
+        if self.sma_laser_sync_in:
+            results.append(("Sync In:", "Detected", "SMA"))
+        if self.usb_laser_sync_in:
+            results.append(("Sync In:", "Detected", "USB"))
+        if not results:
+            results.append(("Sync In:", None, "Not Detected"))
+        return results
 
     def get_sync_out_connection(self):
-        if self.usb_laser_sync_out == True:
-            return ("Sync Out:", "Detected", "USB")
-        else:
-            return ("Sync Out:", None, "Not Detected")
+        results = []
+        if self.usb_laser_sync_out:
+            results.append(("Sync Out:", "Detected", "USB"))
+        if not results:
+            results.append(("Sync Out:", None, "Not Detected"))
+        return results
