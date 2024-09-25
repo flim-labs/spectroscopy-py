@@ -16,6 +16,7 @@ import flim_labs
 
 from components.gui_styles import GUIStyles
 from components.helpers import extract_channel_from_label
+from components.layout_utilities import clear_layout_widgets
 from components.resource_path import resource_path
 from settings import *
 
@@ -153,6 +154,8 @@ class DetectChannelsDialog(QDialog):
     def on_yes_button_click(self):
         self.error_icon.setVisible(False)
         self.success_icon.setVisible(False)
+        clear_layout_widgets(self.result_layout)
+        self.label.setVisible(True)
         self.label.setText(
             "Detecting channels connections... The process can take a few seconds. Please wait and don't close the window. After 60 seconds, the process "
             "will be interrupted automatically."
@@ -180,7 +183,8 @@ class DetectChannelsDialog(QDialog):
                 "Channels connections not detected. Please check the connection and try again."
             )
             self.yes_button.setEnabled(True)
-            self.yes_button.setText("RETRY")
+            self.yes_button.setText(" RETRY")
+            self.yes_button.setIcon((QIcon(resource_path("assets/refresh-icon.png"))))
         else:
             self.error_icon.setVisible(False)
             self.success_icon.setVisible(True)
@@ -201,8 +205,11 @@ class DetectChannelsDialog(QDialog):
                 self.result_layout.addWidget(
                     result_label, alignment=Qt.AlignmentFlag.AlignHCenter
                 )
-            self.yes_button.setEnabled(False)
-            self.yes_button.setVisible(False)
+            self.yes_button.setEnabled(True)
+            self.yes_button.setVisible(True)
+            self.yes_button.setText(" RETRY")
+            self.yes_button.setIcon((QIcon(resource_path("assets/refresh-icon.png"))))
+            GUIStyles.set_stop_btn_style(self.yes_button)
         self.no_button.setEnabled(True)
         GUIStyles.set_start_btn_style(self.no_button)
         self.no_button.setText("UPDATE SETTINGS")
@@ -263,7 +270,8 @@ class DetectChannelsDialog(QDialog):
         self.success_icon.setVisible(False)
         self.label.setText(f"Error: {error_msg}")
         self.yes_button.setEnabled(True)
-        self.yes_button.setText("RETRY")
+        self.yes_button.setText(" RETRY")
+        self.yes_button.setIcon((QIcon(resource_path("assets/refresh-icon.png"))))
         self.no_button.setEnabled(True)
         self.no_button.setText("CANCEL")
 
