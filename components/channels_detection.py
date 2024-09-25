@@ -109,7 +109,7 @@ class DetectChannelsDialog(QDialog):
         self.result_layout = QVBoxLayout()
         self.result_layout.setSpacing(5)
         self.layout.addLayout(self.result_layout)
-        self.layout.addSpacing(5)
+        self.layout.addSpacing(10)
 
         # Buttons
         self.button_layout = QHBoxLayout()
@@ -196,24 +196,25 @@ class DetectChannelsDialog(QDialog):
             self.success_icon.setVisible(True)
             detection_result = self.process_detection_result(self.connections_obj)
             self.label.setVisible(False)
-            channels_usb_sma = False
+            channels_sma = detection_result[0][0][1]
+            channels_usb = detection_result[0][1][1]
+            channels_usb_sma = (channels_sma and channels_sma != "[]") and (channels_usb and channels_usb != "[]")
             for result_group in detection_result:
                 for key, status, connection_type in result_group:
-                    if key == "Channels:":
-                        channels_usb_sma = status != '[]'
-                    result_text = f"{key} {status if status else ''} {'(' + connection_type + ')' if connection_type != 'Not Detected' else connection_type}"
-                    result_label = QLabel(result_text)
-                    if connection_type != "Not Detected":
-                        result_label.setStyleSheet(
-                            "font-family: Montserrat; font-size: 14px; font-weight: bold; color: #0096FF;"
+                    if status != "[]":
+                        result_text = f"{key} {status if status else ''} {'(' + connection_type + ')' if connection_type != 'Not Detected' else connection_type}"
+                        result_label = QLabel(result_text)
+                        if connection_type != "Not Detected":
+                            result_label.setStyleSheet(
+                                "font-family: Montserrat; font-size: 14px; font-weight: bold; color: #0096FF;"
+                            )
+                        else:
+                            result_label.setStyleSheet(
+                                "font-family: Montserrat; font-size: 14px; color: #cecece;"
+                            )
+                        self.result_layout.addWidget(
+                            result_label, alignment=Qt.AlignmentFlag.AlignHCenter
                         )
-                    else:
-                        result_label.setStyleSheet(
-                            "font-family: Montserrat; font-size: 14px; color: #cecece;"
-                        )
-                    self.result_layout.addWidget(
-                        result_label, alignment=Qt.AlignmentFlag.AlignHCenter
-                    )
             if channels_usb_sma:
                 connection_type_choose_container = self.choose_connection_layout()
                 self.result_layout.addWidget(connection_type_choose_container) 
