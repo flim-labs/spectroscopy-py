@@ -196,9 +196,11 @@ class DetectChannelsDialog(QDialog):
             self.success_icon.setVisible(True)
             detection_result = self.process_detection_result(self.connections_obj)
             self.label.setVisible(False)
-            channels_sma = detection_result[0][0][1]
-            channels_usb = detection_result[0][1][1]
-            channels_usb_sma = (channels_sma and channels_sma != "[]") and (channels_usb and channels_usb != "[]")
+            channels_usb_sma = False
+            if len(detection_result[0]) > 1:
+                channels_sma = detection_result[0][0][1]
+                channels_usb = detection_result[0][1][1]
+                channels_usb_sma = (channels_sma and channels_sma != "[]") and (channels_usb and channels_usb != "[]")
             for result_group in detection_result:
                 for key, status, connection_type in result_group:
                     if status != "[]":
@@ -220,7 +222,7 @@ class DetectChannelsDialog(QDialog):
                 self.result_layout.addWidget(connection_type_choose_container) 
                 self.no_button.setEnabled(self.connection_type is  not None)
             else:
-                self.no_button.setEnabled(True)              
+                self.no_button.setEnabled(len(detection_result[0]) > 1)              
             self.yes_button.setEnabled(True)
             self.yes_button.setVisible(True)
             self.yes_button.setText(" RETRY")
@@ -407,16 +409,15 @@ class ChannelsDetection:
 
     def get_channels_connection(self):
         results = []
-        if len(self.sma_channels) > 0:
+        if (len(self.sma_channels) == 0 and len(self.usb_channels) == 0):
+            results.append(("Channels:", None, "Not Detected"))
+        else:
             results.append(
                 ("Channels:", str([ch + 1 for ch in self.sma_channels]), "SMA")
             )
-        if len(self.usb_channels) > 0:
             results.append(
                 ("Channels:", str([ch + 1 for ch in self.usb_channels]), "USB")
-            )
-        if not results:
-            results.append(("Channels:", None, "Not Detected"))
+            )        
         return results
 
     def get_frame_connection(self):
