@@ -58,6 +58,7 @@ class CollapseButton(QWidget):
             )
         self.animation.start()
 
+   
 
 class TimeTaggerWidget(QWidget):
     def __init__(self, app, parent=None):

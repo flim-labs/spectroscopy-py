@@ -34,6 +34,7 @@ from components.buttons import (
     ReadAcquireModeButton,
     TimeTaggerWidget,
 )
+from components.channels_detection import DetectChannelsButton
 from components.check_card import CheckCard
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
@@ -1026,6 +1027,9 @@ class SpectroscopyWindow(QWidget):
 
     def create_channel_selector(self):
         grid = QHBoxLayout()
+        # Detect channels button
+        detect_channels_btn =  DetectChannelsButton(self)
+        grid.addWidget(detect_channels_btn)
         plots_config_btn = QPushButton(" PLOTS CONFIG")
         plots_config_btn.setIcon(QIcon(resource_path("assets/chart-icon.png")))
         GUIStyles.set_stop_btn_style(plots_config_btn)
