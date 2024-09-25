@@ -168,6 +168,10 @@ class DetectChannelsDialog(QDialog):
 
         self.yes_button.setEnabled(False)
         self.no_button.setEnabled(False)
+        
+        if self.worker and self.worker.isRunning():
+            self.worker.quit()
+            self.worker.wait() 
 
         self.worker = ChannelsDetectionWorker()
         self.worker.finished.connect(self.on_detection_complete)
