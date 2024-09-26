@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 
-VERSION = "1.9"
+VERSION = "2.0"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
 TOP_BAR_HEIGHT = 250
@@ -118,6 +118,8 @@ READ_BUTTON = "read_button"
 EXPORT_PLOT_IMG_BUTTON = "export_plot_img_button"
 CHECK_CARD_BUTTON = "check_card_button"
 CHECK_CARD_MESSAGE = "check_card_message"
+
+CHANNELS_DETECTION_BUTTON = "channels_detection_button"
 
 
 READER_DATA = {

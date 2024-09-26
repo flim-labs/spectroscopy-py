@@ -1,3 +1,4 @@
+import re
 import numpy as np
 from datetime import datetime
 from settings import HETERODYNE_FACTOR
@@ -97,3 +98,10 @@ def get_realtime_adjustment_value(enabled_channels, is_phasors):
             return 200 * 1000
         else:
             return 0
+
+
+def extract_channel_from_label(text):
+    ch = re.search(r"\d+", text).group()
+    ch_num = int(ch)
+    ch_num_index = ch_num - 1
+    return ch_num_index

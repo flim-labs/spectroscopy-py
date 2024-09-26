@@ -552,7 +552,6 @@ class FittingDecayConfigPopup(QWidget):
             screen = QGuiApplication.primaryScreen()
         else:
             screen = QGuiApplication.screens()[screen_number]
-
         screen_geometry = screen.geometry()
         frame_gm = self.frameGeometry()
         screen_center = screen_geometry.center()
