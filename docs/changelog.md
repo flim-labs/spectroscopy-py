@@ -1,5 +1,9 @@
 # Spectroscopy Changelog
 
+## Version 2.0
+- Add automatic channels connections detection
+- x-axis negative values ​​cut on exported spectroscopy plots (images/scripts)
+
 ## Version 1.9
 - Add automatic card connection detection
 - Fix Sync In laser frequency detection for low frequencies
