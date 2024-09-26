@@ -6,6 +6,7 @@ import json
 from PyQt6.QtWidgets import QWidget, QPushButton, QCheckBox, QHBoxLayout, QGridLayout, QVBoxLayout, QLabel, QApplication
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QColor
+from components.helpers import extract_channel_from_label
 from components.logo_utilities import TitlebarIcon
 from components.resource_path import resource_path
 from components.gui_styles import GUIStyles
@@ -127,7 +128,7 @@ class PlotsConfigPopup(QWidget):
 
     def on_ch_intensity_toggled(self, state, checkbox):
         label_text = checkbox.text() 
-        ch_num_index = self.extract_channel_from_label(label_text) 
+        ch_num_index = extract_channel_from_label(label_text) 
         if state:
             if ch_num_index not in self.app.plots_to_show:
                 self.app.plots_to_show.append(ch_num_index)
@@ -154,12 +155,7 @@ class PlotsConfigPopup(QWidget):
         self.close()
         self.app.begin_spectroscopy_experiment()
         
-        
-    def extract_channel_from_label(self,text):
-        ch = re.search(r'\d+', text).group()  
-        ch_num = int(ch) 
-        ch_num_index = ch_num - 1 
-        return ch_num_index
+
 
     
  

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 # Create a directory for output files ('summary analysis') if it does not exist
 output_dir = os.path.join(os.getcwd(), "summary-analysis")
-os.makedirs(output_dir, exist_ok=True)  
+os.makedirs(output_dir, exist_ok=True)
 
 
 def is_spectroscopy_file(filename):
@@ -74,7 +74,13 @@ def find_corresponding_laserblood_metadata(spectroscopy_file, metadata_files):
 def collect_laserblood_metadata_info(metadata_file):
     """Collect the laserblood metadata information and return a structured format."""
     metadata = load_json(metadata_file)
-    return {item["label"]: item["value"] for item in metadata}
+    result = {}
+    for item in metadata:
+        label = item["label"]
+        unit = item["unit"]
+        key = f"{label} ({unit})" if unit else label
+        result[key] = item["value"]
+    return result
 
 
 def export_spectroscopy_data_to_excel(header_t, spectroscopy_files, X_VALUES, CURVES):
@@ -82,7 +88,9 @@ def export_spectroscopy_data_to_excel(header_t, spectroscopy_files, X_VALUES, CU
     export_data_header = pd.DataFrame([header_t, spectroscopy_files])
     export_data_spectroscopy = pd.DataFrame(np.vstack([X_VALUES, CURVES]))
     # Progress bar for Excel export
-    with tqdm(total=2, desc="Exporting Spectroscopy Summary Data to Excel...", colour="green") as pbar:
+    with tqdm(
+        total=2, desc="Exporting Spectroscopy Summary Data to Excel...", colour="green"
+    ) as pbar:
         with pd.ExcelWriter(
             os.path.join(output_dir, "spectroscopy_summary_data.xlsx")
         ) as writer:
@@ -109,7 +117,11 @@ def export_spectroscopy_data_to_parquet(header_t, spectroscopy_files, X_VALUES, 
     export_data_header = pd.DataFrame([header_t, spectroscopy_files]).T
     export_data_spectroscopy = pd.DataFrame(np.vstack([X_VALUES, CURVES]))
     # Progress bar for Parquet export
-    with tqdm(total=1, desc="Exporting Spectroscopy Summary Data to Parquet...", colour="yellow") as pbar:
+    with tqdm(
+        total=1,
+        desc="Exporting Spectroscopy Summary Data to Parquet...",
+        colour="yellow",
+    ) as pbar:
         # Export DataFrame to Parquet format
         export_data = pd.concat([export_data_header, export_data_spectroscopy], axis=1)
         export_data.columns = ["t (ns)", "Filename"] + [
@@ -119,27 +131,43 @@ def export_spectroscopy_data_to_parquet(header_t, spectroscopy_files, X_VALUES, 
             os.path.join(output_dir, "spectroscopy_summary_data.parquet"), index=False
         )
         pbar.update(1)  # Update progress bar after export
-        
+
 
 def export_laserblood_metadata_to_excel(metadata_df, metadata_files):
     """Export Laserblood metadata to an Excel file"""
     metadata_files_col = pd.DataFrame(metadata_files, columns=["File"])
-    export_data = pd.concat([metadata_files_col, metadata_df.reset_index(drop=True)], axis=1)
+    export_data = pd.concat(
+        [metadata_files_col, metadata_df.reset_index(drop=True)], axis=1
+    )
     # Progress bar for Excel export
-    with tqdm(total=1, desc="Exporting Laserblood Metadata Summary to Excel...", colour="green") as pbar:
-        export_data.to_excel(os.path.join(output_dir, "metadata_summary.xlsx"), index=False)
+    with tqdm(
+        total=1,
+        desc="Exporting Laserblood Metadata Summary to Excel...",
+        colour="green",
+    ) as pbar:
+        export_data.to_excel(
+            os.path.join(output_dir, "metadata_summary.xlsx"), index=False
+        )
         pbar.update(1)  # Update progress bar after export
 
 
 def export_laserblood_metadata_to_parquet(metadata_df, metadata_files):
     """Export Laserblood metadata to a Parquet file"""
     metadata_files_col = pd.DataFrame(metadata_files, columns=["File"])
-    export_data = pd.concat([metadata_files_col, metadata_df.reset_index(drop=True)], axis=1)
+    export_data = pd.concat(
+        [metadata_files_col, metadata_df.reset_index(drop=True)], axis=1
+    )
     # Progress bar for Parquet export
-    with tqdm(total=1, desc="Exporting  Laserblood Metadata Summary to Parquet...", colour="yellow") as pbar:
-        export_data.to_parquet(os.path.join(output_dir, "metadata_summary.parquet"), index=False)
+    with tqdm(
+        total=1,
+        desc="Exporting  Laserblood Metadata Summary to Parquet...",
+        colour="yellow",
+    ) as pbar:
+        export_data.to_parquet(
+            os.path.join(output_dir, "metadata_summary.parquet"), index=False
+        )
         pbar.update(1)  # Update progress bar after export
-        
+
 
 def plot_results(spectroscopy_files, X_VALUES, CURVES):
     """Generate/save and display a plot of spectroscopy data summary."""
@@ -178,7 +206,9 @@ if __name__ == "__main__":
             CURVES.append(sum_curve)
 
             # Find the corresponding metadata file
-            metadata_file = find_corresponding_laserblood_metadata(filename, metadata_files)
+            metadata_file = find_corresponding_laserblood_metadata(
+                filename, metadata_files
+            )
             if metadata_file:
                 metadata_info = collect_laserblood_metadata_info(metadata_file)
                 metadata_data[metadata_file] = metadata_info  # Store metadata info

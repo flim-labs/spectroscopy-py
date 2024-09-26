@@ -8,7 +8,7 @@ import sys
 import flim_labs
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent, QThreadPool
+from PyQt6.QtCore import QTimer, QSettings, QSize, Qt, QEvent, QThreadPool, QtMsgType, qInstallMessageHandler
 from PyQt6.QtGui import QPixmap, QIcon, QFont
 from PyQt6.QtWidgets import (
     QApplication,
@@ -32,6 +32,7 @@ from components.buttons import (
     ReadAcquireModeButton,
     TimeTaggerWidget,
 )
+from components.channels_detection import DetectChannelsButton
 from components.check_card import CheckCard
 from components.export_data import ExportData
 from components.fancy_checkbox import FancyButton
@@ -1070,6 +1071,9 @@ class SpectroscopyWindow(QWidget):
 
     def create_channel_selector(self):
         grid = QHBoxLayout()
+        # Detect channels button
+        detect_channels_btn =  DetectChannelsButton(self)
+        grid.addWidget(detect_channels_btn)        
         plots_config_btn = QPushButton(" PLOTS CONFIG")
         plots_config_btn.setIcon(QIcon(resource_path("assets/chart-icon.png")))
         GUIStyles.set_stop_btn_style(plots_config_btn)
@@ -2641,6 +2645,12 @@ if __name__ == "__main__":
     window = SpectroscopyWindow()
     window.showMaximized()
     window.show()
+    def custom_message_handler(msg_type, context, message):
+        if msg_type == QtMsgType.QtWarningMsg:
+            if "QWindowsWindow::setGeometry" in message:
+                return  
+        print(message) 
+    qInstallMessageHandler(custom_message_handler)        
     app.exec()
     window.pull_from_queue_timer.stop()
     sys.exit()

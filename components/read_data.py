@@ -8,7 +8,7 @@ import numpy as np
 from components.box_message import BoxMessage
 from components.file_utils import FileUtils
 from components.gui_styles import GUIStyles
-from components.helpers import ns_to_mhz
+from components.helpers import extract_channel_from_label, ns_to_mhz
 from components.input_text_control import InputTextControl
 from components.layout_utilities import clear_layout
 from components.messages_utilities import MessagesUtilities
@@ -776,7 +776,7 @@ class ReaderPopup(QWidget):
 
     def on_channel_toggled(self, state, checkbox):
         label_text = checkbox.text()
-        ch_index = self.extract_channel_from_label(label_text)
+        ch_index = extract_channel_from_label(label_text)
         if state:
             if ch_index not in self.app.plots_to_show:
                 self.app.plots_to_show.append(ch_index)
@@ -896,11 +896,7 @@ class ReaderPopup(QWidget):
         window_geometry.moveCenter(screen_geometry)
         self.move(window_geometry.topLeft())
 
-    def extract_channel_from_label(self, text):
-        ch = re.search(r"\d+", text).group()
-        ch_num = int(ch)
-        ch_num_index = ch_num - 1
-        return ch_num_index
+   
 
 
 class ReaderMetadataPopup(QWidget):
