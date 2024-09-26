@@ -83,50 +83,41 @@ def collect_laserblood_metadata_info(metadata_file):
     return result
 
 
-def export_spectroscopy_data_to_excel(header_t, spectroscopy_files, X_VALUES, CURVES):
+def export_spectroscopy_data_to_excel(spectroscopy_files, X_VALUES, CURVES):
     """Export spectroscopy processed data to an Excel file."""
-    export_data_header = pd.DataFrame([header_t, spectroscopy_files])
-    export_data_spectroscopy = pd.DataFrame(np.vstack([X_VALUES, CURVES]))
+    if X_VALUES.shape[0] != CURVES.shape[0]:
+        raise ValueError("Mismatch in number of rows between X_VALUES and CURVES.")
+    # Create DataFrame with the first column as X_VALUES and subsequent columns as CURVES
+    export_data = pd.DataFrame(data=np.column_stack((X_VALUES[:, 0], CURVES)),
+                                columns=["t (ns)"] + [f"{file}" for file in spectroscopy_files])
     # Progress bar for Excel export
     with tqdm(
-        total=2, desc="Exporting Spectroscopy Summary Data to Excel...", colour="green"
+        total=1, desc="Exporting Spectroscopy Summary Data to Excel...", colour="green"
     ) as pbar:
         with pd.ExcelWriter(
             os.path.join(output_dir, "spectroscopy_summary_data.xlsx")
         ) as writer:
-            export_data_header.to_excel(
+            export_data.to_excel(
                 writer,
                 sheet_name="Spectroscopy Analysis",
-                startrow=0,
-                header=False,
                 index=False,
             )
-            pbar.update(1)  # Update progress bar after first step
-            export_data_spectroscopy.to_excel(
-                writer,
-                sheet_name="Spectroscopy Analysis",
-                startrow=2,
-                header=False,
-                index=False,
-            )
-            pbar.update(1)  # Update progress bar after second step
+            pbar.update(1)  # Update progress bar after export
 
 
-def export_spectroscopy_data_to_parquet(header_t, spectroscopy_files, X_VALUES, CURVES):
+def export_spectroscopy_data_to_parquet(spectroscopy_files, X_VALUES, CURVES):
     """Export spectroscopy processed data to a Parquet file."""
-    export_data_header = pd.DataFrame([header_t, spectroscopy_files]).T
-    export_data_spectroscopy = pd.DataFrame(np.vstack([X_VALUES, CURVES]))
+    if X_VALUES.shape[0] != CURVES.shape[0]:
+        raise ValueError("Mismatch in number of rows between X_VALUES and CURVES.")
+    # Create DataFrame with the first column as X_VALUES and subsequent columns as CURVES
+    export_data = pd.DataFrame(data=np.column_stack((X_VALUES[:, 0], CURVES)),
+                                columns=["t (ns)"] + [f"{file}" for file in spectroscopy_files])
     # Progress bar for Parquet export
     with tqdm(
         total=1,
         desc="Exporting Spectroscopy Summary Data to Parquet...",
         colour="yellow",
     ) as pbar:
-        # Export DataFrame to Parquet format
-        export_data = pd.concat([export_data_header, export_data_spectroscopy], axis=1)
-        export_data.columns = ["t (ns)", "Filename"] + [
-            f"Curve {i}" for i in range(CURVES.shape[1])
-        ]
         export_data.to_parquet(
             os.path.join(output_dir, "spectroscopy_summary_data.parquet"), index=False
         )
@@ -146,7 +137,7 @@ def export_laserblood_metadata_to_excel(metadata_df, metadata_files):
         colour="green",
     ) as pbar:
         export_data.to_excel(
-            os.path.join(output_dir, "metadata_summary.xlsx"), index=False
+            os.path.join(output_dir, "spectroscopy_metadata_summary.xlsx"), index=False
         )
         pbar.update(1)  # Update progress bar after export
 
@@ -160,11 +151,11 @@ def export_laserblood_metadata_to_parquet(metadata_df, metadata_files):
     # Progress bar for Parquet export
     with tqdm(
         total=1,
-        desc="Exporting  Laserblood Metadata Summary to Parquet...",
+        desc="Exporting Laserblood Metadata Summary to Parquet...",
         colour="yellow",
     ) as pbar:
         export_data.to_parquet(
-            os.path.join(output_dir, "metadata_summary.parquet"), index=False
+            os.path.join(output_dir, "spectroscopy_metadata_summary.parquet"), index=False
         )
         pbar.update(1)  # Update progress bar after export
 
@@ -189,8 +180,6 @@ if __name__ == "__main__":
     folder_info = os.listdir(current_folder)
     spectroscopy_files = [f for f in folder_info if is_spectroscopy_file(f)]
     metadata_files = [f for f in folder_info if f.endswith("_laserblood_metadata.json")]
-
-    header_t = ["t (ns)" for _ in spectroscopy_files]
     X_VALUES = []
     CURVES = []
 
@@ -224,10 +213,10 @@ if __name__ == "__main__":
     metadata_df = pd.DataFrame.from_dict(metadata_data, orient="index")
 
     # Export Spectroscopy Data Summary to Excel
-    export_spectroscopy_data_to_excel(header_t, spectroscopy_files, X_VALUES, CURVES)
+    export_spectroscopy_data_to_excel(spectroscopy_files, X_VALUES, CURVES)
 
     # Export Spectroscopy Data Summary to Parquet
-    export_spectroscopy_data_to_parquet(header_t, spectroscopy_files, X_VALUES, CURVES)
+    export_spectroscopy_data_to_parquet(spectroscopy_files, X_VALUES, CURVES)
 
     # Export Laserblood Metadata Summary to Excel
     export_laserblood_metadata_to_excel(metadata_df, metadata_files)
