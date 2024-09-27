@@ -11,45 +11,156 @@ output_dir = os.path.join(os.getcwd(), "summary-analysis")
 os.makedirs(output_dir, exist_ok=True)
 
 
-def is_spectroscopy_reference_file(filename):
-    """Check if the given filename is a valid phasors spectroscopy reference file."""
-    return (
-        ".bin" in filename
-        and "phasors_spectroscopy" in filename
+def load_bin_metadata(fid, expected_prefix):
+    """Load metadata from a binary file and verify the expected prefix."""
+    prefix = fid.read(4).decode()
+    if prefix != expected_prefix:
+        raise ValueError(f"Invalid data file format ({expected_prefix} not found)")
+    json_length = int.from_bytes(fid.read(4), byteorder="little")
+    metadata_json = fid.read(json_length)
+    return json.loads(metadata_json.decode())
+
+
+def is_valid_file(filename, file_type):
+    """Check if the file is valid for spectroscopy or phasors."""
+    if file_type == "spectroscopy":
+        return ".bin" in filename and "phasors_spectroscopy" in filename
+    if file_type == "phasors":
+        return (
+            ".bin" in filename
+            and "phasors" in filename
+            and "spectroscopy" not in filename
+        )
+    return False
+
+
+def load_json(filename):
+    with open(filename, "r") as f:
+        return json.load(f)
+
+
+def find_corresponding_laserblood_metadata(phasor_file, metadata_files):
+    """Find the corresponding metadata file for a given phasor file."""
+    base_name = phasor_file.replace("_phasors.bin", "")
+    metadata_file = f"{base_name}_laserblood_metadata.json"
+    return metadata_file if metadata_file in metadata_files else None
+
+
+def collect_laserblood_metadata_info(metadata_file):
+    """Collect the laserblood metadata information and return a structured format."""
+    metadata = load_json(metadata_file)
+    result = {}
+    for item in metadata:
+        label = item["label"]
+        unit = item["unit"]
+        key = f"{label} ({unit})" if unit else label
+        result[key] = item["value"]
+    return result
+
+
+def export_phasors_data_to_excel(spectroscopy_files, X_VALUES, CURVES, phasors_data):
+    """Export phasors processed data to an Excel file with multiple sheets."""
+    if X_VALUES.shape[0] != CURVES.shape[0]:
+        raise ValueError("Mismatch in number of rows between X_VALUES and CURVES.")
+    # Spectroscopy reference dataframe
+    spectroscopy_df = pd.DataFrame(
+        data=np.column_stack((X_VALUES[:, 0], CURVES)),
+        columns=["t (ns)"] + [f"{file}" for file in spectroscopy_files],
     )
-    
-    
-def is_phasors_file(filename):
-    """Check if the given filename is a valid phasors file."""
-    return (
-        ".bin" in filename
-        and "phasors" in filename
-        and "spectroscopy" not in filename
-    )    
-    
-
-def load_spectroscopy_metadata(fid):
-    sp01 = fid.read(4)
-    if sp01.decode() != "SP01":
-        raise ValueError("Invalid data file format (SP01 not found)")
-    json_length = int.from_bytes(fid.read(4), byteorder="little")
-    metadata_json = fid.read(json_length)
-    return json.loads(metadata_json.decode())
+    # Phasors dataframe
+    phasors_df = pd.DataFrame(phasors_data)
+    with tqdm(
+        total=1, desc="Exporting Phasors Data to Excel...", colour="blue"
+    ) as pbar:
+        with pd.ExcelWriter(
+            os.path.join(output_dir, "phasors_summary_data.xlsx")
+        ) as writer:
+            phasors_df.to_excel(writer, sheet_name="Phasors Analysis", index=False)
+            spectroscopy_df.to_excel(
+                writer, sheet_name="Spectroscopy Reference Analysis", index=False
+            )
+            pbar.update(1)
 
 
-def load_phasors_metadata(fid):
-    spf1 = fid.read(4)
-    if spf1.decode() != "SPF1":
-        raise ValueError("Invalid data file format (SPF1 not found)")
-    json_length = int.from_bytes(fid.read(4), byteorder="little")
-    metadata_json = fid.read(json_length)
-    return json.loads(metadata_json.decode())
+def export_spectroscopy_reference_data_to_parquet(spectroscopy_files, X_VALUES, CURVES):
+    """Export spectroscopy reference processed data to a Parquet file."""
+    if X_VALUES.shape[0] != CURVES.shape[0]:
+        raise ValueError("Mismatch in number of rows between X_VALUES and CURVES.")
+    # Create DataFrame with the first column as X_VALUES and subsequent columns as CURVES
+    export_data = pd.DataFrame(
+        data=np.column_stack((X_VALUES[:, 0], CURVES)),
+        columns=["t (ns)"] + [f"{file}" for file in spectroscopy_files],
+    )
+    # Progress bar for Parquet export
+    with tqdm(
+        total=1,
+        desc="Exporting Spectroscopy Reference Summary Data to Parquet...",
+        colour="blue",
+    ) as pbar:
+        export_data.to_parquet(
+            os.path.join(
+                output_dir, "spectroscopy_phasors_reference_summary_data.parquet"
+            ),
+            index=False,
+        )
+        pbar.update(1)  # Update progress bar after export
+
+
+def export_phasors_data_to_parquet(phasors_data):
+    """Export phasors processed data to a Parquet file."""
+    export_data = pd.DataFrame(data=phasors_data)
+    # Progress bar for Parquet export
+    with tqdm(
+        total=1,
+        desc="Exporting Phasors Summary Data to Parquet...",
+        colour="blue",
+    ) as pbar:
+        export_data.to_parquet(
+            os.path.join(output_dir, "phasors_summary_data.parquet"), index=False
+        )
+        pbar.update(1)  # Update progress bar after export
+
+
+def export_laserblood_metadata_to_excel(metadata_df, metadata_files):
+    """Export Laserblood metadata to an Excel file"""
+    metadata_files_col = pd.DataFrame(metadata_files, columns=["File"])
+    export_data = pd.concat(
+        [metadata_files_col, metadata_df.reset_index(drop=True)], axis=1
+    )
+    # Progress bar for Excel export
+    with tqdm(
+        total=1,
+        desc="Exporting Laserblood Metadata Summary to Excel...",
+        colour="blue",
+    ) as pbar:
+        export_data.to_excel(
+            os.path.join(output_dir, "phasors_metadata_summary.xlsx"), index=False
+        )
+        pbar.update(1)  # Update progress bar after export
+
+
+def export_laserblood_metadata_to_parquet(metadata_df, metadata_files):
+    """Export Laserblood metadata to a Parquet file"""
+    metadata_files_col = pd.DataFrame(metadata_files, columns=["File"])
+    export_data = pd.concat(
+        [metadata_files_col, metadata_df.reset_index(drop=True)], axis=1
+    )
+    # Progress bar for Parquet export
+    with tqdm(
+        total=1,
+        desc="Exporting Laserblood Metadata Summary to Parquet...",
+        colour="blue",
+    ) as pbar:
+        export_data.to_parquet(
+            os.path.join(output_dir, "phasors_metadata_summary.parquet"), index=False
+        )
+        pbar.update(1)  # Update progress bar after export
 
 
 def process_spectroscopy_reference_file(filename):
     """Process a single spectroscopy reference file to extract data and metadata."""
     with open(filename, "rb") as fid:
-        metadata = load_spectroscopy_metadata(fid)
+        metadata = load_bin_metadata(fid, "SP01")
         if "channels" not in metadata:
             raise ValueError(f"Channels not found in {filename}")
         if "laser_period_ns" not in metadata:
@@ -73,34 +184,34 @@ def process_spectroscopy_reference_file(filename):
         x_values = np.linspace(0, laser_period_ns, num_bins)
         sum_curve = np.sum(channel_curves[0], axis=0)
         return x_values, sum_curve
-    
-    
+
+
 def process_phasors_file(filename):
     """Process a single phasors file to extract data and metadata."""
     with open(filename, "rb") as fid:
         phasors_data = {}
-        metadata = load_phasors_metadata(fid)
+        metadata = load_bin_metadata(fid, "SPF1")
         if "channels" not in metadata:
             raise ValueError(f"Channels not found in {filename}")
         if "laser_period_ns" not in metadata:
             raise ValueError(f"Laser period not found in {filename}")
         try:
             while True:
-                bytes_read = fid.read(32)  
+                bytes_read = fid.read(32)
                 if not bytes_read:
-                    raise StopIteration   
+                    raise StopIteration
                 try:
                     time_ns, channel_name, harmonic_name, g, s = struct.unpack(
                         "QIIdd", bytes_read
                     )
                 except struct.error as e:
                     print(f"Error unpacking phasors_data: {e}")
-                    raise StopIteration 
-                if channel_name not in phasors_data:                
+                    raise StopIteration
+                if channel_name not in phasors_data:
                     phasors_data[channel_name] = {}
-                if harmonic_name not in phasors_data[channel_name]:                    
-                    phasors_data[channel_name][harmonic_name] = []        
-                phasors_data[channel_name][harmonic_name].append((g, s))                                                          
+                if harmonic_name not in phasors_data[channel_name]:
+                    phasors_data[channel_name][harmonic_name] = []
+                phasors_data[channel_name][harmonic_name].append((g, s))
         except StopIteration:
             pass
         return phasors_data, metadata["laser_period_ns"]
@@ -110,35 +221,27 @@ def ns_to_mhz(laser_period_ns):
     period_s = laser_period_ns * 1e-9
     frequency_hz = 1 / period_s
     frequency_mhz = frequency_hz / 1e6
-    return frequency_mhz    
-    
+    return frequency_mhz
+
+
 def calculate_phasor_tau_components(laser_period_ns, harmonic, mean_s, mean_g):
     freq_mhz = ns_to_mhz(laser_period_ns)
     tau_phi = (1 / (2 * np.pi * freq_mhz * harmonic)) * (mean_s / mean_g) * 1e3
     tau_m_component = (1 / (mean_s**2 + mean_g**2)) - 1
-    tau_m = (((1 / (2 * np.pi * freq_mhz * harmonic))* np.sqrt(tau_m_component)* 1e3) if tau_m_component >= 0 else None)    
+    tau_m = (
+        ((1 / (2 * np.pi * freq_mhz * harmonic)) * np.sqrt(tau_m_component) * 1e3)
+        if tau_m_component >= 0
+        else None
+    )
     return tau_phi, tau_m
 
 
-def plot_results(spectroscopy_files, phasors_files, SPECTROSCOPY_X_VALUES, SPECTROSCOPY_CURVES, PHASORS_DATA, laser_period_ns):
-    num_plots = 2
-    num_rows = 1
-    fig, axs = plt.subplots(num_rows + 1, num_plots, figsize=(20, (num_rows + 1) * 6))
-    sp_ax = axs[0, 0]
-    # Spectroscopy plot
-    for i in range(len(spectroscopy_files)):
-        sp_ax.plot(SPECTROSCOPY_X_VALUES[:, i], SPECTROSCOPY_CURVES[:, i], label=spectroscopy_files[i])
-    sp_ax.set_xlabel("Time (ns)")  
-    sp_ax.set_ylabel("Intensity")
-    sp_ax.legend(loc="upper right", bbox_to_anchor=(1.2, 1), fontsize=8)
-    sp_ax.grid(True) 
-    sp_ax.set_title(f"Spectroscopy Reference - Summary")
-    # Phasor plot
+def extract_phasor_points_data(phasors_files, PHASORS_DATA, laser_period_ns):
     harmonics = []
     g_all_points = {}
     s_all_points = {}
-    points_colors = ["#fde725", "#7ad151", "#22a884", "#440154"]
-    for i in range(len(phasors_files)):
+    files_phasor_info = []
+    for i, filename in enumerate(phasors_files):
         phasor_data = PHASORS_DATA[i]
         for j, (_, harmonics) in enumerate(phasor_data.items(), start=1):
             for harmonic, values in harmonics.items():
@@ -149,6 +252,21 @@ def plot_results(spectroscopy_files, phasors_files, SPECTROSCOPY_X_VALUES, SPECT
                     mask = (np.abs(g_values) < 1e9) & (np.abs(s_values) < 1e9)
                     g_values = g_values[mask]
                     s_values = s_values[mask]
+                    mean_g = np.mean(g_values)
+                    mean_s = np.mean(s_values)
+                    tau_phi, tau_m = calculate_phasor_tau_components(
+                        laser_period_ns, harmonic, mean_s, mean_g
+                    )
+                    files_phasor_info.append(
+                        {
+                            "File": filename,
+                            "Harmonic": harmonic,
+                            "G (mean)": mean_g,
+                            "S (mean)": mean_s,
+                            "τϕ (ns)": tau_phi,
+                            "τm (ns)": tau_m,
+                        }
+                    )
                     if not harmonic in g_all_points and not harmonic in s_all_points:
                         g_all_points[harmonic] = []
                         s_all_points[harmonic] = []
@@ -156,59 +274,91 @@ def plot_results(spectroscopy_files, phasors_files, SPECTROSCOPY_X_VALUES, SPECT
                     s_all_points[harmonic].extend(s_values)
                     if harmonic not in harmonics:
                         harmonics.append(harmonic)
-    ph_ax = axs[0, 1] 
-    x =  np.linspace(0, 1, 1000)
+    return harmonics, g_all_points, s_all_points, files_phasor_info
+
+
+def plot_results(
+    spectroscopy_files,
+    SPECTROSCOPY_X_VALUES,
+    SPECTROSCOPY_CURVES,
+    g_all_points,
+    s_all_points,
+    laser_period_ns,
+):
+    num_plots = 2
+    num_rows = 1
+    fig, axs = plt.subplots(num_rows + 1, num_plots, figsize=(20, (num_rows + 1) * 6))
+    sp_ax = axs[0, 0]
+    # Spectroscopy plot
+    for i in range(len(spectroscopy_files)):
+        sp_ax.plot(
+            SPECTROSCOPY_X_VALUES[:, i],
+            SPECTROSCOPY_CURVES[:, i],
+            label=spectroscopy_files[i],
+        )
+    sp_ax.set_xlabel("Time (ns)")
+    sp_ax.set_ylabel("Intensity")
+    sp_ax.legend(loc="upper right", bbox_to_anchor=(1.2, 1), fontsize=8)
+    sp_ax.grid(True)
+    sp_ax.set_title(f"Spectroscopy Reference - Summary")
+    # Phasor plot
+    ph_ax = axs[0, 1]
+    x = np.linspace(0, 1, 1000)
     y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
     ph_ax.plot(x, y)
-    ph_ax.set_aspect('equal') 
+    ph_ax.set_aspect("equal")
+    points_colors = ["#fde725", "#7ad151", "#22a884", "#440154"]
     for i, harmonic in enumerate(harmonics):
         mean_g = np.mean(g_all_points[harmonic])
         mean_s = np.mean(s_all_points[harmonic])
-        tau_phi, tau_m = calculate_phasor_tau_components(laser_period_ns, harmonic, mean_s, mean_g)
+        tau_phi, tau_m = calculate_phasor_tau_components(
+            laser_period_ns, harmonic, mean_s, mean_g
+        )
         mean_label = f"Harmonic: {harmonic}; G (mean): {round(mean_g, 2)}; S (mean): {round(mean_s, 2)}; τϕ={round(tau_phi, 2)} ns"
         if tau_m is not None:
-            mean_label += f"; τm={round(tau_m, 2)} ns"  
+            mean_label += f"; τm={round(tau_m, 2)} ns"
         ph_ax.scatter(
             mean_g,
             mean_s,
             color=points_colors[i],
             zorder=3,
             label=mean_label,
-        )            
-    ph_ax.legend(fontsize="small")  
-    ph_ax.set_title(f"Phasors - Summary")     
-    ph_ax.set_xlabel("G")   
-    ph_ax.set_ylabel("S") 
-    ph_ax.grid(True)   
+        )
+    ph_ax.legend(fontsize="small")
+    ph_ax.set_title(f"Phasors - Summary")
+    ph_ax.set_xlabel("G")
+    ph_ax.set_ylabel("S")
+    ph_ax.grid(True)
     for i in range(2, (num_rows + 1) * num_plots):
         row = i // num_plots
         col = i % num_plots
-        fig.delaxes(axs[row, col])       
-    plt.tight_layout(pad=4.0, w_pad=4.0, h_pad=4.0) 
+        fig.delaxes(axs[row, col])
+    plt.tight_layout(pad=4.0, w_pad=4.0, h_pad=4.0)
     plt.savefig(os.path.join(output_dir, "phasors_summary_plot.png"), dpi=300)
-    plt.savefig(os.path.join(output_dir, "phasors_summary_plot.eps"))         
-    plt.show()                    
-                    
-                    
-                    
-        
-    
+    plt.savefig(os.path.join(output_dir, "phasors_summary_plot.eps"))
+    plt.show()
 
 
 if __name__ == "__main__":
     current_folder = os.getcwd()
     folder_info = os.listdir(current_folder)
-    spectroscopy_references_files = [f for f in folder_info if is_spectroscopy_reference_file(f)]
-    phasors_files = [f for f in folder_info if is_phasors_file(f)]
-    
+    spectroscopy_references_files = [
+        f for f in folder_info if is_valid_file(f, "spectroscopy")
+    ]
+    phasors_files = [f for f in folder_info if is_valid_file(f, "phasors")]
+    metadata_files = [f for f in folder_info if f.endswith("_laserblood_metadata.json")]
+
     SPECTROSCOPY_X_VALUES = []
     SPECTROSCOPY_CURVES = []
     PHASORS_DATA = []
     laser_period_ns = None
+    metadata_data = {}
 
     # Process Spectroscopy Reference Files
     for filename in tqdm(
-        spectroscopy_references_files, desc="Processing Spectroscopy Reference files...", colour="blue"
+        spectroscopy_references_files,
+        desc="Processing Spectroscopy Reference files...",
+        colour="blue",
     ):
         try:
             x_values, sum_curve = process_spectroscopy_reference_file(filename)
@@ -220,7 +370,7 @@ if __name__ == "__main__":
     # Transpose the results
     SPECTROSCOPY_X_VALUES = np.array(SPECTROSCOPY_X_VALUES).T
     SPECTROSCOPY_CURVES = np.array(SPECTROSCOPY_CURVES).T
-    
+
     # Process Phasors Files
     for filename in tqdm(
         phasors_files, desc="Processing Phasors files...", colour="blue"
@@ -230,13 +380,52 @@ if __name__ == "__main__":
             PHASORS_DATA.append(phasor_data)
             if laser_period_ns is None:
                 laser_period_ns = laser_period
+            # Find the corresponding metadata file
+            metadata_file = find_corresponding_laserblood_metadata(
+                filename, metadata_files
+            )
+            if metadata_file:
+                metadata_info = collect_laserblood_metadata_info(metadata_file)
+                metadata_data[metadata_file] = metadata_info  # Store metadata info
         except ValueError as e:
             print(f"Error processing {filename}: {e}")
-            continue    
-    
+            continue
+
+    harmonics, g_all_points, s_all_points, files_phasor_info = (
+        extract_phasor_points_data(phasors_files, PHASORS_DATA, laser_period_ns)
+    )
+
+    # Create a DataFrame from the collected metadata
+    metadata_df = pd.DataFrame.from_dict(metadata_data, orient="index")
+
+    # Export Phasors Data Summary to Excel
+    export_phasors_data_to_excel(
+        spectroscopy_references_files,
+        SPECTROSCOPY_X_VALUES,
+        SPECTROSCOPY_CURVES,
+        files_phasor_info,
+    )
+
+    # Export Spectroscopy Reference Data Summary to Parquet
+    export_spectroscopy_reference_data_to_parquet(
+        spectroscopy_references_files, SPECTROSCOPY_X_VALUES, SPECTROSCOPY_CURVES
+    )
+
+    # Export Phasors Data Summary to Parquet
+    export_phasors_data_to_parquet(files_phasor_info)
+
+    # Export Laserblood Metadata Summary to Excel
+    export_laserblood_metadata_to_excel(metadata_df, metadata_files)
+
+    # Export Laserblood Metadata Summary to Parquet
+    export_laserblood_metadata_to_parquet(metadata_df, metadata_files)
+
     # Plot and save images
-    plot_results(spectroscopy_references_files, phasors_files, SPECTROSCOPY_X_VALUES, SPECTROSCOPY_CURVES, PHASORS_DATA, laser_period_ns)
-
-
-            
-            
+    plot_results(
+        spectroscopy_references_files,
+        SPECTROSCOPY_X_VALUES,
+        SPECTROSCOPY_CURVES,
+        g_all_points,
+        s_all_points,
+        laser_period_ns,
+    )

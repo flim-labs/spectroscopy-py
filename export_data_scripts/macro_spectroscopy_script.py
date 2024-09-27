@@ -92,7 +92,7 @@ def export_spectroscopy_data_to_excel(spectroscopy_files, X_VALUES, CURVES):
                                 columns=["t (ns)"] + [f"{file}" for file in spectroscopy_files])
     # Progress bar for Excel export
     with tqdm(
-        total=1, desc="Exporting Spectroscopy Summary Data to Excel...", colour="green"
+        total=1, desc="Exporting Spectroscopy Summary Data to Excel...", colour="blue"
     ) as pbar:
         with pd.ExcelWriter(
             os.path.join(output_dir, "spectroscopy_summary_data.xlsx")
@@ -116,7 +116,7 @@ def export_spectroscopy_data_to_parquet(spectroscopy_files, X_VALUES, CURVES):
     with tqdm(
         total=1,
         desc="Exporting Spectroscopy Summary Data to Parquet...",
-        colour="yellow",
+        colour="blue",
     ) as pbar:
         export_data.to_parquet(
             os.path.join(output_dir, "spectroscopy_summary_data.parquet"), index=False
@@ -134,7 +134,7 @@ def export_laserblood_metadata_to_excel(metadata_df, metadata_files):
     with tqdm(
         total=1,
         desc="Exporting Laserblood Metadata Summary to Excel...",
-        colour="green",
+        colour="blue",
     ) as pbar:
         export_data.to_excel(
             os.path.join(output_dir, "spectroscopy_metadata_summary.xlsx"), index=False
@@ -152,7 +152,7 @@ def export_laserblood_metadata_to_parquet(metadata_df, metadata_files):
     with tqdm(
         total=1,
         desc="Exporting Laserblood Metadata Summary to Parquet...",
-        colour="yellow",
+        colour="blue",
     ) as pbar:
         export_data.to_parquet(
             os.path.join(output_dir, "spectroscopy_metadata_summary.parquet"), index=False
