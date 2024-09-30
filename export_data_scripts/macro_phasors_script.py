@@ -347,85 +347,88 @@ if __name__ == "__main__":
     ]
     phasors_files = [f for f in folder_info if is_valid_file(f, "phasors")]
     metadata_files = [f for f in folder_info if f.endswith("_laserblood_metadata.json")]
+    
+    if len(phasors_files) == 0 or len(spectroscopy_references_files) == 0 or len(metadata_files) == 0:
+        print("Phasors files or Spectroscopy Reference files or Laserblood metadata files not found")
+    else:    
+        SPECTROSCOPY_X_VALUES = []
+        SPECTROSCOPY_CURVES = []
+        PHASORS_DATA = []
+        laser_period_ns = None
+        metadata_data = {}
 
-    SPECTROSCOPY_X_VALUES = []
-    SPECTROSCOPY_CURVES = []
-    PHASORS_DATA = []
-    laser_period_ns = None
-    metadata_data = {}
+        # Process Spectroscopy Reference Files
+        for filename in tqdm(
+            spectroscopy_references_files,
+            desc="Processing Spectroscopy Reference files...",
+            colour="blue",
+        ):
+            try:
+                x_values, sum_curve = process_spectroscopy_reference_file(filename)
+                SPECTROSCOPY_X_VALUES.append(x_values)
+                SPECTROSCOPY_CURVES.append(sum_curve)
+            except ValueError as e:
+                print(f"Error processing {filename}: {e}")
+                continue
+        # Transpose the results
+        SPECTROSCOPY_X_VALUES = np.array(SPECTROSCOPY_X_VALUES).T
+        SPECTROSCOPY_CURVES = np.array(SPECTROSCOPY_CURVES).T
 
-    # Process Spectroscopy Reference Files
-    for filename in tqdm(
-        spectroscopy_references_files,
-        desc="Processing Spectroscopy Reference files...",
-        colour="blue",
-    ):
-        try:
-            x_values, sum_curve = process_spectroscopy_reference_file(filename)
-            SPECTROSCOPY_X_VALUES.append(x_values)
-            SPECTROSCOPY_CURVES.append(sum_curve)
-        except ValueError as e:
-            print(f"Error processing {filename}: {e}")
-            continue
-    # Transpose the results
-    SPECTROSCOPY_X_VALUES = np.array(SPECTROSCOPY_X_VALUES).T
-    SPECTROSCOPY_CURVES = np.array(SPECTROSCOPY_CURVES).T
+        # Process Phasors Files
+        for filename in tqdm(
+            phasors_files, desc="Processing Phasors files...", colour="blue"
+        ):
+            try:
+                phasor_data, laser_period = process_phasors_file(filename)
+                PHASORS_DATA.append(phasor_data)
+                if laser_period_ns is None:
+                    laser_period_ns = laser_period
+                # Find the corresponding metadata file
+                metadata_file = find_corresponding_laserblood_metadata(
+                    filename, metadata_files
+                )
+                if metadata_file:
+                    metadata_info = collect_laserblood_metadata_info(metadata_file)
+                    metadata_data[metadata_file] = metadata_info  # Store metadata info
+            except ValueError as e:
+                print(f"Error processing {filename}: {e}")
+                continue
 
-    # Process Phasors Files
-    for filename in tqdm(
-        phasors_files, desc="Processing Phasors files...", colour="blue"
-    ):
-        try:
-            phasor_data, laser_period = process_phasors_file(filename)
-            PHASORS_DATA.append(phasor_data)
-            if laser_period_ns is None:
-                laser_period_ns = laser_period
-            # Find the corresponding metadata file
-            metadata_file = find_corresponding_laserblood_metadata(
-                filename, metadata_files
-            )
-            if metadata_file:
-                metadata_info = collect_laserblood_metadata_info(metadata_file)
-                metadata_data[metadata_file] = metadata_info  # Store metadata info
-        except ValueError as e:
-            print(f"Error processing {filename}: {e}")
-            continue
+        harmonics, g_all_points, s_all_points, files_phasor_info = (
+            extract_phasor_points_data(phasors_files, PHASORS_DATA, laser_period_ns)
+        )
 
-    harmonics, g_all_points, s_all_points, files_phasor_info = (
-        extract_phasor_points_data(phasors_files, PHASORS_DATA, laser_period_ns)
-    )
+        # Create a DataFrame from the collected metadata
+        metadata_df = pd.DataFrame.from_dict(metadata_data, orient="index")
 
-    # Create a DataFrame from the collected metadata
-    metadata_df = pd.DataFrame.from_dict(metadata_data, orient="index")
+        # Export Phasors Data Summary to Excel
+        export_phasors_data_to_excel(
+            spectroscopy_references_files,
+            SPECTROSCOPY_X_VALUES,
+            SPECTROSCOPY_CURVES,
+            files_phasor_info,
+        )
 
-    # Export Phasors Data Summary to Excel
-    export_phasors_data_to_excel(
-        spectroscopy_references_files,
-        SPECTROSCOPY_X_VALUES,
-        SPECTROSCOPY_CURVES,
-        files_phasor_info,
-    )
+        # Export Spectroscopy Reference Data Summary to Parquet
+        export_spectroscopy_reference_data_to_parquet(
+            spectroscopy_references_files, SPECTROSCOPY_X_VALUES, SPECTROSCOPY_CURVES
+        )
 
-    # Export Spectroscopy Reference Data Summary to Parquet
-    export_spectroscopy_reference_data_to_parquet(
-        spectroscopy_references_files, SPECTROSCOPY_X_VALUES, SPECTROSCOPY_CURVES
-    )
+        # Export Phasors Data Summary to Parquet
+        export_phasors_data_to_parquet(files_phasor_info)
 
-    # Export Phasors Data Summary to Parquet
-    export_phasors_data_to_parquet(files_phasor_info)
+        # Export Laserblood Metadata Summary to Excel
+        export_laserblood_metadata_to_excel(metadata_df, metadata_files)
 
-    # Export Laserblood Metadata Summary to Excel
-    export_laserblood_metadata_to_excel(metadata_df, metadata_files)
+        # Export Laserblood Metadata Summary to Parquet
+        export_laserblood_metadata_to_parquet(metadata_df, metadata_files)
 
-    # Export Laserblood Metadata Summary to Parquet
-    export_laserblood_metadata_to_parquet(metadata_df, metadata_files)
-
-    # Plot and save images
-    plot_results(
-        spectroscopy_references_files,
-        SPECTROSCOPY_X_VALUES,
-        SPECTROSCOPY_CURVES,
-        g_all_points,
-        s_all_points,
-        laser_period_ns,
-    )
+        # Plot and save images
+        plot_results(
+            spectroscopy_references_files,
+            SPECTROSCOPY_X_VALUES,
+            SPECTROSCOPY_CURVES,
+            g_all_points,
+            s_all_points,
+            laser_period_ns,
+        )

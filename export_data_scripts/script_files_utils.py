@@ -18,7 +18,7 @@ fitting_py_script_path = resource_path("export_data_scripts/fitting_script.py")
 fitting_m_script_path = resource_path("export_data_scripts/fitting_script.m")  
 time_tagger_py_script_path = resource_path("export_data_scripts/time_tagger_script.py") 
 spectroscopy_macro_py_script_path = resource_path("export_data_scripts/macro_spectroscopy_script.py")   
-
+phasors_macro_py_script_path = resource_path("export_data_scripts/macro_phasors_script.py")  
 
 
 class ScriptFileUtils:
@@ -26,9 +26,6 @@ class ScriptFileUtils:
     @classmethod
     def export_scripts(cls, bin_file_paths, file_name, directory, script_type, time_tagger=False, time_tagger_file_path=""):
         try:
-            # Spectroscopy macro
-            python_modifier = cls.get_spectroscopy_macro_content_modifiers()
-            cls.write_new_scripts_content(python_modifier, None, "macro", directory, "py", "spectroscopy")
             if time_tagger:
                 python_modifier = cls.get_time_tagger_content_modifiers()
                 cls.write_new_scripts_content(python_modifier, {"time_tagger": time_tagger_file_path}, file_name, directory, "py", "time_tagger_spectroscopy")
@@ -36,10 +33,16 @@ class ScriptFileUtils:
                 python_modifier, matlab_modifier = cls.get_spectroscopy_content_modifiers(time_tagger)
                 cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
                 cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
+                # Spectroscopy macro
+                python_modifier = cls.get_spectroscopy_macro_content_modifiers()
+                cls.write_new_scripts_content(python_modifier, None, "macro", directory, "py", "spectroscopy")
             elif script_type == 'phasors':
                 python_modifier, matlab_modifier = cls.get_phasors_content_modifiers(time_tagger)   
                 cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
                 cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
+                # Phasors macro
+                python_modifier = cls.get_phasors_macro_content_modifiers()
+                cls.write_new_scripts_content(python_modifier, None, "macro", directory, "py", "phasors")                
             elif script_type == 'fitting':
                 python_modifier, matlab_modifier = cls.get_fitting_content_modifiers(time_tagger)    
                 cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
@@ -141,7 +144,18 @@ class ScriptFileUtils:
             "replace_pattern": "# Create a directory for output files ('summary analysis') if it does not exist",
             "requirements": [],
         }
-        return python_modifier             
+        return python_modifier   
+    
+    @classmethod    
+    def get_phasors_macro_content_modifiers(cls):
+        python_modifier = {
+            "source_file": phasors_macro_py_script_path,
+            "skip_pattern": "",
+            "end_pattern": "# Create a directory for output files ('summary analysis') if it does not exist",
+            "replace_pattern": "# Create a directory for output files ('summary analysis') if it does not exist",
+            "requirements": [],
+        }
+        return python_modifier                 
 
     @classmethod
     def write_file(cls, file_name, content):

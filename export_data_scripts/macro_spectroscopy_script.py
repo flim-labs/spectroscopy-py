@@ -181,49 +181,53 @@ if __name__ == "__main__":
     folder_info = os.listdir(current_folder)
     spectroscopy_files = [f for f in folder_info if is_spectroscopy_file(f)]
     metadata_files = [f for f in folder_info if f.endswith("_laserblood_metadata.json")]
-    X_VALUES = []
-    CURVES = []
+    
+    if len(spectroscopy_files) == 0 or len(metadata_files) == 0:
+            print("Spectroscopy files or Laserblood metadata files not found")    
+    else:        
+        X_VALUES = []
+        CURVES = []
 
-    # DataFrame for metadata
-    metadata_data = {}
+        # DataFrame for metadata
+        metadata_data = {}
 
-    for filename in tqdm(
-        spectroscopy_files, desc="Processing Spectroscopy files...", colour="blue"
-    ):
-        try:
-            x_values, sum_curve = process_spectroscopy_file(filename)
-            X_VALUES.append(x_values)
-            CURVES.append(sum_curve)
+        for filename in tqdm(
+            spectroscopy_files, desc="Processing Spectroscopy files...", colour="blue"
+        ):
+            try:
+                x_values, sum_curve = process_spectroscopy_file(filename)
+                X_VALUES.append(x_values)
+                CURVES.append(sum_curve)
 
-            # Find the corresponding metadata file
-            metadata_file = find_corresponding_laserblood_metadata(
-                filename, metadata_files
-            )
-            if metadata_file:
-                metadata_info = collect_laserblood_metadata_info(metadata_file)
-                metadata_data[metadata_file] = metadata_info  # Store metadata info
-        except ValueError as e:
-            print(f"Error processing {filename}: {e}")
-            continue
+                # Find the corresponding metadata file
+                metadata_file = find_corresponding_laserblood_metadata(
+                    filename, metadata_files
+                )
+                if metadata_file:
+                    metadata_info = collect_laserblood_metadata_info(metadata_file)
+                    metadata_data[metadata_file] = metadata_info  # Store metadata info
+            except ValueError as e:
+                print(f"Error processing {filename}: {e}")
+                continue
 
-    # Transpose the results
-    X_VALUES = np.array(X_VALUES).T
-    CURVES = np.array(CURVES).T
+        # Transpose the results
+        X_VALUES = np.array(X_VALUES).T
+        CURVES = np.array(CURVES).T
 
-    # Create a DataFrame from the collected metadata
-    metadata_df = pd.DataFrame.from_dict(metadata_data, orient="index")
+        # Create a DataFrame from the collected metadata
+        metadata_df = pd.DataFrame.from_dict(metadata_data, orient="index")
 
-    # Export Spectroscopy Data Summary to Excel
-    export_spectroscopy_data_to_excel(spectroscopy_files, X_VALUES, CURVES)
+        # Export Spectroscopy Data Summary to Excel
+        export_spectroscopy_data_to_excel(spectroscopy_files, X_VALUES, CURVES)
 
-    # Export Spectroscopy Data Summary to Parquet
-    export_spectroscopy_data_to_parquet(spectroscopy_files, X_VALUES, CURVES)
+        # Export Spectroscopy Data Summary to Parquet
+        export_spectroscopy_data_to_parquet(spectroscopy_files, X_VALUES, CURVES)
 
-    # Export Laserblood Metadata Summary to Excel
-    export_laserblood_metadata_to_excel(metadata_df, metadata_files)
+        # Export Laserblood Metadata Summary to Excel
+        export_laserblood_metadata_to_excel(metadata_df, metadata_files)
 
-    # Export Laserblood Metadata Summary to Parquet
-    export_laserblood_metadata_to_parquet(metadata_df, metadata_files)
+        # Export Laserblood Metadata Summary to Parquet
+        export_laserblood_metadata_to_parquet(metadata_df, metadata_files)
 
-    # Display results
-    plot_results(spectroscopy_files, X_VALUES, CURVES)
+        # Display results
+        plot_results(spectroscopy_files, X_VALUES, CURVES)
