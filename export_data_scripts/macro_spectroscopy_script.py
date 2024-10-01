@@ -181,6 +181,7 @@ if __name__ == "__main__":
     folder_info = os.listdir(current_folder)
     spectroscopy_files = [f for f in folder_info if is_spectroscopy_file(f)]
     metadata_files = [f for f in folder_info if f.endswith("_laserblood_metadata.json")]
+    filtered_metadata_files = []
     
     if len(spectroscopy_files) == 0 or len(metadata_files) == 0:
             print("Spectroscopy files or Laserblood metadata files not found")    
@@ -204,6 +205,7 @@ if __name__ == "__main__":
                     filename, metadata_files
                 )
                 if metadata_file:
+                    filtered_metadata_files.append(metadata_file)
                     metadata_info = collect_laserblood_metadata_info(metadata_file)
                     metadata_data[metadata_file] = metadata_info  # Store metadata info
             except ValueError as e:
@@ -224,10 +226,10 @@ if __name__ == "__main__":
         export_spectroscopy_data_to_parquet(spectroscopy_files, X_VALUES, CURVES)
 
         # Export Laserblood Metadata Summary to Excel
-        export_laserblood_metadata_to_excel(metadata_df, metadata_files)
+        export_laserblood_metadata_to_excel(metadata_df, filtered_metadata_files)
 
         # Export Laserblood Metadata Summary to Parquet
-        export_laserblood_metadata_to_parquet(metadata_df, metadata_files)
+        export_laserblood_metadata_to_parquet(metadata_df, filtered_metadata_files)
 
         # Display results
         plot_results(spectroscopy_files, X_VALUES, CURVES)

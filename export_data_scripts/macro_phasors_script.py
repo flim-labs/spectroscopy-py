@@ -347,7 +347,7 @@ if __name__ == "__main__":
     ]
     phasors_files = [f for f in folder_info if is_valid_file(f, "phasors")]
     metadata_files = [f for f in folder_info if f.endswith("_laserblood_metadata.json")]
-    
+    filtered_metadata_files = []
     if len(phasors_files) == 0 or len(spectroscopy_references_files) == 0 or len(metadata_files) == 0:
         print("Phasors files or Spectroscopy Reference files or Laserblood metadata files not found")
     else:    
@@ -388,6 +388,7 @@ if __name__ == "__main__":
                     filename, metadata_files
                 )
                 if metadata_file:
+                    filtered_metadata_files.append(metadata_file)
                     metadata_info = collect_laserblood_metadata_info(metadata_file)
                     metadata_data[metadata_file] = metadata_info  # Store metadata info
             except ValueError as e:
@@ -418,10 +419,10 @@ if __name__ == "__main__":
         export_phasors_data_to_parquet(files_phasor_info)
 
         # Export Laserblood Metadata Summary to Excel
-        export_laserblood_metadata_to_excel(metadata_df, metadata_files)
+        export_laserblood_metadata_to_excel(metadata_df, filtered_metadata_files)
 
         # Export Laserblood Metadata Summary to Parquet
-        export_laserblood_metadata_to_parquet(metadata_df, metadata_files)
+        export_laserblood_metadata_to_parquet(metadata_df, filtered_metadata_files)
 
         # Plot and save images
         plot_results(
