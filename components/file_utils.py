@@ -92,10 +92,11 @@ class FileUtils:
         parsed_filter_type = filter_type +  " " + filter_wavelength_input["VALUE"]  if filter_type in ["LP", "SP"] else filter_wavelength_input["VALUE"]
         frequency_mhz = app.get_frequency_mhz()
         firmware_selected, connection_type = app.get_firmware_selected(frequency_mhz)
+        firmware_selected_name =  os.path.basename(firmware_selected)
         parsed_data = [
             {"label": "Laser type", "unit": "", "value": laser_type},
             {"label": "Emission filter type", "unit": "", "value": parsed_filter_type},
-            {"label": "Firmware selected", "unit": "", "value": firmware_selected},
+            {"label": "Firmware selected", "unit": "", "value": firmware_selected_name},
             {"label": "Connection type", "unit": "", "value": connection_type},
             {"label": "Frequency", "unit": "Mhz", "value": laser_type},
             {"label": "Enabled channels", "unit": "", "value": [ch + 1 for ch in app.selected_channels]},

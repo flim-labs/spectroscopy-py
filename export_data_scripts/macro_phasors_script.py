@@ -235,16 +235,14 @@ def calculate_phasor_tau_components(laser_period_ns, harmonic, mean_s, mean_g):
     )
     return tau_phi, tau_m
 
-
 def extract_phasor_points_data(phasors_files, PHASORS_DATA, laser_period_ns):
     harmonics = []
-    g_all_points = {}
-    s_all_points = {}
     files_phasor_info = []
+    seen = set()
     for i, filename in enumerate(phasors_files):
         phasor_data = PHASORS_DATA[i]
-        for j, (_, harmonics) in enumerate(phasor_data.items(), start=1):
-            for harmonic, values in harmonics.items():
+        for j, (_, harmonics_dict) in enumerate(phasor_data.items(), start=1):
+            for harmonic, values in harmonics_dict.items():
                 if values:
                     g_values, s_values = zip(*values)
                     g_values = np.array(g_values)
@@ -257,86 +255,86 @@ def extract_phasor_points_data(phasors_files, PHASORS_DATA, laser_period_ns):
                     tau_phi, tau_m = calculate_phasor_tau_components(
                         laser_period_ns, harmonic, mean_s, mean_g
                     )
-                    files_phasor_info.append(
-                        {
-                            "File": filename,
-                            "Harmonic": harmonic,
-                            "G (mean)": mean_g,
-                            "S (mean)": mean_s,
-                            "τϕ (ns)": tau_phi,
-                            "τm (ns)": tau_m,
-                        }
-                    )
-                    if not harmonic in g_all_points and not harmonic in s_all_points:
-                        g_all_points[harmonic] = []
-                        s_all_points[harmonic] = []
-                    g_all_points[harmonic].extend(g_values)
-                    s_all_points[harmonic].extend(s_values)
+                    identifier = (filename, harmonic)
+                    if identifier not in seen:
+                        files_phasor_info.append(
+                            {
+                                "File": filename,
+                                "Harmonic": harmonic,
+                                "G (mean)": mean_g,
+                                "S (mean)": mean_s,
+                                "τϕ (ns)": tau_phi,
+                                "τm (ns)": tau_m,
+                            }
+                        )
+                        seen.add(identifier)  
                     if harmonic not in harmonics:
                         harmonics.append(harmonic)
-    return harmonics, g_all_points, s_all_points, files_phasor_info
+    return harmonics, files_phasor_info
 
 
-def plot_results(
-    spectroscopy_files,
-    SPECTROSCOPY_X_VALUES,
-    SPECTROSCOPY_CURVES,
-    g_all_points,
-    s_all_points,
-    laser_period_ns,
-):
-    num_plots = 2
-    num_rows = 1
-    fig, axs = plt.subplots(num_rows + 1, num_plots, figsize=(20, (num_rows + 1) * 6))
-    sp_ax = axs[0, 0]
-    # Spectroscopy plot
+
+def plot_spectroscopy(spectroscopy_files, SPECTROSCOPY_X_VALUES, SPECTROSCOPY_CURVES):
+    """Plot and save spectroscopy reference results."""
+    plt.figure(figsize=(8, 6)) 
     for i in range(len(spectroscopy_files)):
-        sp_ax.plot(
+        plt.plot(
             SPECTROSCOPY_X_VALUES[:, i],
             SPECTROSCOPY_CURVES[:, i],
             label=spectroscopy_files[i],
         )
-    sp_ax.set_xlabel("Time (ns)")
-    sp_ax.set_ylabel("Intensity")
-    sp_ax.legend(loc="upper right", bbox_to_anchor=(1.2, 1), fontsize=8)
-    sp_ax.grid(True)
-    sp_ax.set_title(f"Spectroscopy Reference - Summary")
-    # Phasor plot
-    ph_ax = axs[0, 1]
+    plt.xlabel("Time (ns)")
+    plt.ylabel("Intensity")
+    plt.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=1, fontsize=8) 
+    plt.grid(True)
+    plt.title("Spectroscopy Reference - Summary")
+    plt.tight_layout(pad=4.0)  
+    plt.savefig(os.path.join(output_dir, "phasors_spectroscopy_reference_summary_plot.png"), dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, "phasors_spectroscopy_reference_summary_plot.eps"), bbox_inches='tight')
+
+
+    
+
+def plot_phasors(harmonics, phasors_info):
+    """Plot and save phasors results."""
+    plt.figure(figsize=(12, 6)) 
     x = np.linspace(0, 1, 1000)
     y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
-    ph_ax.plot(x, y)
-    ph_ax.set_aspect("equal")
-    points_colors = ["#fde725", "#7ad151", "#22a884", "#440154"]
-    for i, harmonic in enumerate(harmonics):
-        mean_g = np.mean(g_all_points[harmonic])
-        mean_s = np.mean(s_all_points[harmonic])
-        tau_phi, tau_m = calculate_phasor_tau_components(
-            laser_period_ns, harmonic, mean_s, mean_g
-        )
-        mean_label = f"Harmonic: {harmonic}; G (mean): {round(mean_g, 2)}; S (mean): {round(mean_s, 2)}; τϕ={round(tau_phi, 2)} ns"
+    plt.plot(x, y)
+    plt.gca().set_aspect('equal')  
+    total_points = sum(len([phasor for phasor in phasors_info if phasor["Harmonic"] == harmonic]) for harmonic in harmonics)
+    colors = plt.cm.viridis(np.linspace(0, 1, total_points))
+    color_idx = 0
+    for phasor in phasors_info:
+        mean_g = phasor["G (mean)"]
+        mean_s = phasor["S (mean)"]
+        tau_phi = phasor["τϕ (ns)"]
+        tau_m = phasor["τm (ns)"]
+        mean_label = f"{phasor['File']}; Harmonic: {phasor["Harmonic"]}; G (mean): {round(mean_g, 2)}; S (mean): {round(mean_s, 2)}; τϕ={round(tau_phi, 2)} ns"
         if tau_m is not None:
             mean_label += f"; τm={round(tau_m, 2)} ns"
-        ph_ax.scatter(
+        plt.scatter(
             mean_g,
             mean_s,
-            color=points_colors[i],
+            color=colors[color_idx],
+            edgecolor='black',
             zorder=3,
+            s=24,
+            linewidths=0.6, 
             label=mean_label,
         )
-    ph_ax.legend(fontsize="small")
-    ph_ax.set_title(f"Phasors - Summary")
-    ph_ax.set_xlabel("G")
-    ph_ax.set_ylabel("S")
-    ph_ax.grid(True)
-    for i in range(2, (num_rows + 1) * num_plots):
-        row = i // num_plots
-        col = i % num_plots
-        fig.delaxes(axs[row, col])
-    plt.tight_layout(pad=4.0, w_pad=4.0, h_pad=4.0)
-    plt.savefig(os.path.join(output_dir, "phasors_summary_plot.png"), dpi=300)
-    plt.savefig(os.path.join(output_dir, "phasors_summary_plot.eps"))
-    plt.show()
+        color_idx += 1
+    plt.legend(loc="center left", bbox_to_anchor=(1.05, 0.5), fontsize="small", ncol=1)
+    plt.title("Phasors - Summary")
+    plt.xlabel("G")
+    plt.ylabel("S")
+    plt.grid(True)
+    plt.tight_layout(pad=1.0)
+    plt.savefig(os.path.join(output_dir, "phasors_summary_plot.png"), dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, "phasors_summary_plot.eps"), bbox_inches='tight')
+
+
+    
 
 
 if __name__ == "__main__":
@@ -395,7 +393,7 @@ if __name__ == "__main__":
                 print(f"Error processing {filename}: {e}")
                 continue
 
-        harmonics, g_all_points, s_all_points, files_phasor_info = (
+        harmonics, files_phasor_info = (
             extract_phasor_points_data(phasors_files, PHASORS_DATA, laser_period_ns)
         )
 
@@ -423,13 +421,14 @@ if __name__ == "__main__":
 
         # Export Laserblood Metadata Summary to Parquet
         export_laserblood_metadata_to_parquet(metadata_df, filtered_metadata_files)
+        
+        # Plot and save phasors images
+        plot_phasors(harmonics, files_phasor_info)
 
-        # Plot and save images
-        plot_results(
-            spectroscopy_references_files,
-            SPECTROSCOPY_X_VALUES,
-            SPECTROSCOPY_CURVES,
-            g_all_points,
-            s_all_points,
-            laser_period_ns,
+        # Plot and save spectroscopy reference images
+        plot_spectroscopy(
+        spectroscopy_references_files,
+        SPECTROSCOPY_X_VALUES,
+        SPECTROSCOPY_CURVES,
         )
+

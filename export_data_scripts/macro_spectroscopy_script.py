@@ -167,13 +167,12 @@ def plot_results(spectroscopy_files, X_VALUES, CURVES):
         plt.plot(X_VALUES[:, i], CURVES[:, i], label=spectroscopy_files[i])
     plt.xlabel("Time (ns)")
     plt.ylabel("Intensity")
-    plt.legend(loc="upper right", bbox_to_anchor=(1.2, 1), fontsize=8)
+    plt.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=1, fontsize=8) 
     plt.grid(True)
     plt.title("Spectroscopy Summary")
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "spectroscopy_summary_plot.png"), dpi=300)
     plt.savefig(os.path.join(output_dir, "spectroscopy_summary_plot.eps"))
-    plt.show()
 
 
 if __name__ == "__main__":
