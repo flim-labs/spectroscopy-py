@@ -1819,7 +1819,17 @@ class SpectroscopyWindow(QWidget):
             return frequency_mhz
 
     def begin_spectroscopy_experiment(self):
-        self.check_card_connection()
+        try:
+            self.check_card_connection(start_experiment=True)
+        except Exception as e:
+            BoxMessage.setup(
+                    "Error",
+                    "Error starting spectroscopy: " + str(e),
+                    QMessageBox.Icon.Warning,
+                    GUIStyles.set_msg_box_style(),
+                )  
+            return
+        
         bin_width_micros = int(
             self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
         )
@@ -2496,7 +2506,7 @@ class SpectroscopyWindow(QWidget):
             self.fit_button_show()
    
 
-    def check_card_connection(self):
+    def check_card_connection(self, start_experiment = False):
         try:
             card_serial_number = flim_labs.check_card()
             CheckCard.update_check_message(self, str(card_serial_number), error=False)
@@ -2504,7 +2514,9 @@ class SpectroscopyWindow(QWidget):
             if str(e) == "CardNotFound":
                 CheckCard.update_check_message(self, "Card Not Found", error=True)
             else:
-                CheckCard.update_check_message(self, str(e), error=True)
+                CheckCard.update_check_message(self, str(e), error=True)  
+            if start_experiment:    
+                raise             
 
     def open_plots_config_popup(self):
         self.popup = PlotsConfigPopup(self, start_acquisition=False)
