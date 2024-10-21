@@ -2,6 +2,7 @@ import json
 import os
 import numpy as np
 import pyqtgraph as pg
+
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot, QSize
 from PyQt6.QtGui import QCursor, QGuiApplication, QIcon, QMovie
 from PyQt6.QtWidgets import (
@@ -23,7 +24,7 @@ from components.lin_log_control import LinLogControl
 from components.resource_path import resource_path
 from fit_decay_curve import (
     convert_fitting_result_into_json_serializable_item,
-    fit_decay_curve,
+    fit_decay_curve_multiprocessing,
 )
 from settings import FITTING_POPUP, PALETTE_RED_1, TAB_FITTING, SETTINGS_ROI
 
@@ -53,11 +54,13 @@ class FittingDecayConfigPopup(QWidget):
         read_mode=False,
         save_plot_img=False,
         y_data_shift=0,
+        laser_period_ns=0
     ):
         super().__init__()
         self.app = window
         self.data = data
         self.y_data_shift = y_data_shift
+        self.laser_period_ns = laser_period_ns
         self.preloaded_fitting = preloaded_fitting
         self.read_mode = read_mode
         self.save_plot_img = save_plot_img
@@ -331,6 +334,9 @@ class FittingDecayConfigPopup(QWidget):
         plot_widget.getAxis("left").setPen("white")
         plot_widget.getAxis("bottom").setPen("white")
         plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        margin = 0.5
+        plot_widget.setXRange(0 - margin, self.laser_period_ns + margin)
+        plot_widget.setLimits(xMin=0 - margin, xMax=self.laser_period_ns + margin)
         if not (self.read_mode):
             # Spectroscopy curve
             x, y = self.display_spectroscopy_curve(plot_widget, channel)
@@ -345,6 +351,10 @@ class FittingDecayConfigPopup(QWidget):
             roi.sigRegionChanged.connect(
                 lambda: self.on_roi_selection_changed(roi, x, y, channel)
             )
+            roi.sigRegionChangeFinished.connect(
+                lambda: self.limit_roi_bounds(roi)
+            )
+
             self.roi_items[channel] = roi
             plot_widget.addItem(roi)
         # Residuals
@@ -465,6 +475,17 @@ class FittingDecayConfigPopup(QWidget):
     def on_roi_selection_changed(self, roi, x, y, channel):
         self.set_roi_mask(roi, x, y, channel)
         self.app.settings.setValue(SETTINGS_ROI, json.dumps(self.app.roi))    
+        
+    def limit_roi_bounds(self, roi):
+        min_val, max_val = roi.getRegion()
+        min_limit = 0
+        max_limit = self.laser_period_ns
+        if min_val < min_limit:
+            min_val = min_limit
+        if max_val > max_limit:
+            max_val = max_limit 
+        roi.setRegion([min_val, max_val])           
+            
         
     def set_roi_mask(self, roi, x, y, channel):
         if not roi.isVisible():
@@ -595,10 +616,13 @@ class FittingWorker(QThread):
         for data_point in self.data:
             try:
                 x, y = self.get_data_point(data_point, data_point["channel_index"])
-                result = fit_decay_curve(
+                result = fit_decay_curve_multiprocessing(
                     x, y, data_point["channel_index"], y_shift=data_point["time_shift"]
                 )
                 results.append((result))
+            except TimeoutError as te:
+                self.error_occurred.emit(f"An error occurred: {str(te)}")
+                return                
             except Exception as e:
                 self.error_occurred.emit(f"An error occurred: {str(e)}")
                 return
