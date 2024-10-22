@@ -728,6 +728,7 @@ class SpectroscopyWindow(QWidget):
         else:
             ReadDataControls.plot_data_on_tab_change(self)
         if tab_name == TAB_SPECTROSCOPY:
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(True)
             self.fit_button_hide()
             self.hide_harmonic_selector()
             hide_layout(self.control_inputs["phasors_resolution_container"])
@@ -752,6 +753,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_FITTING:
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(True)
             if ReadDataControls.fit_button_enabled(self):
                 self.fit_button_show()
             else:
@@ -771,6 +773,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_PHASORS:
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(False)
             self.fit_button_hide()
             (
                 show_layout(self.control_inputs["phasors_resolution_container"])
@@ -2015,7 +2018,7 @@ class SpectroscopyWindow(QWidget):
                 reference_file=reference_file,
                 harmonics=int(self.harmonic_selector_value),
                 write_bin=False,
-                time_tagger=self.time_tagger
+                time_tagger=self.time_tagger and self.tab_selected != TAB_PHASORS
             )
         except Exception as e:
             self.check_card_connection()
