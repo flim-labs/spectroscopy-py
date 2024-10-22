@@ -1,5 +1,11 @@
 # Spectroscopy Changelog
 
+## Version 2.1
+- Fix Time Tagger Functionality
+- Fix SBR calculation
+- Improve Fitting user experience
+- Improve Card Detection user experience
+
 ## Version 2.0
 - Add automatic channels connections detection
 - x-axis negative values ​​cut on exported spectroscopy plots (images/scripts)
