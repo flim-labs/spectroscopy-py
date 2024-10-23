@@ -39,7 +39,7 @@ class ExportData:
                 return
             # Laserblood metadata file (.json)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
-                app, save_name, save_dir, timestamp, new_spectroscopy_file_path
+                app, save_name, save_dir, timestamp, [new_spectroscopy_file_path]
             )
             # Fitting file (.json)
             ExportData.save_fitting_config_json(fitting_data, save_dir, save_name, app, timestamp)
@@ -74,7 +74,7 @@ class ExportData:
     def save_fitting_config_json(fitting_data, save_dir, save_name, app, timestamp):
         try:
             laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-            file_name = FileUtils.clean_filename(f"{save_name}_{laser_key}_{filter_key}_{timestamp}_fitting_result")
+            file_name = FileUtils.clean_filename(f"{timestamp}_{laser_key}_{filter_key}_{save_name}_fitting_result")
             file_name = f"{file_name}.json"
             save_path = os.path.join(
                 save_dir, file_name
@@ -117,7 +117,7 @@ class ExportData:
             )
             # Laserblood metadata file (.json)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
-                app, save_name, save_dir, timestamp, new_spectroscopy_file_path
+                app, save_name, save_dir, timestamp, [new_spectroscopy_file_path]
             )      
             # Spectroscopy reference file (.json)      
             if app.control_inputs["calibration"].currentIndex() == 1:
@@ -151,7 +151,7 @@ class ExportData:
             lines = f.readlines()
             reference_file = lines[0].split("=")[1].strip()
         laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-        file_name = FileUtils.clean_filename(f"{file_name}_{laser_key}_{filter_key}_{timestamp}_spectroscopy_reference")
+        file_name = FileUtils.clean_filename(f"{timestamp}_{laser_key}_{filter_key}_{file_name}_spectroscopy_reference")
         full_path = os.path.join(
             directory,
             f"{file_name}.json",
@@ -194,7 +194,7 @@ class ExportData:
             
             # Spectroscopy file (.bin)
             laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-            clean_name = FileUtils.clean_filename(f"{save_name}_{laser_key}_{filter_key}_{timestamp}_phasors_spectroscopy")
+            clean_name = FileUtils.clean_filename(f"{timestamp}_{laser_key}_{filter_key}_{save_name}_phasors_spectroscopy")
             new_spectroscopy_ref_name = (
                 f"{clean_name}.bin"
             )
@@ -205,7 +205,7 @@ class ExportData:
       
             # Laserblood metadata file (.json)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
-                app, save_name, save_dir, timestamp, new_phasors_file_path
+                app, save_name, save_dir, timestamp, [new_phasors_file_path, new_spectroscopy_ref_path]
             )
 
             # Time Tagger file (.bin)
@@ -252,7 +252,7 @@ class ExportData:
     ):
         file_name = FileUtils.clean_filename(file_name)
         laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-        file_name = f"{file_name}_{laser_key}_{filter_key}_{timestamp}"
+        file_name = f"{timestamp}_{laser_key}_{filter_key}_{file_name}"
         ScriptFileUtils.export_scripts(
             bin_file_paths,
             file_name,
@@ -265,7 +265,7 @@ class ExportData:
     @staticmethod
     def copy_file(origin_file_path, save_name, save_dir, file_type, timestamp, app, file_extension="bin"):
         laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-        new_filename = f"{save_name}_{laser_key}_{filter_key}_{timestamp}_{file_type}"
+        new_filename = f"{timestamp}_{laser_key}_{filter_key}_{save_name}_{file_type}"
         new_filename = f"{FileUtils.clean_filename(new_filename)}.{file_extension}"
         new_file_path = os.path.join(save_dir, new_filename)
         shutil.copyfile(origin_file_path, new_file_path)
@@ -285,7 +285,7 @@ class ExportData:
             save_dir = os.path.dirname(save_path)
             save_name = os.path.basename(save_path)
             laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-            new_filename = f"{save_name}_{laser_key}_{filter_key}_{timestamp}_{file_type}"
+            new_filename = f"{timestamp}_{laser_key}_{filter_key}_{save_name}_{file_type}"
             new_filename = f"{FileUtils.clean_filename(new_filename)}.{file_extension}"
             new_file_path = os.path.join(save_dir, new_filename)
             shutil.copyfile(original_file_path, new_file_path)

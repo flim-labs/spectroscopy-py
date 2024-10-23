@@ -84,7 +84,7 @@ class FileUtils:
 
     @staticmethod
     def save_laserblood_metadata_json(
-        filename, dest_path, window, timestamp, reference_file
+        filename, dest_path, window, timestamp, reference_files
     ):
         filter_wavelength_input = next(
             (
@@ -94,12 +94,12 @@ class FileUtils:
             ),
             None,
         )
-        parsed_data = FileUtils.parse_metadata_output(window, reference_file)
+        parsed_data = FileUtils.parse_metadata_output(window, reference_files)
         laser_key, filter_key = FileUtils.get_laser_info_slug(
             window, filter_wavelength_input
         )
         filename = FileUtils.clean_filename(
-            f"{filename}_{laser_key}_{filter_key}_{timestamp}_laserblood_metadata"
+            f"{timestamp}_{laser_key}_{filter_key}_{filename}_laserblood_metadata"
         )
         new_filename = f"{filename}.json"
         file_path = os.path.join(dest_path, new_filename)
@@ -108,8 +108,9 @@ class FileUtils:
         return file_path
 
     @staticmethod
-    def parse_metadata_output(app, reference_file):
-        reference_filename = reference_file.rsplit("\\", 1)[-1]
+    def parse_metadata_output(app, reference_files):
+        reference_filenames = [file.rsplit("\\", 1)[-1] for file in reference_files]
+        filenames_string = ", ".join(reference_filenames)
         laser_type = app.laserblood_laser_type
         filter_type = app.laserblood_filter_type
         metadata_settings = app.laserblood_settings
@@ -131,7 +132,7 @@ class FileUtils:
         firmware_selected, connection_type = app.get_firmware_selected(frequency_mhz)
         firmware_selected_name = os.path.basename(firmware_selected)
         parsed_data = [
-            {"label": "Acquisition File", "unit": "", "value": reference_filename},
+            {"label": "Acquisition Files", "unit": "", "value": filenames_string},
             {"label": "Laser type", "unit": "", "value": laser_type},
             {"label": "Emission filter type", "unit": "", "value": parsed_filter_type},
             {"label": "Firmware selected", "unit": "", "value": firmware_selected_name},
