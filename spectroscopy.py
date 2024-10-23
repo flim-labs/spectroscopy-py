@@ -728,7 +728,7 @@ class SpectroscopyWindow(QWidget):
         else:
             ReadDataControls.plot_data_on_tab_change(self)
         if tab_name == TAB_SPECTROSCOPY:
-            self.widgets[TIME_TAGGER_WIDGET].setVisible(True)
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(self.write_data_gui)
             self.fit_button_hide()
             self.hide_harmonic_selector()
             hide_layout(self.control_inputs["phasors_resolution_container"])
@@ -753,7 +753,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_FITTING:
-            self.widgets[TIME_TAGGER_WIDGET].setVisible(True)
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(self.write_data_gui)
             if ReadDataControls.fit_button_enabled(self):
                 self.fit_button_show()
             else:
