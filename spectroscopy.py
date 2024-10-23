@@ -2019,7 +2019,7 @@ class SpectroscopyWindow(QWidget):
                 reference_file=reference_file,
                 harmonics=int(self.harmonic_selector_value),
                 write_bin=False,
-                time_tagger=self.time_tagger and self.tab_selected != TAB_PHASORS
+                time_tagger=self.time_tagger and self.write_data_gui and self.tab_selected != TAB_PHASORS
             )
         except Exception as e:
             self.check_card_connection()
