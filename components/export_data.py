@@ -39,7 +39,7 @@ class ExportData:
                 return
             # Laserblood metadata file (.json)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
-                app, save_name, save_dir, timestamp
+                app, save_name, save_dir, timestamp, new_spectroscopy_file_path
             )
             # Fitting file (.json)
             ExportData.save_fitting_config_json(fitting_data, save_dir, save_name, app, timestamp)
@@ -117,7 +117,7 @@ class ExportData:
             )
             # Laserblood metadata file (.json)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
-                app, save_name, save_dir, timestamp
+                app, save_name, save_dir, timestamp, new_spectroscopy_file_path
             )      
             # Spectroscopy reference file (.json)      
             if app.control_inputs["calibration"].currentIndex() == 1:
@@ -141,8 +141,8 @@ class ExportData:
             ScriptFileUtils.show_error_message(e)
 
     @staticmethod
-    def save_laserblood_metadata(app, file_name, directory, timestamp):
-        return FileUtils.save_laserblood_metadata_json(file_name, directory, app, timestamp)
+    def save_laserblood_metadata(app, file_name, directory, timestamp, reference_file):
+        return FileUtils.save_laserblood_metadata_json(file_name, directory, app, timestamp, reference_file)
 
     @staticmethod
     def save_spectroscopy_reference(file_name, directory, app, timestamp):
@@ -205,7 +205,7 @@ class ExportData:
       
             # Laserblood metadata file (.json)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
-                app, save_name, save_dir, timestamp
+                app, save_name, save_dir, timestamp, new_phasors_file_path
             )
 
             # Time Tagger file (.bin)

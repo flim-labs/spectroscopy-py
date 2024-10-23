@@ -129,7 +129,7 @@ with open(file_path, "rb") as f:
 
         for model, initial_guess in decay_models:
             try:
-                popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=1000000000)
+                popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=500000)
                 fitted_values = model(t_data, *popt)
                 
                 # Chi-square (χ²) calculation to find best model
@@ -164,7 +164,7 @@ with open(file_path, "rb") as f:
         if tau_are_similar:
             model = decay_model_1_with_B
             initial_guess = [1, 1, 1]
-            popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=1000000000)
+            popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=500000)
             best_fit = model(t_data, *popt)
             best_model = model
             best_popt = popt

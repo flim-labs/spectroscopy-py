@@ -532,7 +532,7 @@ class GUIStyles:
             }}
 
             QCheckBox::indicator:checked {{
-                background-color: #11468F;
+                background-color: #1fd400;
             }}                   
         """        
         
