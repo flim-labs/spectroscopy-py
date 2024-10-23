@@ -1153,7 +1153,7 @@ class SpectroscopyWindow(QWidget):
         self.generate_plots()
         self.calc_exported_file_size()
 
-    def on_sync_selected(self, sync: str):
+    def on_sync_selected(self, sync: str, start_sync_in_dialog = True):
         def update_phasors_lifetimes():
             frequency_mhz = self.get_current_frequency_mhz()
             if frequency_mhz != 0.0:
@@ -1169,7 +1169,8 @@ class SpectroscopyWindow(QWidget):
             self.reset_time_shifts_values()
 
         if self.selected_sync == sync and sync == "sync_in":
-            self.start_sync_in_dialog()
+            if start_sync_in_dialog:
+                self.start_sync_in_dialog()
             update_phasors_lifetimes()
             return
         self.selected_sync = sync

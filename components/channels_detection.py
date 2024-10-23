@@ -136,6 +136,7 @@ class DetectChannelsDialog(QDialog):
         self.flip_timer.timeout.connect(self.flip_loader)
         self.flipped = False
         self.connection_type = None
+        self.sync_in_detected = False
 
     def flip_loader(self):
         transform = QTransform()
@@ -155,8 +156,11 @@ class DetectChannelsDialog(QDialog):
         self.error_icon.setVisible(False)
         self.success_icon.setVisible(False)
         self.connection_type = None
+        self.sync_in_detected = False
         if hasattr(self, 'connection_type_choose_container'):
             self.choose_connection_container.setVisible(False)
+        if hasattr(self, 'sync_in_warning_container'):
+                self.sync_in_warning_container.setVisible(False)             
         clear_layout_widgets(self.result_layout)
         self.label.setVisible(True)
         self.label.setText(
@@ -189,7 +193,9 @@ class DetectChannelsDialog(QDialog):
             self.error_icon.setVisible(True)
             self.success_icon.setVisible(False)
             if hasattr(self, 'connection_type_choose_container'):
-                        self.choose_connection_container.setVisible(False)            
+                        self.choose_connection_container.setVisible(False)   
+            if hasattr(self, 'sync_in_warning_container'):
+                    self.sync_in_warning_container.setVisible(False)                                  
             self.label.setText(
                 "Channels connections not detected. Please check the connection and try again."
             )
@@ -201,7 +207,13 @@ class DetectChannelsDialog(QDialog):
             self.success_icon.setVisible(True)
             detection_result = self.process_detection_result(self.connections_obj)
             self.label.setVisible(False)
+            channels_sma = []
+            channels_usb = []
             channels_usb_sma = False
+            channels_usb_sma = False
+            # Check Sync In
+            self.sync_in_detected = detection_result[4][0][1] == "Detected"
+            # Check channels
             if len(detection_result[0]) > 1:
                 channels_sma = detection_result[0][0][1]
                 channels_usb = detection_result[0][1][1]
@@ -229,7 +241,10 @@ class DetectChannelsDialog(QDialog):
             else:
                 if channels_usb != "[]" or channels_sma != "[]":
                     self.connection_type = "USB" if channels_usb != "[]" else "SMA"
-                self.no_button.setEnabled(len(detection_result[0]) > 1)              
+                self.no_button.setEnabled(len(detection_result[0]) > 1 or self.sync_in_detected)  
+            if self.sync_in_detected:
+                sync_in_warning_container = self.sync_in_warning_layout()   
+                self.result_layout.addWidget(sync_in_warning_container)             
             self.yes_button.setEnabled(True)
             self.yes_button.setVisible(True)
             self.yes_button.setText(" RETRY")
@@ -268,19 +283,40 @@ class DetectChannelsDialog(QDialog):
         layout.addWidget(draw_layout_separator()) 
         self.choose_connection_container.setLayout(layout)                    
         return self.choose_connection_container
-
+    
+    
+    def sync_in_warning_layout(self):
+        self.sync_in_warning_container = QWidget()
+        layout = QVBoxLayout()
+        layout.addSpacing(5)
+        label = QLabel("Sync In detected.\nBy clicking 'UPDATE SETTINGS' the frequency measurement\nwill automatically start.")
+        label.setStyleSheet("color: #eed202; font-weight: bold; text-align: center")
+        layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addSpacing(5) 
+        self.sync_in_warning_container.setLayout(layout)                    
+        return self.sync_in_warning_container
     
     def update_settings(self, detection_result):
-        channel_sma_str = detection_result[0][0][1]
-        channels_usb_str = detection_result[0][1][1]
-        if self.connection_type == None:
-            channels_str = channel_sma_str if channel_sma_str != "[]" else channels_usb_str
-        else:
-            channels_str = channel_sma_str if self.connection_type == "SMA"   else channels_usb_str  
-        self.update_selected_channels(channels_str)
-        self.update_channel_connection_type(self.connection_type)
+        if detection_result[0][0][1] is not None:
+            channel_sma_str = detection_result[0][0][1]
+            channels_usb_str = detection_result[0][1][1]
+            if self.connection_type == None:
+                channels_str = channel_sma_str if channel_sma_str != "[]" else channels_usb_str
+            else:
+                channels_str = channel_sma_str if self.connection_type == "SMA"   else channels_usb_str   
+            self.update_selected_channels(channels_str)
+            self.update_channel_connection_type(self.connection_type)
+        if self.sync_in_detected:
+            self.update_sync_in()           
         self.close()
-
+        
+    def update_sync_in(self):
+        for button, name in self.app.sync_buttons:
+            button.set_selected(name == "sync_in") 
+        self.app.on_sync_selected("sync_in", start_sync_in_dialog=False) 
+        self.app.start_sync_in_dialog()
+        
+     
     def update_selected_channels(self, channels_str):
         channels_str_clean = channels_str.replace("[", "").replace("]", "").strip()
         channels = [int(num) - 1 for num in channels_str_clean.split(",")]
@@ -324,7 +360,9 @@ class DetectChannelsDialog(QDialog):
         self.app.check_card_connection()
         self.flip_timer.stop()
         if hasattr(self, 'connection_type_choose_container'):
-            self.choose_connection_container.setVisible(False)        
+            self.choose_connection_container.setVisible(False) 
+        if hasattr(self, 'sync_in_warning_container'):
+            self.sync_in_warning_container.setVisible(False)          
         self.loader_label.setVisible(False)
         self.error_icon.setVisible(True)
         self.success_icon.setVisible(False)

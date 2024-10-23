@@ -24,7 +24,7 @@ from components.lin_log_control import LinLogControl
 from components.resource_path import resource_path
 from fit_decay_curve import (
     convert_fitting_result_into_json_serializable_item,
-    fit_decay_curve_multiprocessing,
+    fit_decay_curve,
 )
 from settings import FITTING_POPUP, PALETTE_RED_1, TAB_FITTING, SETTINGS_ROI
 
@@ -616,7 +616,7 @@ class FittingWorker(QThread):
         for data_point in self.data:
             try:
                 x, y = self.get_data_point(data_point, data_point["channel_index"])
-                result = fit_decay_curve_multiprocessing(
+                result = fit_decay_curve(
                     x, y, data_point["channel_index"], y_shift=data_point["time_shift"]
                 )
                 results.append((result))
