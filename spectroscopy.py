@@ -728,6 +728,7 @@ class SpectroscopyWindow(QWidget):
         else:
             ReadDataControls.plot_data_on_tab_change(self)
         if tab_name == TAB_SPECTROSCOPY:
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(self.write_data_gui)
             self.fit_button_hide()
             self.hide_harmonic_selector()
             hide_layout(self.control_inputs["phasors_resolution_container"])
@@ -752,6 +753,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_FITTING:
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(self.write_data_gui)
             if ReadDataControls.fit_button_enabled(self):
                 self.fit_button_show()
             else:
@@ -771,6 +773,7 @@ class SpectroscopyWindow(QWidget):
             if plot_config_btn is not None:
                 plot_config_btn.setVisible(True)
         elif tab_name == TAB_PHASORS:
+            self.widgets[TIME_TAGGER_WIDGET].setVisible(False)
             self.fit_button_hide()
             (
                 show_layout(self.control_inputs["phasors_resolution_container"])
@@ -873,6 +876,8 @@ class SpectroscopyWindow(QWidget):
     def on_fit_btn_click(self):
         data = []
         time_shift = 0
+        frequency_mhz = self.get_frequency_mhz()
+        laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
         if self.acquire_read_mode == "read":
             if self.reader_data["fitting"]["data"]["spectroscopy_data"]:
                 data, time_shift = self.acquired_spectroscopy_data_to_fit(read=True)
@@ -908,6 +913,7 @@ class SpectroscopyWindow(QWidget):
             preloaded_fitting=preloaded_fitting_results,
             save_plot_img=self.acquire_read_mode == "read",
             y_data_shift=time_shift,
+            laser_period_ns=laser_period_ns
         )
         self.fitting_config_popup.show()
 
@@ -1147,7 +1153,7 @@ class SpectroscopyWindow(QWidget):
         self.generate_plots()
         self.calc_exported_file_size()
 
-    def on_sync_selected(self, sync: str):
+    def on_sync_selected(self, sync: str, start_sync_in_dialog = True):
         def update_phasors_lifetimes():
             frequency_mhz = self.get_current_frequency_mhz()
             if frequency_mhz != 0.0:
@@ -1163,7 +1169,8 @@ class SpectroscopyWindow(QWidget):
             self.reset_time_shifts_values()
 
         if self.selected_sync == sync and sync == "sync_in":
-            self.start_sync_in_dialog()
+            if start_sync_in_dialog:
+                self.start_sync_in_dialog()
             update_phasors_lifetimes()
             return
         self.selected_sync = sync
@@ -2011,7 +2018,8 @@ class SpectroscopyWindow(QWidget):
                 tau_ns=tau_ns,
                 reference_file=reference_file,
                 harmonics=int(self.harmonic_selector_value),
-                write_bin=self.time_tagger,
+                write_bin=False,
+                time_tagger=self.time_tagger and self.write_data_gui and self.tab_selected != TAB_PHASORS
             )
         except Exception as e:
             self.check_card_connection()
@@ -2492,16 +2500,16 @@ class SpectroscopyWindow(QWidget):
             self.generate_phasors_legend(1)
         if harmonic_selected > 1:
             self.harmonic_selector_shown = True
-        if is_export_data_active and not self.time_tagger:
+        if is_export_data_active:
             QTimer.singleShot(
                 300,
                 partial(
                     ExportData.save_acquisition_data, self, active_tab=self.tab_selected
                 ),
             )
-        if is_export_data_active and self.time_tagger:
-            self.widgets[TIME_TAGGER_PROGRESS_BAR].set_visible(True)
-            TimeTaggerController.init_time_tagger_processing(self)
+        #if is_export_data_active and self.time_tagger:
+            #self.widgets[TIME_TAGGER_PROGRESS_BAR].set_visible(True)
+            #TimeTaggerController.init_time_tagger_processing(self)
         if self.tab_selected == TAB_FITTING:
             self.fit_button_show()
    
