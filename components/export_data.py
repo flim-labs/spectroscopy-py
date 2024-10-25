@@ -156,6 +156,7 @@ class ExportData:
             directory,
             f"{file_name}.json",
         )
+        app.saved_spectroscopy_reference = f"{file_name}.json"
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(reference_file, "r") as f:
             with open(full_path, "w") as f2:
@@ -205,8 +206,9 @@ class ExportData:
       
             # Laserblood metadata file (.json)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
-                app, save_name, save_dir, timestamp, [new_phasors_file_path, new_spectroscopy_ref_path]
+                app, save_name, save_dir, timestamp, [new_phasors_file_path, new_spectroscopy_ref_path, app.saved_spectroscopy_reference if app.saved_spectroscopy_reference is not None else app.reference_file]
             )
+            app.saved_spectroscopy_reference = None
 
             # Time Tagger file (.bin)
             if time_tagger:

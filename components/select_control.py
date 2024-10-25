@@ -1,6 +1,9 @@
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QComboBox
 
-
+class CustomSelect(QComboBox):
+    def wheelEvent(self, event):
+        event.ignore()
+            
 class SelectControl:
     @staticmethod
     def setup(
@@ -16,7 +19,7 @@ class SelectControl:
     ):
         q_label = QLabel(label)
         control = QVBoxLayout() if control_layout == "vertical" else QHBoxLayout()
-        input = QComboBox()
+        input = CustomSelect()
         if width is not None:
             input.setFixedWidth(width)
         for value in options:

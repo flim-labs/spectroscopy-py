@@ -181,6 +181,8 @@ class SpectroscopyWindow(QWidget):
 
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
+        
+        self.saved_spectroscopy_reference = None
 
         self.acquire_read_mode = self.settings.value(
             SETTINGS_ACQUIRE_READ_MODE, DEFAULT_ACQUIRE_READ_MODE
@@ -969,13 +971,13 @@ class SpectroscopyWindow(QWidget):
             dialog = QFileDialog()
             dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
             # extension supported: .reference.json
-            dialog.setNameFilter("Reference files (*.reference.json)")
+            dialog.setNameFilter("Reference files (*reference.json)")
             dialog.setDefaultSuffix("reference.json")
             file_name, _ = dialog.getOpenFileName(
                 self,
                 "Load reference file",
                 "",
-                "Reference files (*.reference.json)",
+                "Reference files (*reference.json)",
                 options=QFileDialog.Option.DontUseNativeDialog,
             )
             if file_name:
@@ -2553,6 +2555,7 @@ class SpectroscopyWindow(QWidget):
                 lines = f.readlines()
                 reference_file = lines[0].split("=")[1]
             self.reference_file = reference_file
+            self.saved_spectroscopy_reference = reference_file
             print(f"Last reference file: {reference_file}")
         harmonic_selected = int(
             self.settings.value(SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT)

@@ -110,6 +110,7 @@ class FileUtils:
     @staticmethod
     def parse_metadata_output(app, reference_files):
         reference_filenames = [file.rsplit("\\", 1)[-1] for file in reference_files]
+        reference_filenames = [os.path.basename(file) for file in reference_filenames]
         filenames_string = ", ".join(reference_filenames)
         laser_type = app.laserblood_laser_type
         filter_type = app.laserblood_filter_type

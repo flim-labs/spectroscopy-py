@@ -293,49 +293,39 @@ def plot_spectroscopy(spectroscopy_files, SPECTROSCOPY_X_VALUES, SPECTROSCOPY_CU
     plt.savefig(os.path.join(output_dir, "phasors_spectroscopy_reference_summary_plot.eps"), bbox_inches='tight')
 
 
-    
 
 def plot_phasors(harmonics, phasors_info):
-    """Plot and save phasors results."""
-    plt.figure(figsize=(12, 6)) 
+    """Plot and save phasors results as individual images for each harmonic."""
     x = np.linspace(0, 1, 1000)
     y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
-    plt.plot(x, y)
-    plt.gca().set_aspect('equal')  
-    total_points = sum(len([phasor for phasor in phasors_info if phasor["Harmonic"] == harmonic]) for harmonic in harmonics)
-    colors = plt.cm.viridis(np.linspace(0, 1, total_points))
-    color_idx = 0
-    for phasor in phasors_info:
-        mean_g = phasor["G (mean)"]
-        mean_s = phasor["S (mean)"]
-        tau_phi = phasor["τϕ (ns)"]
-        tau_m = phasor["τm (ns)"]
-        mean_label = f"{phasor['File']}; Harmonic: {phasor["Harmonic"]}; G (mean): {round(mean_g, 2)}; S (mean): {round(mean_s, 2)}; τϕ={round(tau_phi, 2)} ns"
-        if tau_m is not None:
-            mean_label += f"; τm={round(tau_m, 2)} ns"
-        plt.scatter(
-            mean_g,
-            mean_s,
-            color=colors[color_idx],
-            edgecolor='black',
-            zorder=3,
-            s=24,
-            linewidths=0.6, 
-            label=mean_label,
-        )
-        color_idx += 1
-    plt.legend(loc="center left", bbox_to_anchor=(1.05, 0.5), fontsize="small", ncol=1)
-    plt.title("Phasors - Summary")
-    plt.xlabel("G")
-    plt.ylabel("S")
-    plt.grid(True)
-    plt.tight_layout(pad=1.0)
-    plt.savefig(os.path.join(output_dir, "phasors_summary_plot.png"), dpi=300, bbox_inches='tight')
-    plt.savefig(os.path.join(output_dir, "phasors_summary_plot.eps"), bbox_inches='tight')
-
-
+    os.makedirs(output_dir, exist_ok=True)
+    for harmonic in harmonics:
+        fig, ax = plt.subplots(figsize=(7, 6))
+        ax.plot(x, y, color='gray')
+        ax.set_aspect('equal')
+        ax.set_title(f"Phasors Summary - Harmonic {harmonic}")
+        ax.set_xlabel("G")
+        ax.set_ylabel("S")
+        ax.grid(True)
+        harmonic_phasors = [p for p in phasors_info if p["Harmonic"] == harmonic]
+        colors = plt.cm.viridis(np.linspace(0, 1, len(harmonic_phasors)))
+        for color, phasor in zip(colors, harmonic_phasors):
+            mean_g = phasor["G (mean)"]
+            mean_s = phasor["S (mean)"]
+            tau_phi = phasor["τϕ (ns)"]
+            tau_m = phasor["τm (ns)"]
+            label = f"{phasor['File']}; G: {round(mean_g, 2)}, S: {round(mean_s, 2)}, τϕ={round(tau_phi, 2)} ns"
+            if tau_m is not None:
+                label += f", τm={round(tau_m, 2)} ns"
+            ax.scatter(
+                mean_g, mean_s, color=color, edgecolor='black', zorder=3,
+                s=24, linewidths=0.6, label=label
+            )
+        ax.legend(loc="center left", bbox_to_anchor=(1.05, 0.5), fontsize="small", ncol=1)
+        plt.savefig(os.path.join(output_dir, f"phasors_summary_plot_harmonic_{harmonic}.png"), dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join(output_dir, f"phasors_summary_plot_harmonic_{harmonic}.eps"), bbox_inches='tight')
+        plt.close(fig) 
     
-
 
 if __name__ == "__main__":
     current_folder = os.getcwd()
