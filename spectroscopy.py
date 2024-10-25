@@ -928,13 +928,13 @@ class SpectroscopyWindow(QWidget):
             dialog = QFileDialog()
             dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
             # extension supported: .reference.json
-            dialog.setNameFilter("Reference files (*.reference.json)")
+            dialog.setNameFilter("Reference files (*reference.json)")
             dialog.setDefaultSuffix("reference.json")
             file_name, _ = dialog.getOpenFileName(
                 self,
                 "Load reference file",
                 "",
-                "Reference files (*.reference.json)",
+                "Reference files (*reference.json)",
                 options=QFileDialog.Option.DontUseNativeDialog,
             )
             if file_name:
