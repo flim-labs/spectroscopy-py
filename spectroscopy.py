@@ -39,7 +39,7 @@ from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
-from components.helpers import calc_SBR, format_size, get_realtime_adjustment_value, mhz_to_ns
+from components.helpers import calc_SBR, format_size, get_realtime_adjustment_value, mhz_to_ns, ns_to_mhz
 from components.input_number_control import InputNumberControl, InputFloatControl
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
 from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
@@ -215,6 +215,8 @@ class SpectroscopyWindow(QWidget):
         )
         self.toggle_intensities_widgets_visibility()
         self.refresh_reader_popup_plots = False
+        frequency_mhz = self.get_current_frequency_mhz()
+        LaserbloodMetadataPopup.set_frequency_mhz(frequency_mhz, self)
         LaserbloodMetadataPopup.set_FPGA_firmware(self)
         # Check card connection
         self.check_card_connection()        
@@ -1203,6 +1205,7 @@ class SpectroscopyWindow(QWidget):
     def on_sync_selected(self, sync: str):
         def update_phasors_lifetimes():
             frequency_mhz = self.get_current_frequency_mhz()
+            LaserbloodMetadataPopup.set_frequency_mhz(frequency_mhz, self)
             if frequency_mhz != 0.0:
                 self.time_shifts_set_enabled(True)
                 laser_period_ns = mhz_to_ns(frequency_mhz)
@@ -1272,7 +1275,7 @@ class SpectroscopyWindow(QWidget):
                     b.set_selected(n == toggled_name)
                 self.on_sync_selected(toggled_name)
             button.clicked.connect(lambda _, n=name: on_toggle(n))
-            button.set_selected(self.selected_sync == name)
+            button.set_selected(self.selected_sync == name) 
         self.widgets["sync_buttons_layout"] = buttons_layout
         return buttons_layout
 
@@ -2024,6 +2027,22 @@ class SpectroscopyWindow(QWidget):
                         GUIStyles.set_msg_box_style(),
                     )
                     return
+                elif "laser_period_ns" not in reference_data:
+                    BoxMessage.setup(
+                        "Error",
+                        "Invalid reference file (missing laser period)",
+                        QMessageBox.Icon.Warning,
+                        GUIStyles.set_msg_box_style(),
+                    )
+                    return 
+                elif ns_to_mhz(reference_data["laser_period_ns"]) != frequency_mhz:
+                    BoxMessage.setup(
+                        "Error",
+                        "Invalid reference file (laser period mismatch)",
+                        QMessageBox.Icon.Warning,
+                        GUIStyles.set_msg_box_style(),
+                        )
+                    return                       
                 if "harmonics" not in reference_data:
                     BoxMessage.setup(
                         "Error",

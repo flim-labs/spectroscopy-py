@@ -670,6 +670,13 @@ class LaserbloodMetadataPopup(QWidget):
         next((setting.update({"VALUE": total_avg_rounded}) for setting in app.laserblood_settings if setting.get("LABEL") == "Average CPS"), None)
         app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))
         
+    
+    @staticmethod
+    def set_frequency_mhz(frequency_mhz, app):
+        if frequency_mhz != 0.0:
+             next((setting.update({"VALUE": frequency_mhz}) for setting in app.laserblood_settings if setting.get("LABEL") == "Laser repetition rate"), None)
+             app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))   
+        
 
     @staticmethod
     def set_average_SBR(SBR_counts, app):
