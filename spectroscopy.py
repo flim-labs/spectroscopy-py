@@ -41,7 +41,7 @@ from components.fancy_checkbox import FancyButton
 from components.fitting_config_popup import FittingDecayConfigPopup
 from components.gradient_text import GradientText
 from components.gui_styles import GUIStyles
-from components.helpers import calc_SBR, format_size, get_realtime_adjustment_value, mhz_to_ns
+from components.helpers import calc_SBR, format_size, get_realtime_adjustment_value, mhz_to_ns, ns_to_mhz
 from components.input_number_control import InputNumberControl, InputFloatControl
 from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
 from components.lin_log_control import LinLogControl
@@ -1945,6 +1945,22 @@ class SpectroscopyWindow(QWidget):
                         GUIStyles.set_msg_box_style(),
                     )
                     return
+                elif "laser_period_ns" not in reference_data:
+                    BoxMessage.setup(
+                        "Error",
+                        "Invalid reference file (missing laser period)",
+                        QMessageBox.Icon.Warning,
+                        GUIStyles.set_msg_box_style(),
+                    )
+                    return 
+                elif ns_to_mhz(reference_data["laser_period_ns"]) != frequency_mhz:
+                    BoxMessage.setup(
+                        "Error",
+                        "Invalid reference file (laser period mismatch)",
+                        QMessageBox.Icon.Warning,
+                        GUIStyles.set_msg_box_style(),
+                        )
+                    return                  
                 if "harmonics" not in reference_data:
                     BoxMessage.setup(
                         "Error",
