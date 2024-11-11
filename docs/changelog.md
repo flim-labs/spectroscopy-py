@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.2
+- Loading calibration reference: warning system improvements
+
 ## Version 2.1
 - Fix Time Tagger Functionality
 - Fix SBR calculation
