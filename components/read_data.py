@@ -324,17 +324,6 @@ class ReadData:
                     "Active channels mismatching in Phasors file and Spectroscopy reference. Files are not from the same acquisition",
                 )
                 return False
-            if (
-                FileUtils.compare_file_timestamps(
-                    reader_data["files"][file_type_to_compare], file
-                )
-                > 120
-            ):
-                ReadData.show_warning_message(
-                    "Files creation time distance too large",
-                    "Creation time distance of Phasors and Spectroscopy reference too large. The files do not come from the same acquisition",
-                )
-                return False
         return True
 
     @staticmethod
