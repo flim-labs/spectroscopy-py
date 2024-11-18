@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.3
+- Make Read Data files controls more flexible
+
 ## Version 2.2
 - Loading calibration reference: warning system improvements
 
