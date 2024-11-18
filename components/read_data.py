@@ -6,7 +6,6 @@ import struct
 from matplotlib import pyplot as plt
 import numpy as np
 from components.box_message import BoxMessage
-from components.file_utils import compare_file_timestamps
 from components.gui_styles import GUIStyles
 from components.helpers import extract_channel_from_label, ns_to_mhz
 from components.input_text_control import InputTextControl
@@ -301,17 +300,6 @@ class ReadData:
                 ReadData.show_warning_message(
                     "Channels mismatch",
                     "Active channels mismatching in Phasors file and Spectroscopy reference. Files are not from the same acquisition",
-                )
-                return False
-            if (
-                compare_file_timestamps(
-                    reader_data["files"][file_type_to_compare], file
-                )
-                > 120
-            ):
-                ReadData.show_warning_message(
-                    "Files creation time distance too large",
-                    "Creation time distance of Phasors and Spectroscopy reference too large. The files do not come from the same acquisition",
                 )
                 return False
         return True
