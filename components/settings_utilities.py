@@ -16,17 +16,11 @@ def check_and_update_ini():
                 print(
                     f"Version mismatch: {stored_version} != {VERSION}. Updating '{ini_file}'."
                 )
-                update_ini_file(config, ini_file)
+                recreate_ini_file(ini_file)
         else:
             recreate_ini_file(ini_file)
     else:
         recreate_ini_file(ini_file)
-
-
-def update_ini_file(config, ini_file):
-    config["General"]["app_version"] = VERSION
-    with open(ini_file, "w") as f:
-        config.write(f)
 
 
 def recreate_ini_file(ini_file):
