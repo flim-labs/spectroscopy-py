@@ -57,6 +57,7 @@ from components.read_data import (
 )
 from components.resource_path import resource_path
 from components.select_control import SelectControl
+from components.settings_utilities import check_and_update_ini
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
 from components.switch_control import SwitchControl
 from components.sync_in_popup import SyncInDialog
@@ -793,25 +794,8 @@ class SpectroscopyWindow(QWidget):
                 self.control_inputs[LOAD_REF_BTN].show()
                 self.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
             channels_grid = self.widgets[CHANNELS_GRID]
-            frequency_mhz = self.get_current_frequency_mhz()
-            if frequency_mhz != 0:
-                laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
-                for _, channel in enumerate(self.plots_to_show):
-                    if self.acquire_read_mode == "acquire":
-                        if channel in self.phasors_widgets:
-                            self.phasors_widgets[channel].setCursor(
-                                Qt.CursorShape.BlankCursor
-                            )
-                            self.generate_coords(channel)
-                            self.create_phasor_crosshair(
-                                channel, self.phasors_widgets[channel]
-                            )
-                    self.draw_lifetime_points_in_phasors(
-                        channel,
-                        self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1,
-                        laser_period_ns,
-                        frequency_mhz,
-                    )
+            ## TODO 
+            self.initialize_phasor_feature()
             self.generate_phasors_cluster_center(
                 self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1
             )
@@ -1353,9 +1337,11 @@ class SpectroscopyWindow(QWidget):
                 # Spectroscopy
                 h_decay_layout = QHBoxLayout()
                 # LIN LOG
+                ## TODO
                 time_shifts = SpectroscopyTimeShift.get_channel_time_shift(
                     self, channel
-                )
+                ) if self.acquire_read_mode == "acquire" else 0
+                
                 lin_log_modes = self.lin_log_mode
                 lin_log_widget = LinLogControl(
                     self,
@@ -2107,6 +2093,29 @@ class SpectroscopyWindow(QWidget):
             y = np.concatenate((y, new_y))
             self.phasors_charts[channel].setData(x, y)
             pass
+      
+    ## TODO    
+    def initialize_phasor_feature(self):
+        frequency_mhz = self.get_current_frequency_mhz()
+        if frequency_mhz != 0:
+            laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
+            for _, channel in enumerate(self.plots_to_show):
+                if self.acquire_read_mode == "acquire":
+                    if channel in self.phasors_widgets:
+                        self.phasors_widgets[channel].setCursor(
+                            Qt.CursorShape.BlankCursor
+                        )
+                        self.generate_coords(channel)
+                        self.create_phasor_crosshair(
+                            channel, self.phasors_widgets[channel]
+                        )
+                self.draw_lifetime_points_in_phasors(
+                    channel,
+                    self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1,
+                    laser_period_ns,
+                    frequency_mhz,
+                )  
+        
 
     def draw_lifetime_points_in_phasors(
         self, channel, harmonic, laser_period_ns, frequency_mhz
@@ -2367,11 +2376,12 @@ class SpectroscopyWindow(QWidget):
                     intensity_line.setData(x, y)
 
     def update_spectroscopy_plots(self, x, y, channel_index, decay_curve):
+        ## TODO
         time_shift = (
             0
             if channel_index not in self.time_shifts
             else self.time_shifts[channel_index]
-        )
+        ) if self.acquire_read_mode == "acquire" else 0
         # Handle linear/logarithmic mode
         decay_widget = self.decay_widgets[channel_index]
         if (
@@ -2582,6 +2592,8 @@ class SpectroscopyWindow(QWidget):
 
 
 if __name__ == "__main__":
+    # check correct app version in .ini file
+    check_and_update_ini()
     # remove .pid file if exists
     if os.path.exists(".pid"):
         os.remove(".pid")
