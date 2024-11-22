@@ -183,7 +183,7 @@ class ReadAcquireModeButton(QWidget):
         self.app.control_inputs[READ_BUTTON].setStyleSheet(style)
 
     def on_acquire_btn_pressed(self, checked):
-        self.app.reset_time_shifts_values()    
+        #self.app.reset_time_shifts_values()    
         self.app.control_inputs[ACQUIRE_BUTTON].setChecked(checked)
         self.app.control_inputs[READ_BUTTON].setChecked(not checked)
         self.app.acquire_read_mode = "acquire" if checked else "read"
@@ -194,13 +194,14 @@ class ReadAcquireModeButton(QWidget):
         self.app.reader_data = deepcopy(DEFAULT_READER_DATA)
         self.app.clear_plots()
         self.app.generate_plots()
+        self.app.initialize_phasor_feature()
         self.app.toggle_intensities_widgets_visibility()
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
 
     def on_read_btn_pressed(self, checked):
-        self.app.reset_time_shifts_values()        
+        #self.app.reset_time_shifts_values()        
         self.app.control_inputs[ACQUIRE_BUTTON].setChecked(not checked)
         self.app.control_inputs[READ_BUTTON].setChecked(checked)
         self.app.acquire_read_mode = "read" if checked else "acquire"

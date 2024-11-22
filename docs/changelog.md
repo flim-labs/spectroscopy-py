@@ -1,5 +1,12 @@
 # Spectroscopy Changelog
 
+
+
+## Version 2.4
+- Fix phasors harmonics visualization when in free running mode
+- Improve settings storage handling across software versions
+- Fix parameters inconsistencies between Acquire and Read mode
+
 ## Version 2.3
 - Make Read Data files controls more flexible
 
