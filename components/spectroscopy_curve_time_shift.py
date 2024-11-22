@@ -27,7 +27,9 @@ class SpectroscopyTimeShift(QWidget):
             self.app.control_inputs[TIME_SHIFTS_NS] = {}
 
     def create_controls(self):
-        time_shift = self.app.time_shifts.get(self.channel, 0)
+        ## TODO 
+        acquire_mode = self.app.acquire_read_mode == "acquire"
+        time_shift = self.app.time_shifts.get(self.channel, 0) if acquire_mode else 0
         h_layout = QHBoxLayout()
         slider = self.setup_slider(time_shift)
         h_layout.addWidget(slider)
