@@ -1,6 +1,9 @@
 # Spectroscopy Changelog
 
 
+## Version 2.5
+- [LASERBLOOD] : add id, timestamp, healthy/PDAC and weeks to metadata
+
 
 ## Version 2.4
 - Fix phasors harmonics visualization when in free running mode

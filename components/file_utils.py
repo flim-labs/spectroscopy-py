@@ -94,7 +94,7 @@ class FileUtils:
             ),
             None,
         )
-        parsed_data = FileUtils.parse_metadata_output(window, reference_files)
+        parsed_data = FileUtils.parse_metadata_output(window, reference_files, timestamp)
         laser_key, filter_key = FileUtils.get_laser_info_slug(
             window, filter_wavelength_input
         )
@@ -108,7 +108,7 @@ class FileUtils:
         return file_path
 
     @staticmethod
-    def parse_metadata_output(app, reference_files):
+    def parse_metadata_output(app, reference_files, timestamp):
         reference_filenames = [file.rsplit("\\", 1)[-1] for file in reference_files]
         reference_filenames = [os.path.basename(file) for file in reference_filenames]
         filenames_string = ", ".join(reference_filenames)
@@ -134,6 +134,7 @@ class FileUtils:
         firmware_selected_name = os.path.basename(firmware_selected)
         parsed_data = [
             {"label": "Acquisition Files", "unit": "", "value": filenames_string},
+            {"label": "Acquisition Timestamp", "unit": "", "value": timestamp},
             {"label": "Laser type", "unit": "", "value": laser_type},
             {"label": "Emission filter type", "unit": "", "value": parsed_filter_type},
             {"label": "Firmware selected", "unit": "", "value": firmware_selected_name},
@@ -165,9 +166,12 @@ class FileUtils:
             },
             {"label": "Harmonics", "unit": "", "value": app.harmonic_selector_value},
         ]
-
+        
+        pdac_healthy = [obj["VALUE"] for obj in metadata_settings if obj["LABEL"] == "PDAC/Healthy"]
+        
         def map_values(data):
             new_data = data.copy()
+             
             for d in new_data:
                 if isinstance(d["VALUE"], float) and d["VALUE"].is_integer():
                     value = int(d["VALUE"])
@@ -175,7 +179,10 @@ class FileUtils:
                     if d["INPUT_TYPE"] == "select":
                         value = d["OPTIONS"][d["VALUE"]]
                     else:
-                        value = d["VALUE"]
+                        if d["LABEL"] == "Weeks (only PDAC)" and (d["VALUE"] == 0 or pdac_healthy[0] == 2):
+                            value = None
+                        else:    
+                            value = d["VALUE"] 
                 parsed_data.append(
                     {
                         "label": d["LABEL"],

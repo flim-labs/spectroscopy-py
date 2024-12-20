@@ -421,8 +421,13 @@ class LaserbloodMetadataPopup(QWidget):
             row = row,
             event_callback=lambda value, inp=input, new_input = new_added_inp: self.on_input_value_change(value, inp, new_input),
         )
-        inp.setEnabled(input["ENABLED"])
-        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"], input["REQUIRED"])
+        if input["LABEL"] == "Weeks (only PDAC)":
+            pdac_healthy = [obj["VALUE"] for obj in self.app.laserblood_settings if obj["LABEL"] == "PDAC/Healthy"][0]
+            pdac_weeks_enabled = pdac_healthy == 1
+            inp.setEnabled(pdac_weeks_enabled)
+        else:
+            inp.setEnabled(input["ENABLED"])
+        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"], input["REQUIRED"], input["LABEL"])
         self.app.laserblood_widgets[input["LABEL"]] = inp
         widget_container.setLayout(row)      
         if not new_added_inp:            
@@ -446,7 +451,7 @@ class LaserbloodMetadataPopup(QWidget):
             action_widget=self.create_remove_btn(input) if new_added_inp else None
             )
         inp.setEnabled(input["ENABLED"])
-        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"], input["REQUIRED"])
+        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"], input["REQUIRED"], input["LABEL"])
         self.app.laserblood_widgets[input["LABEL"]] = inp         
         widget_container.setLayout(row)          
         if not new_added_inp:         
@@ -468,7 +473,7 @@ class LaserbloodMetadataPopup(QWidget):
             event_callback=lambda text, inp=input, new_input=new_added_inp: self.on_input_text_change(text, inp, new_input),
         )
         inp.setEnabled(input["ENABLED"])
-        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"], input["REQUIRED"])
+        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"], input["REQUIRED"], input["LABEL"])
         self.app.laserblood_widgets[input["LABEL"]] = inp        
         h_box_header = QHBoxLayout()
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
@@ -552,15 +557,22 @@ class LaserbloodMetadataPopup(QWidget):
         ) 
         widget_container.setLayout(container)
         inp.setEnabled(input["ENABLED"])
-        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"], input["REQUIRED"])
+        self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"], input["REQUIRED"], input["LABEL"])
         self.app.laserblood_widgets[input["LABEL"]] = inp       
         if not new_added_inp:           
             self.inputs_grid.addWidget(widget_container, position[0], position[1], position[2], position[3]) 
         return widget_container              
-        
+    
+    
+    def handle_pdac_healty(self, value):
+        pdac_weeks_enabled = value == 1 
+        self.app.laserblood_widgets["Weeks (only PDAC)"].setEnabled(pdac_weeks_enabled)
     
     def on_input_value_change(self, value, input, new_input):
-        self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], value, input["REQUIRED"])
+        if input["LABEL"] == "PDAC/Healthy":
+            self.handle_pdac_healty(value)
+        
+        self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], value, input["REQUIRED"], input["LABEL"])
         if new_input:
             self.update_new_added_inputs_settings(value, input)
         else:    
@@ -576,7 +588,7 @@ class LaserbloodMetadataPopup(QWidget):
             
     
     def on_input_text_change(self, text, input, new_input):
-        self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], text, input["REQUIRED"])
+        self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], text, input["REQUIRED"], input["LABEL"])
         if new_input:
             self.update_new_added_inputs_settings(text, input)
         else:    
@@ -592,12 +604,12 @@ class LaserbloodMetadataPopup(QWidget):
             self.update_new_added_inputs_settings(text_content, input)      
     
     
-    def dispatch_input_warning_styles(self, input, input_type, value, required):
+    def dispatch_input_warning_styles(self, input, input_type, value, required, input_label):
         str_value = str(value)
-        if not required or (required and value is not None and str_value != "0" and str_value != "0.0" and len(str_value.strip()) > 0):
+        if not required or (required and value is not None and str_value != "0" and str_value != "0.0" and len(str_value.strip()) > 0) or input_label == "Weeks (only PDAC)":
             self.toggle_input_border_style(input_type, input, "#3b3b3b")
             return
-        if (input_type == "int" or input_type == "float") and (str_value == "0" or str_value == "0.0"):
+        if (input_type == "int" or input_type == "float") and (str_value == "0" or str_value == "0.0") :
             self.toggle_input_border_style(input_type, input, "#EEBA56")
             return
         self.toggle_input_border_style(input_type, input, "#DA1212")
