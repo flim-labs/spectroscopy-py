@@ -794,7 +794,6 @@ class SpectroscopyWindow(QWidget):
                 self.control_inputs[LOAD_REF_BTN].show()
                 self.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
             channels_grid = self.widgets[CHANNELS_GRID]
-            ## TODO 
             self.initialize_phasor_feature()
             self.generate_phasors_cluster_center(
                 self.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1
@@ -1337,7 +1336,6 @@ class SpectroscopyWindow(QWidget):
                 # Spectroscopy
                 h_decay_layout = QHBoxLayout()
                 # LIN LOG
-                ## TODO
                 time_shifts = SpectroscopyTimeShift.get_channel_time_shift(
                     self, channel
                 ) if self.acquire_read_mode == "acquire" else 0
@@ -2093,8 +2091,7 @@ class SpectroscopyWindow(QWidget):
             y = np.concatenate((y, new_y))
             self.phasors_charts[channel].setData(x, y)
             pass
-      
-    ## TODO    
+   
     def initialize_phasor_feature(self):
         frequency_mhz = self.get_current_frequency_mhz()
         if frequency_mhz != 0:
@@ -2376,7 +2373,6 @@ class SpectroscopyWindow(QWidget):
                     intensity_line.setData(x, y)
 
     def update_spectroscopy_plots(self, x, y, channel_index, decay_curve):
-        ## TODO
         time_shift = (
             0
             if channel_index not in self.time_shifts
