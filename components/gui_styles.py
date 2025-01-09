@@ -221,7 +221,7 @@ class GUIStyles:
                 font-size: 14px;
                 padding: 8px;
                 min-width: {min_width};
-                min-height: 100px;
+                min-height: 20px;
                 border: 1px solid {border_color};
                 border-radius: 5px;
                 background-color: transparent;
