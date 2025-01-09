@@ -217,7 +217,6 @@ class GUIStyles:
         return f"""
             QDoubleSpinBox, QSpinBox {{
                 color: #f8f8f8;
-                font-family: "Montserrat";
                 font-size: 14px;
                 padding: 8px;
                 min-width: {min_width};
