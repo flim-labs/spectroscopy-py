@@ -11,14 +11,11 @@ from PyQt6.QtCore import Qt
 
 
 class CustomSpinBox(QSpinBox):
-    def wheelEvent(self, event):
-        event.ignore()
+    pass
 
 
 class CustomDoubleSpinBox(QDoubleSpinBox):
-    def wheelEvent(self, event):
-        event.ignore()
-
+    pass
 
 class InputNumberControl:
     @staticmethod
