@@ -139,7 +139,7 @@ class FileUtils:
             {"label": "Emission filter type", "unit": "", "value": parsed_filter_type},
             {"label": "Firmware selected", "unit": "", "value": firmware_selected_name},
             {"label": "Connection type", "unit": "", "value": connection_type},
-            {"label": "Frequency", "unit": "Mhz", "value": laser_type},
+            {"label": "Frequency", "unit": "Mhz", "value": frequency_mhz},
             {
                 "label": "Enabled channels",
                 "unit": "",
