@@ -1,6 +1,9 @@
 # Spectroscopy Changelog
 
 
+## Version 2.6
+- [LASERBLOOD] : add Cuvette holder and Replicate to metadata
+
 ## Version 2.5
 - [LASERBLOOD] : add id, timestamp, healthy/PDAC and weeks to metadata
 

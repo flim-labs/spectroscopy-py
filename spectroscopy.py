@@ -198,6 +198,7 @@ class SpectroscopyWindow(QWidget):
         self.phasors_resolution = int(
             self.settings.value(SETTINGS_PHASORS_RESOLUTION, DEFAULT_PHASORS_RESOLUTION)
         )
+        self.replicates = 1
         self.get_selected_channels_from_settings()
         (self.top_bar, self.grid_layout) = self.init_ui()
         self.on_tab_selected(TAB_SPECTROSCOPY)
@@ -506,7 +507,7 @@ class SpectroscopyWindow(QWidget):
             controls_row,
             self.on_cps_threshold_change,
         )
-        inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="120px"))
+        inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="70px"))
         self.control_inputs[SETTINGS_CPS_THRESHOLD] = inp
         LaserbloodMetadataPopup.set_cps_threshold(self, cps_threshold)
         
@@ -516,7 +517,7 @@ class SpectroscopyWindow(QWidget):
         show_SBR_control.setSpacing(0)
         show_SBR_label = QLabel("Show SBR:")
         inp = SwitchControl(
-            active_color=PALETTE_BLUE_1, width=70, height=30, checked=self.show_SBR
+            active_color=PALETTE_BLUE_1, width=60, height=30, checked=self.show_SBR
         )
         self.control_inputs[SETTINGS_SHOW_SBR] = inp
         inp.toggled.connect(self.on_show_SBR_changed)
@@ -568,6 +569,7 @@ class SpectroscopyWindow(QWidget):
             phasors_resolution_container
         )
 
+        # CALIBRATION
         _, inp, label, container  = SelectControl.setup(
             "Calibration:",
             int(
@@ -591,10 +593,11 @@ class SpectroscopyWindow(QWidget):
             self.on_tau_change,
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style())
+        # TAU NS
         self.control_inputs["tau"] = inp
         self.control_inputs["tau_label"] = label
         label, inp = InputNumberControl.setup(
-            "Harmonics",
+            "Harmonics:",
             1,
             4,
             int(self.settings.value(SETTINGS_HARMONIC, "1")),
@@ -620,6 +623,19 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs[HARMONIC_SELECTOR] = inp
         label.hide()
         inp.hide()
+        
+        # REPLICATES
+        label, inp = InputNumberControl.setup(
+            "N° Replicate:",
+            1,
+            100000,
+            int(self.replicates),
+            controls_row,
+            self.on_replicate_change,
+        )
+        inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="40px", border_color="#11468F"))
+        self.control_inputs[SETTINGS_REPLICATES] = inp
+        self.control_inputs["replicates_label"] = label
 
         save_button = QPushButton("LOAD REFERENCE")
         save_button.setFlat(True)
@@ -950,6 +966,9 @@ class SpectroscopyWindow(QWidget):
 
     def on_harmonic_change(self, value):
         self.settings.setValue(SETTINGS_HARMONIC, value)
+        
+    def on_replicate_change(self, value):
+        self.replicates = int(value)    
 
     def on_load_reference(self):
         if self.tab_selected == TAB_PHASORS:

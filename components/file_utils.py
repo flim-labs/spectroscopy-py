@@ -132,9 +132,11 @@ class FileUtils:
         frequency_mhz = app.get_frequency_mhz()
         firmware_selected, connection_type = app.get_firmware_selected(frequency_mhz)
         firmware_selected_name = os.path.basename(firmware_selected)
+        num_replicate = app.replicates
         parsed_data = [
             {"label": "Acquisition Files", "unit": "", "value": filenames_string},
             {"label": "Acquisition Timestamp", "unit": "", "value": timestamp},
+            {"label": "Replicate", "unit": "", "value": num_replicate},
             {"label": "Laser type", "unit": "", "value": laser_type},
             {"label": "Emission filter type", "unit": "", "value": parsed_filter_type},
             {"label": "Firmware selected", "unit": "", "value": firmware_selected_name},

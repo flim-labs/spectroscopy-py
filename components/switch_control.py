@@ -67,7 +67,7 @@ class SwitchControl(QCheckBox):
     def __init__(self, parent=None, bg_color="#777777", circle_color="#DDD", active_color="#aa00ff",
                  unchecked_color="darkgrey",
                  animation_curve=QEasingCurve.Type.OutBounce, animation_duration=300, checked: bool = False,
-                 change_cursor=True, width=80, height=28):
+                 change_cursor=True, width=60, height=28):
         super().__init__(parent)
         self.setFixedSize(width, height)
         if change_cursor:
