@@ -6,6 +6,7 @@ SETTINGS_FILTER_TYPE = "filter_type"
 DEFAULT_FILTER_TYPE = None
 
 
+
 FILTERS_TYPES = [
     "400/16 nm",
     "420/16 nm",
