@@ -103,3 +103,4 @@ FLIM LABS: info@flimlabs.com
 Project Link: [FLIM LABS - Spectroscopy](https://github.com/flim-labs/spectroscopy-py)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
