@@ -128,7 +128,7 @@ PDAC_HEALTHY = {
 }
 
 WEEKS = {
-    "LABEL": "Weeks (only PDAC)",
+    "LABEL": "Weeks",
     "UNIT": None,
     "VALUE": 0,
     "INPUT_TYPE": "int",
