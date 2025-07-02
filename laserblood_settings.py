@@ -130,16 +130,16 @@ PDAC_HEALTHY = {
 WEEKS = {
     "LABEL": "Weeks",
     "UNIT": None,
-    "VALUE": 0,
-    "INPUT_TYPE": "int",
+    "VALUE": None,
+    "INPUT_TYPE": "text",
     "OPTIONS": [],
-    "MIN": 0,
-    "MAX": 10000000,
+    "MIN": None,
+    "MAX": None,
     "POSITION": (0, 2, 1, 1),
     "STRETCH": 3,
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True,
+    "REQUIRED": False,
 }
 
 SETTINGS_SAMPLE_VOL = {

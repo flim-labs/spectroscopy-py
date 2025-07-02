@@ -454,15 +454,18 @@ class LaserbloodMetadataPopup(QWidget):
         return widget_container    
 
     def create_text_input(self, input, new_added_inp=False):
+        from PyQt6.QtGui import QIntValidator
         widget_container = QWidget()
         row = QHBoxLayout()
         row.setContentsMargins(0, 10, 0, 10)
         control = QVBoxLayout()
         position = input["POSITION"]
         label = input['LABEL'] + ":"
+        validator = QIntValidator() if input['LABEL'] == 'Weeks' else None
         label, inp = InputTextControl.setup(
             label=label,
             text=input['VALUE'],
+            validator=validator,
             placeholder="",
             event_callback=lambda text, inp=input, new_input=new_added_inp: self.on_input_text_change(text, inp, new_input),
         )
@@ -566,6 +569,21 @@ class LaserbloodMetadataPopup(QWidget):
         else:    
             self.update_settings(value, input)
         self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))    
+        if input["LABEL"] == "Protein source":
+            weeks_input = next((i for i in self.app.laserblood_settings if i["LABEL"] == "Weeks"), None)
+            if value == 2:
+                weeks_input["REQUIRED"] = True
+            else:
+                weeks_input["REQUIRED"] = False
+            weeks_widget = self.app.laserblood_widgets.get("Weeks")
+            if weeks_input and weeks_widget:
+                self.dispatch_input_warning_styles(
+                    weeks_widget,
+                    weeks_input["INPUT_TYPE"],
+                    weeks_input["VALUE"],
+                    weeks_input["REQUIRED"],
+                    "Weeks"
+                )
     
     def on_input_state_change(self, state, input, new_input):
         if new_input:
@@ -594,7 +612,13 @@ class LaserbloodMetadataPopup(QWidget):
     
     def dispatch_input_warning_styles(self, input, input_type, value, required, input_label):
         str_value = str(value)
-        if not required or (required and value is not None and str_value != "0" and str_value != "0.0" and len(str_value.strip()) > 0) or input_label == "Weeks":
+        if input_label == "Weeks":
+            if required and (value is None or str_value.strip() == ""):
+                self.toggle_input_border_style(input_type, input, "#DA1212")
+                return
+            self.toggle_input_border_style(input_type, input, "#3b3b3b")
+            return
+        if not required or (required and value is not None and str_value != "0" and str_value != "0.0" and len(str_value.strip()) > 0):
             self.toggle_input_border_style(input_type, input, "#3b3b3b")
             return
         if (input_type == "int" or input_type == "float") and (str_value == "0" or str_value == "0.0") :

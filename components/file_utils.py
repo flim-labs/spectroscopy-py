@@ -180,11 +180,21 @@ class FileUtils:
                 else:
                     if d["INPUT_TYPE"] == "select":
                         value = d["OPTIONS"][d["VALUE"]]
+                    elif d["LABEL"] == "Weeks":
+                        v = d["VALUE"]
+                        if isinstance(v, str):
+                            v_stripped = v.strip()
+                            if v_stripped == "":
+                                value = None
+                            else:
+                                try:
+                                    value = int(v_stripped)
+                                except Exception:
+                                    value = 0
+                        else:
+                            value = v
                     else:
-                        if d["LABEL"] == "Weeks (only PDAC)" and (d["VALUE"] == 0 or pdac_healthy[0] == 2):
-                            value = None
-                        else:    
-                            value = d["VALUE"] 
+                        value = d["VALUE"]
                 parsed_data.append(
                     {
                         "label": d["LABEL"],

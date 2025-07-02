@@ -8,6 +8,7 @@ class InputTextControl:
         event_callback,
         control_layout="vertical",
         text="",
+        validator=None,
     ):
         q_label = QLabel(label)
         q_label.setStyleSheet("font-size: 14px")
@@ -15,6 +16,8 @@ class InputTextControl:
         input_text = QLineEdit()
         input_text.setPlaceholderText(placeholder)
         input_text.setText(text)
+        if validator is not None:
+            input_text.setValidator(validator)
         input_text.textChanged.connect(event_callback)
         control.addWidget(q_label)
         control.addWidget(input_text)
