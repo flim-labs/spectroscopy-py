@@ -420,12 +420,7 @@ class LaserbloodMetadataPopup(QWidget):
             row = row,
             event_callback=lambda value, inp=input, new_input = new_added_inp: self.on_input_value_change(value, inp, new_input),
         )
-        if input["LABEL"] == "Weeks":
-            pdac_healthy = [obj["VALUE"] for obj in self.app.laserblood_settings if obj["LABEL"] == "PDAC/Healthy"][0]
-            pdac_weeks_enabled = pdac_healthy in [1, 2]
-            inp.setEnabled(pdac_weeks_enabled)
-        else:
-            inp.setEnabled(input["ENABLED"])
+        inp.setEnabled(input["ENABLED"])
         self.dispatch_input_warning_styles(inp, input["INPUT_TYPE"], input["VALUE"], input["REQUIRED"], input["LABEL"])
         self.app.laserblood_widgets[input["LABEL"]] = inp
         widget_container.setLayout(row)      
@@ -563,33 +558,9 @@ class LaserbloodMetadataPopup(QWidget):
         return widget_container              
     
     
-    def handle_pdac_healty(self, value):
-        pdac_weeks_enabled = value in [1, 2]
-        self.app.laserblood_widgets["Weeks"].setEnabled(pdac_weeks_enabled)
-    
-    def on_input_value_change(self, value, input, new_input):
-        if input["LABEL"] == "PDAC/Healthy":
-            print(f"[on_input_value_change] Cambio PDAC/Healthy: {value} (type: {type(value)})")
-            input["VALUE"] = value  # Aggiorna sempre il valore!
-            self.handle_pdac_healty(value)
-        
-        if input["LABEL"] == "Protein source":
-            # Aggiorna il valore di Protein source nella lista settings
-            protein_source_setting = next((i for i in self.app.laserblood_settings if i["LABEL"] == "Protein source"), None)
-            if protein_source_setting:
-                protein_source_setting["VALUE"] = value
-            # Forza il refresh del warning su Weeks DOPO l'aggiornamento
-            weeks_input = next((i for i in self.app.laserblood_settings if i["LABEL"] == "Weeks"), None)
-            if weeks_input:
-                # Calcolo dinamico required: True solo se Murine plasma (valore 2)
-                required_weeks = (value == 2)
-                self.dispatch_input_warning_styles(
-                    self.app.laserblood_widgets["Weeks"],
-                    weeks_input["INPUT_TYPE"],
-                    self.app.laserblood_widgets["Weeks"].value(),
-                    required_weeks,
-                    weeks_input["LABEL"]
-                )
+
+    def on_input_value_change(self, value, input, new_input):        
+        self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], value, input["REQUIRED"], input["LABEL"])
         if new_input:
             self.update_new_added_inputs_settings(value, input)
         else:    
@@ -623,7 +594,7 @@ class LaserbloodMetadataPopup(QWidget):
     
     def dispatch_input_warning_styles(self, input, input_type, value, required, input_label):
         str_value = str(value)
-        if not required or (required and value is not None and str_value != "0" and str_value != "0.0" and len(str_value.strip()) > 0) or input_label == "Weeks (only PDAC)":
+        if not required or (required and value is not None and str_value != "0" and str_value != "0.0" and len(str_value.strip()) > 0) or input_label == "Weeks":
             self.toggle_input_border_style(input_type, input, "#3b3b3b")
             return
         if (input_type == "int" or input_type == "float") and (str_value == "0" or str_value == "0.0") :
@@ -687,20 +658,8 @@ class LaserbloodMetadataPopup(QWidget):
     
     def update_settings(self, value, input):
         next((setting.update({"VALUE": value}) for setting in self.app.laserblood_settings if setting.get("LABEL") == input["LABEL"]), None)
-        cleaned = self.clean_settings_for_export(self.app.laserblood_settings)
-        self.app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(cleaned))
-
-    def clean_settings_for_export(self, settings):
-        # Trova il valore di Protein source
-        protein_source = next((f for f in settings if f["LABEL"] == "Protein source"), None)
-        protein_source_value = protein_source["VALUE"] if protein_source else None
-        for field in settings:
-            if field["LABEL"] == "Weeks":
-                is_required = (protein_source_value == 2)
-                if not is_required and field["VALUE"] == 0:
-                    field["VALUE"] = None
-        return settings
-    
+        self.app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(self.app.laserblood_settings))
+ 
     @staticmethod
     def set_average_CPS(cps_counts, app):
         if cps_counts:
@@ -758,10 +717,3 @@ class LaserbloodMetadataPopup(QWidget):
         self.move(window_geometry.topLeft())
         
         
-
-        
-
- 
-    
-
-            
