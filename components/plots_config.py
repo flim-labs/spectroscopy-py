@@ -127,6 +127,7 @@ class PlotsConfigPopup(QWidget):
             
 
     def on_ch_intensity_toggled(self, state, checkbox):
+        from core.plots_controller import PlotsController
         label_text = checkbox.text() 
         ch_num_index = extract_channel_from_label(label_text) 
         if state:
@@ -147,10 +148,10 @@ class PlotsConfigPopup(QWidget):
         if hasattr(self, 'start_btn'):        
             start_btn_enabled = len(self.app.plots_to_show) > 0
             self.start_btn.setEnabled(start_btn_enabled)
-        self.app.clear_plots()   
-        self.app.generate_plots() 
-        
-                           
+        PlotsController.clear_plots(self.app)   
+        PlotsController.generate_plots(self.app) 
+
+
     def start_acquisition(self):
         self.close()
         self.app.begin_spectroscopy_experiment()

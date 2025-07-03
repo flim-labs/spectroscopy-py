@@ -20,6 +20,7 @@ from components.gui_styles import GUIStyles
 from components.helpers import extract_channel_from_label
 from components.layout_utilities import clear_layout_widgets, draw_layout_separator
 from components.resource_path import resource_path
+from core.acquisition_controller import AcquisitionController
 from settings import *
 
 
@@ -184,7 +185,7 @@ class DetectChannelsDialog(QDialog):
 
 
     def on_detection_complete(self, result):
-        self.app.check_card_connection()
+        AcquisitionController.check_card_connection(self.app)
         self.connections_obj = result
         self.flip_timer.stop()
         self.loader_label.setVisible(False)
@@ -318,6 +319,7 @@ class DetectChannelsDialog(QDialog):
         
      
     def update_selected_channels(self, channels_str):
+        from core.plots_controller import PlotsController
         channels_str_clean = channels_str.replace("[", "").replace("]", "").strip()
         channels = [int(num) - 1 for num in channels_str_clean.split(",")]
         channels.sort()
@@ -331,8 +333,8 @@ class DetectChannelsDialog(QDialog):
         self.app.settings.setValue(
             SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
         )
-        self.app.clear_plots()
-        self.app.generate_plots()
+        PlotsController.clear_plots(self.app)
+        PlotsController.generate_plots(self.app)
 
     def update_channel_connection_type(self, connection_type):
         index = 0 if connection_type == "USB" else 1
@@ -357,7 +359,7 @@ class DetectChannelsDialog(QDialog):
         return parsed_detection
 
     def on_detection_error(self, error_msg):
-        self.app.check_card_connection()
+        AcquisitionController.check_card_connection(self.app)
         self.flip_timer.stop()
         if hasattr(self, 'connection_type_choose_container'):
             self.choose_connection_container.setVisible(False) 

@@ -227,6 +227,7 @@ class ReadData:
     def plot_spectroscopy_data(
         app, times, channels_curves, laser_period_ns, metadata_channels
     ):
+        from core.plots_controller import PlotsController
         num_bins = 256
         x_values = np.linspace(0, laser_period_ns, num_bins) / 1_000
         for channel, curves in channels_curves.items():
@@ -236,7 +237,8 @@ class ReadData:
                     app.cached_decay_values[app.tab_selected][
                         metadata_channels[channel]
                     ] = y_values
-                app.update_plots2(
+                PlotsController.update_plots(
+                    app,
                     metadata_channels[channel], x_values, y_values, reader_mode=True
                 )
 
@@ -564,11 +566,12 @@ class ReadDataControls:
 
     @staticmethod
     def plot_data_on_tab_change(app):
+        from core.plots_controller import PlotsController
         file_type = ReadData.get_data_type(app.tab_selected)
         if app.acquire_read_mode == "read":
             ReadDataControls.handle_plots_config(app, file_type)
-            app.clear_plots()
-            app.generate_plots(ReadData.get_frequency_mhz(app))
+            PlotsController.clear_plots(app)
+            PlotsController.generate_plots(app, ReadData.get_frequency_mhz(app))
             app.toggle_intensities_widgets_visibility()
             ReadData.plot_data(app)
 
@@ -764,6 +767,7 @@ class ReaderPopup(QWidget):
         return checkbox, checkbox_wrapper
 
     def on_channel_toggled(self, state, checkbox):
+        from core.plots_controller import PlotsController
         label_text = checkbox.text()
         ch_index = extract_channel_from_label(label_text)
         if state:
@@ -794,8 +798,8 @@ class ReaderPopup(QWidget):
                 self.widgets["plot_btn"].setEnabled(both_files_present and plot_btn_enabled)  
             else:                 
                 self.widgets["plot_btn"].setEnabled(plot_btn_enabled)
-        self.app.clear_plots()
-        self.app.generate_plots()
+        PlotsController.clear_plots(self.app)
+        PlotsController.generate_plots(self.app)
         self.app.toggle_intensities_widgets_visibility()
         if ReadDataControls.fit_button_enabled(self.app):
             self.app.fit_button_show()
@@ -804,10 +808,11 @@ class ReaderPopup(QWidget):
       
 
     def on_loaded_file_change(self, text, file_type):
+        from core.plots_controller import PlotsController
         if (text != self.app.reader_data[self.data_type]["files"][file_type] 
             and file_type != "laserblood_metadata"):
-            self.app.clear_plots()
-            self.app.generate_plots()
+            PlotsController.clear_plots(self.app)
+            PlotsController.generate_plots(self.app)
             self.app.toggle_intensities_widgets_visibility()
         self.app.reader_data[self.data_type]["files"][file_type] = text
    

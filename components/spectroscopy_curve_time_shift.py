@@ -61,6 +61,7 @@ class SpectroscopyTimeShift(QWidget):
         return slider
 
     def on_value_change(self, value, inp_type, channel):
+        from core.plots_controller import PlotsController
         self.app.time_shifts[self.channel] = value
         lin_log_mode = self.app.lin_log_mode[self.channel] if self.channel in self.app.lin_log_mode else 'LIN'
         if inp_type == "slider":
@@ -85,7 +86,7 @@ class SpectroscopyTimeShift(QWidget):
                         decay_widget.getAxis("left").setTicks([ticks])    
                         y = np.roll(y_data, value)
                         decay_curve.setData(x, y)
-                        self.app.set_plot_y_range(decay_widget)
+                        PlotsController.set_plot_y_range(decay_widget)
         self.app.settings.setValue(SETTINGS_TIME_SHIFTS, json.dumps(self.app.time_shifts))
         
 

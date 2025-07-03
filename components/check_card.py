@@ -21,6 +21,7 @@ project_root = os.path.abspath(os.path.join(current_path))
 class CheckCard(QWidget):
     def __init__(self, app, parent=None):
         super().__init__(parent)
+        from core.acquisition_controller import AcquisitionController
         self.app = app
         self.layout = QHBoxLayout()
         self.layout.setContentsMargins(0,0,0,0)
@@ -30,7 +31,7 @@ class CheckCard(QWidget):
         self.check_button.setIcon(QIcon(resource_path("assets/card-icon.png")))
         self.check_button.setFixedHeight(36)
         self.check_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.check_button.clicked.connect(app.check_card_connection)
+        self.check_button.clicked.connect(lambda: AcquisitionController.check_card_connection(app))
         GUIStyles.set_start_btn_style(self.check_button)
         self.app.widgets[CHECK_CARD_BUTTON] = self.check_button
         # Check message
@@ -51,7 +52,6 @@ class CheckCard(QWidget):
             app.widgets[CHECK_CARD_MESSAGE].setStyleSheet(GUIStyles.check_card_message(color="#285da6" if not error else "#f72828"))
             if not (app.widgets[CHECK_CARD_MESSAGE].isVisible()):
                 app.widgets[CHECK_CARD_MESSAGE].setVisible(True)
-                
-        
-        
-        
+
+
+

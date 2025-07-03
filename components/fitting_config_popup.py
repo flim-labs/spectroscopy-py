@@ -384,6 +384,7 @@ class FittingDecayConfigPopup(QWidget):
         LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, False)
 
     def update_plot(self, result, channel):
+        from core.plots_controller import PlotsController
         plot_widget = self.plot_widgets[channel]
         residuals_widget = self.residuals_widgets[channel]
         fitted_params_text = self.fitted_params_labels[channel]
@@ -434,7 +435,7 @@ class FittingDecayConfigPopup(QWidget):
             pen=pg.mkPen("#f72828", width=2),
             name="Fitted curve",
         )
-        self.app.set_plot_y_range(plot_widget)
+        PlotsController.set_plot_y_range(plot_widget)
         # Residuals
         residuals = result["residuals"]
         residuals_widget.clear()

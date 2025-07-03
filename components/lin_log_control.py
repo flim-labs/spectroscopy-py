@@ -86,6 +86,7 @@ class LinLogControl(QWidget):
             
 
     def on_spectroscopy_lin_log_changed(self, state):
+        from core.plots_controller import PlotsController
         time_shifts = self.app.time_shifts[self.channel] if self.channel in self.app.time_shifts else 0  
         decay_curve = self.app.decay_curves[self.app.tab_selected][self.channel]
         decay_widget = self.app.decay_widgets[self.channel]
@@ -106,10 +107,11 @@ class LinLogControl(QWidget):
         y = np.roll(y_data, time_shifts)
         decay_curve.setData(x, y)
         decay_widget.getAxis("left").setTicks([ticks])
-        self.app.set_plot_y_range(decay_widget)
+        PlotsController.set_plot_y_range(decay_widget)
 
 
     def on_fitting_lin_log_changed(self, state):
+        from core.plots_controller import PlotsController
         if self.fitting_popup is not None:
             plot_widget = self.fitting_popup.plot_widgets[self.channel]
             plot_widget.clear()
@@ -145,10 +147,8 @@ class LinLogControl(QWidget):
                 fitted_data,
                 pen=pg.mkPen("#f72828", width=2),
                 name="Fitted curve",
-            ) 
-            self.app.set_plot_y_range(plot_widget)                                 
-     
-      
+            )
+            PlotsController.set_plot_y_range(plot_widget)
 
     @staticmethod
     def calculate_lin_mode(y_values):
