@@ -658,6 +658,21 @@ class LaserbloodMetadataPopup(QWidget):
     def laserblood_metadata_valid(app):
         settings = app.laserblood_settings
         custom_settings = app.laserblood_new_added_inputs
+        protein_source_input = next((d for d in settings if d.get("LABEL") == "Protein source"), None)
+        weeks_input = next((d for d in settings if d.get("LABEL") == "Weeks"), None)
+        if protein_source_input and weeks_input:
+            protein_source_value = protein_source_input.get("VALUE")
+            protein_source_options = protein_source_input.get("OPTIONS", [])
+            protein_source_label = None
+            if isinstance(protein_source_value, int) and protein_source_options:
+                if 0 <= protein_source_value < len(protein_source_options):
+                    protein_source_label = protein_source_options[protein_source_value]
+            else:
+                protein_source_label = protein_source_value
+            weeks_input["REQUIRED"] = (
+                isinstance(protein_source_label, str)
+                and protein_source_label.strip().lower() == "murine plasma"
+            )
         def check_required_values(data):
             return all(
                 d['REQUIRED'] is False or (
@@ -668,7 +683,6 @@ class LaserbloodMetadataPopup(QWidget):
                 )
                 for d in data
             )
-         
         settings_valid = check_required_values(settings)
         custom_settings_valid = check_required_values(custom_settings)
         laser_type_valid = app.laserblood_laser_type is not None
@@ -739,5 +753,4 @@ class LaserbloodMetadataPopup(QWidget):
         screen_geometry = QApplication.primaryScreen().availableGeometry().center()
         window_geometry.moveCenter(screen_geometry)
         self.move(window_geometry.topLeft())
-        
-        
+
