@@ -1,15 +1,16 @@
 import json
 import flim_labs
+import numpy as np
 from components.box_message import BoxMessage
 from components.check_card import CheckCard
 from components.export_data import ExportData
 from components.gui_styles import GUIStyles
-from components.helpers import mhz_to_ns, ns_to_mhz
+from components.helpers import calc_SBR, mhz_to_ns, ns_to_mhz
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
 from components.lin_log_control import LinLogControl
 from components.plots_config import PlotsConfigPopup
 from core.phasors_controller import PhasorsController
-from settings import DEFAULT_BIN_WIDTH, MODE_RUNNING, MODE_STOPPED, PHASORS_RESOLUTIONS, SETTINGS_BIN_WIDTH, SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT, SETTINGS_TAU_NS, TAB_FITTING, TAB_PHASORS, TAB_SPECTROSCOPY
+from settings import DEFAULT_BIN_WIDTH, DEFAULT_FREE_RUNNING, MODE_RUNNING, MODE_STOPPED, PHASORS_RESOLUTIONS, SETTINGS_ACQUISITION_TIME, SETTINGS_BIN_WIDTH, SETTINGS_CPS_THRESHOLD, SETTINGS_FREE_RUNNING, SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT, SETTINGS_TAU_NS, TAB_FITTING, TAB_PHASORS, TAB_SPECTROSCOPY
 from PyQt6.QtWidgets import (
     QApplication,
     QMessageBox,
@@ -119,10 +120,11 @@ class AcquisitionController:
         Returns:
             dict: A dictionary of parameters for the FLIM-Labs library.
         """
-        acquisition_time = app.get_acquisition_time()
-        firmware_selected, _ = app.get_firmware_selected(frequency_mhz)
-        
-        tau_ns = float(app.settings.value(SETTINGS_TAU_NS, "0")) if app.is_reference_phasors() else None
+        from core.controls_controller import ControlsController
+        acquisition_time = ControlsController.get_acquisition_time(app)
+        firmware_selected, _ = ControlsController.get_firmware_selected(app, frequency_mhz)
+
+        tau_ns = float(app.settings.value(SETTINGS_TAU_NS, "0")) if ControlsController.is_reference_phasors(app) else None
         
         reference_file = None
         if app.tab_selected == TAB_PHASORS:
@@ -181,11 +183,12 @@ class AcquisitionController:
             app: The main application instance.
         """
         from core.ui_controller import UIController
+        from core.controls_controller import ControlsController
         app.mode = MODE_RUNNING
         UIController.style_start_button(app)
         QApplication.processEvents()
         app.update_plots_enabled = True
-        app.top_bar_set_enabled(False)
+        ControlsController.top_bar_set_enabled(app, False)
         LinLogControl.set_lin_log_switches_enable_mode(app.lin_log_switches, False)
         app.pull_from_queue_timer.start(25)
 
@@ -201,13 +204,14 @@ class AcquisitionController:
         Args:
             app: The main application instance.
         """
+        from core.controls_controller import ControlsController
         try:
             AcquisitionController.check_card_connection(app, start_experiment=True)
         except Exception as e:
             BoxMessage.setup("Error", f"Error starting spectroscopy: {e}", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
             return
 
-        frequency_mhz = app.get_frequency_mhz()
+        frequency_mhz = ControlsController.get_frequency_mhz(app)
         if frequency_mhz == 0.0:
             BoxMessage.setup("Error", "Frequency not detected", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
             return
@@ -264,8 +268,9 @@ class AcquisitionController:
         Args:
             app: The main application instance.
         """
+        from core.controls_controller import ControlsController
         LinLogControl.set_lin_log_switches_enable_mode(app.lin_log_switches, True)
-        app.top_bar_set_enabled(True)
+        ControlsController.top_bar_set_enabled(app, True)
 
         def clear_cps_and_countdown_widgets():
             for _, animation in app.cps_widgets_animation.items():
@@ -277,7 +282,7 @@ class AcquisitionController:
 
         QTimer.singleShot(400, clear_cps_and_countdown_widgets)
         if app.tab_selected == TAB_FITTING:
-            app.fit_button_show()
+            ControlsController.fit_button_show(app)
         
         harmonic_selected = int(app.settings.value(SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT))
         if harmonic_selected > 1:
@@ -292,7 +297,8 @@ class AcquisitionController:
         Args:
             app: The main application instance.
         """
-        if app.is_reference_phasors():
+        from core.controls_controller import ControlsController
+        if ControlsController.is_reference_phasors(app):
             try:
                 with open(".pid", "r") as f:
                     lines = f.readlines()
@@ -314,10 +320,11 @@ class AcquisitionController:
         Args:
             app: The main application instance.
         """
-        if not app.is_phasors():
+        from core.controls_controller import ControlsController
+        if not ControlsController.is_phasors(app):
             return
-            
-        frequency_mhz = app.get_current_frequency_mhz()
+
+        frequency_mhz = ControlsController.get_current_frequency_mhz(app)
         laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
         
         for _, channel_index in enumerate(app.plots_to_show):
@@ -418,11 +425,111 @@ class AcquisitionController:
                 )
                 if channel_index is not None:
                     PlotsController.update_plots(app, channel_index, time_ns, intensities)
-                    app.update_acquisition_countdowns(time_ns)
-                    app.update_cps(channel_index, time_ns, intensities)
+                    AcquisitionController.update_acquisition_countdowns(app, time_ns)
+                    AcquisitionController.update_cps(app, channel_index, time_ns, intensities)
                 QApplication.processEvents()
                 
+         
+    
+    @staticmethod
+    def update_acquisition_countdowns(app, time_ns):
+        """
+        Updates the acquisition countdown timer widgets.
+
+        This function is called during acquisition. It calculates the remaining
+        time based on the total acquisition duration and the elapsed time,
+        and updates the corresponding UI labels. It does nothing if the
+        acquisition is in 'Free running' mode.
+
+        Args:
+            app: The main application instance.
+            time_ns (int): The elapsed time of the acquisition in nanoseconds.
+        """
+        free_running = app.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
+        acquisition_time = app.control_inputs[SETTINGS_ACQUISITION_TIME].value()
+        if free_running is True or free_running == "true":
+            return
+        elapsed_time_sec = time_ns / 1_000_000_000
+        remaining_time_sec = max(0, acquisition_time - elapsed_time_sec)
+        seconds = int(remaining_time_sec)
+        milliseconds = int((remaining_time_sec - seconds) * 1000)
+        milliseconds = milliseconds // 10
+        for _, countdown_widget in app.acquisition_time_countdown_widgets.items():
+            if countdown_widget:
+                if not countdown_widget.isVisible():
+                    countdown_widget.setVisible(True)
+                countdown_widget.setText(
+                    f"Remaining time: {seconds:02}:{milliseconds:02} (s)"
+                )   
                 
+                
+    @staticmethod           
+    def update_SBR(app, channel_index, curve):
+        """
+        Calculates and updates the Signal-to-Background Ratio (SBR) for a channel.
+
+        Args:
+            app: The main application instance.
+            channel_index (int): The index of the channel to update.
+            curve (np.ndarray): The decay curve data used for calculation.
+        """
+        if channel_index in app.SBR_items:
+            SBR_value = calc_SBR(np.array(curve))
+            app.SBR_items[channel_index].setText(f"SBR: {SBR_value:.2f} ㏈")    
+            
+                           
+    
+    @staticmethod
+    def update_cps(app, channel_index, time_ns, curve):
+        """
+        Updates the Counts Per Second (CPS) display for a given channel.
+
+        This method calculates the CPS based on the incoming data rate. It also
+        triggers a pile-up warning animation if the CPS exceeds a user-defined
+        threshold and updates the SBR value if enabled.
+
+        Args:
+            app: The main application instance.
+            channel_index (int): The index of the channel to update.
+            time_ns (int): The timestamp of the current data chunk in nanoseconds.
+            curve (np.ndarray): The intensity data for the current chunk.
+        """
+        # check if there is channel_index'th element in cps_counts
+        if not (channel_index in app.cps_counts):
+            return
+        cps = app.cps_counts[channel_index]
+        curve_sum = np.sum(curve)
+        # SBR
+        SBR_count = calc_SBR(np.array(curve))
+        app.all_SBR_counts.append(SBR_count)
+        if cps["last_time_ns"] == 0:
+            cps["last_time_ns"] = time_ns
+            cps["last_count"] = curve_sum
+            cps["current_count"] = curve_sum
+            return
+        cps["current_count"] = cps["current_count"] + np.sum(curve)
+        time_elapsed = time_ns - cps["last_time_ns"]
+        if time_elapsed > 330_000_000:
+            cps_value = (cps["current_count"] - cps["last_count"]) / (
+                time_elapsed / 1_000_000_000
+            )
+            app.all_cps_counts.append(cps_value)            
+            humanized_number = app.humanize_number(cps_value)
+            app.cps_widgets[channel_index].setText(f"{humanized_number} CPS")
+            cps_threshold = app.control_inputs[SETTINGS_CPS_THRESHOLD].value()
+            if cps_threshold > 0:
+                if cps_value > cps_threshold:
+                    app.cps_widgets_animation[channel_index].start()
+                else:
+                    app.cps_widgets_animation[channel_index].stop()
+            #SBR
+            if app.show_SBR:
+                AcquisitionController.update_SBR(app, channel_index, curve)
+            cps["last_time_ns"] = time_ns
+            cps["last_count"] = cps["current_count"]   
+            
+            
+                     
                 
     @staticmethod
     def check_card_connection(app, start_experiment = False):
@@ -450,5 +557,6 @@ class AcquisitionController:
                 CheckCard.update_check_message(app, str(e), error=True)
             if start_experiment:
                 raise
+
 
 

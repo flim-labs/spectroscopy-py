@@ -185,7 +185,7 @@ class ReadAcquireModeButton(QWidget):
     def on_acquire_btn_pressed(self, checked):
         from core.plots_controller import PlotsController
         from core.phasors_controller import PhasorsController
-        #self.app.reset_time_shifts_values()    
+        from core.controls_controller import ControlsController  
         self.app.control_inputs[ACQUIRE_BUTTON].setChecked(checked)
         self.app.control_inputs[READ_BUTTON].setChecked(not checked)
         self.app.acquire_read_mode = "acquire" if checked else "read"
@@ -197,14 +197,14 @@ class ReadAcquireModeButton(QWidget):
         PlotsController.clear_plots(self.app)
         PlotsController.generate_plots(self.app)
         PhasorsController.initialize_phasor_feature(self.app)
-        self.app.toggle_intensities_widgets_visibility()
+        ControlsController.toggle_intensities_widgets_visibility(self.app)
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
 
     def on_read_btn_pressed(self, checked):
         from core.plots_controller import PlotsController
-        #self.app.reset_time_shifts_values()        
+        from core.controls_controller import ControlsController      
         self.app.control_inputs[ACQUIRE_BUTTON].setChecked(not checked)
         self.app.control_inputs[READ_BUTTON].setChecked(checked)
         self.app.acquire_read_mode = "read" if checked else "acquire"
@@ -214,7 +214,7 @@ class ReadAcquireModeButton(QWidget):
         self.set_buttons_styles()
         PlotsController.clear_plots(self.app)
         PlotsController.generate_plots(self.app)
-        self.app.toggle_intensities_widgets_visibility()
+        ControlsController.toggle_intensities_widgets_visibility(self.app)
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )

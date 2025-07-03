@@ -44,11 +44,12 @@ class TimeTaggerProcessingTask(QRunnable):
 class TimeTaggerController:
     @staticmethod
     def init_time_tagger_processing(app):
+        from core.controls_controller import ControlsController
         bin_width_micros = int(
             app.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
         )
         enabled_channels = app.selected_channels
-        frequency_mhz = app.get_frequency_mhz()
+        frequency_mhz = ControlsController.get_frequency_mhz(app)
         signals = TimeTaggerWorkerSignals()
         signals.success.connect(
             lambda: TimeTaggerController.handle_success_processing(app)

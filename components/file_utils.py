@@ -109,6 +109,7 @@ class FileUtils:
 
     @staticmethod
     def parse_metadata_output(app, reference_files, timestamp):
+        from core.controls_controller import ControlsController
         reference_filenames = [file.rsplit("\\", 1)[-1] for file in reference_files]
         reference_filenames = [os.path.basename(file) for file in reference_filenames]
         filenames_string = ", ".join(reference_filenames)
@@ -129,8 +130,8 @@ class FileUtils:
             if filter_type in ["LP", "SP"]
             else filter_wavelength_input["VALUE"]
         )
-        frequency_mhz = app.get_frequency_mhz()
-        firmware_selected, connection_type = app.get_firmware_selected(frequency_mhz)
+        frequency_mhz = ControlsController.get_frequency_mhz(app)
+        firmware_selected, connection_type = ControlsController.get_firmware_selected(app, frequency_mhz)
         firmware_selected_name = os.path.basename(firmware_selected)
         num_replicate = app.replicates
         parsed_data = [

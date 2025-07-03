@@ -100,7 +100,8 @@ class SpectroscopyTimeShift(QWidget):
 
     @staticmethod
     def get_time_shift_ns_value(app, time_bin: int):
-        frequency_mhz = app.get_frequency_mhz()
+        from core.controls_controller import ControlsController
+        frequency_mhz = ControlsController.get_frequency_mhz(app)
         time_shift_ns = calc_micro_time_ns(time_bin, frequency_mhz)
         return time_shift_ns
     

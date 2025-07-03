@@ -155,7 +155,8 @@ class PhasorsController:
         Args:
             app: The main application instance.
         """
-        frequency_mhz = app.get_current_frequency_mhz()
+        from core.controls_controller import ControlsController
+        frequency_mhz = ControlsController.get_current_frequency_mhz(app)
         if frequency_mhz != 0:
             laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
             for _, channel in enumerate(app.plots_to_show):
@@ -283,6 +284,7 @@ class PhasorsController:
             app: The main application instance.
             harmonic (int): The harmonic number for which to calculate the values.
         """
+        from core.controls_controller import ControlsController
         for i, channel_index in enumerate(app.plots_to_show):
             if channel_index in app.phasors_widgets:
                 legend_in_list = channel_index in app.phasors_legends
@@ -295,7 +297,7 @@ class PhasorsController:
                 )
                 if mean_g is None or mean_s is None:
                     continue
-                freq_mhz = app.get_frequency_mhz()
+                freq_mhz = ControlsController.get_frequency_mhz(app)
                 tau_phi, tau_m = PhasorsController.calculate_tau(mean_g, mean_s, freq_mhz, harmonic)
                 if tau_phi is None:
                     return
@@ -424,6 +426,7 @@ class PhasorsController:
             event: The mouse move event from PyQt.
             channel_index (int): The index of the channel where the event occurred.
         """
+        from core.controls_controller import ControlsController
         for i, channel in enumerate(app.phasors_coords):
             if channel != channel_index:
                 app.phasors_coords[channel].setText("")
@@ -438,7 +441,7 @@ class PhasorsController:
         crosshair.setPos(mouse_point.x(), mouse_point.y())
         crosshair.setText(CURSOR_TEXT)
         text.setPos(mouse_point.x(), mouse_point.y())
-        freq_mhz = app.get_current_frequency_mhz()
+        freq_mhz = ControlsController.get_current_frequency_mhz(app)
         harmonic = int(app.control_inputs[HARMONIC_SELECTOR].currentText())
         g = mouse_point.x()
         s = mouse_point.y()

@@ -729,8 +729,9 @@ class LaserbloodMetadataPopup(QWidget):
         
     @staticmethod     
     def set_FPGA_firmware(app):
-        frequency_mhz = app.get_frequency_mhz()
-        firmware_selected, _ = app.get_firmware_selected(frequency_mhz)
+        from core.controls_controller import ControlsController
+        frequency_mhz = ControlsController.get_frequency_mhz(app)
+        firmware_selected, _ = ControlsController.get_firmware_selected(app, frequency_mhz)
         fpga = ""
         if firmware_selected is not None and "100ps" in firmware_selected:
             fpga = "100ps"

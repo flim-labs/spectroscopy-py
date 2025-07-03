@@ -312,12 +312,12 @@ class DetectChannelsDialog(QDialog):
         self.close()
         
     def update_sync_in(self):
+        from core.controls_controller import ControlsController
         for button, name in self.app.sync_buttons:
             button.set_selected(name == "sync_in") 
-        self.app.on_sync_selected("sync_in", start_sync_in_dialog=False) 
-        self.app.start_sync_in_dialog()
-        
-     
+        ControlsController.on_sync_selected(self.app, "sync_in", start_sync_in_dialog=False) 
+        ControlsController.start_sync_in_dialog(self.app)
+
     def update_selected_channels(self, channels_str):
         from core.plots_controller import PlotsController
         channels_str_clean = channels_str.replace("[", "").replace("]", "").strip()

@@ -276,13 +276,14 @@ class ReadData:
 
     @staticmethod
     def plot_phasors_data(app, data, harmonics):
+        from core.controls_controller import ControlsController
         laser_period_ns = ReadData.get_phasors_laser_period_ns(app)
         app.all_phasors_points = app.get_empty_phasors_points()
         app.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
         harmonics_length = len(harmonics) if isinstance(harmonics, list) else harmonics
         if harmonics_length > 1:
             app.harmonic_selector_shown = True
-            app.show_harmonic_selector(harmonics)
+            ControlsController.show_harmonic_selector(app, harmonics)
         for channel, channel_data in data.items():
             if channel in app.plots_to_show:
                 for harmonic, values in channel_data.items():
@@ -295,7 +296,7 @@ class ReadData:
                 bins=int(PHASORS_RESOLUTIONS[app.phasors_resolution]),
             )
         else:
-            app.on_quantize_phasors_changed(False)
+            ControlsController.on_quantize_phasors_changed(app, False)
         app.generate_phasors_cluster_center(app.phasors_harmonic_selected)
         app.generate_phasors_legend(app.phasors_harmonic_selected)
         frequency_mhz = ns_to_mhz(laser_period_ns)
@@ -530,11 +531,12 @@ class ReadDataControls:
 
     @staticmethod
     def handle_widgets_visibility(app, read_mode):
+        from core.controls_controller import ControlsController
         if not read_mode:
-            app.fit_button_hide()
+            ControlsController.fit_button_hide(app)
         else:
             if ReadDataControls.fit_button_enabled(app):
-                app.fit_button_show()  
+                ControlsController.fit_button_show(app)  
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(app)
         app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
         app.control_inputs["start_button"].setVisible(not read_mode)
@@ -567,12 +569,13 @@ class ReadDataControls:
     @staticmethod
     def plot_data_on_tab_change(app):
         from core.plots_controller import PlotsController
+        from core.controls_controller import ControlsController
         file_type = ReadData.get_data_type(app.tab_selected)
         if app.acquire_read_mode == "read":
             ReadDataControls.handle_plots_config(app, file_type)
             PlotsController.clear_plots(app)
             PlotsController.generate_plots(app, ReadData.get_frequency_mhz(app))
-            app.toggle_intensities_widgets_visibility()
+            ControlsController.toggle_intensities_widgets_visibility(app)
             ReadData.plot_data(app)
 
     @staticmethod
@@ -768,6 +771,7 @@ class ReaderPopup(QWidget):
 
     def on_channel_toggled(self, state, checkbox):
         from core.plots_controller import PlotsController
+        from core.controls_controller import ControlsController
         label_text = checkbox.text()
         ch_index = extract_channel_from_label(label_text)
         if state:
@@ -800,25 +804,26 @@ class ReaderPopup(QWidget):
                 self.widgets["plot_btn"].setEnabled(plot_btn_enabled)
         PlotsController.clear_plots(self.app)
         PlotsController.generate_plots(self.app)
-        self.app.toggle_intensities_widgets_visibility()
+        ControlsController.toggle_intensities_widgets_visibility(self.app)
         if ReadDataControls.fit_button_enabled(self.app):
-            self.app.fit_button_show()
+            ControlsController.fit_button_show(self.app)
         else:
-            self.app.fit_button_hide()            
-      
+            ControlsController.fit_button_hide(self.app)
 
     def on_loaded_file_change(self, text, file_type):
         from core.plots_controller import PlotsController
+        from core.controls_controller import ControlsController
         if (text != self.app.reader_data[self.data_type]["files"][file_type] 
             and file_type != "laserblood_metadata"):
             PlotsController.clear_plots(self.app)
             PlotsController.generate_plots(self.app)
-            self.app.toggle_intensities_widgets_visibility()
+            ControlsController.toggle_intensities_widgets_visibility(self.app)
         self.app.reader_data[self.data_type]["files"][file_type] = text
    
         
 
     def on_load_file_btn_clicked(self, file_type):
+        from core.controls_controller import ControlsController
         if file_type == "laserblood_metadata":
             ReadData.read_laserblood_metadata(self, self.app, self.tab_selected)
         if file_type == "fitting":
@@ -844,9 +849,9 @@ class ReaderPopup(QWidget):
                 if channels_layout is not None:
                     self.layout.insertLayout(2, channels_layout)
         if ReadDataControls.fit_button_enabled(self.app):
-            self.app.fit_button_show()
+            ControlsController.fit_button_show(self.app)
         else:
-            self.app.fit_button_hide()
+            ControlsController.fit_button_hide(self.app)
         if "plot_btn" in self.widgets:
             fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
             spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]
@@ -872,13 +877,14 @@ class ReaderPopup(QWidget):
         
 
     def on_plot_data_btn_clicked(self):
+        from core.controls_controller import ControlsController
         file_type = self.data_type
         if self.errors_in_data(file_type):
             return
         fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
         spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]
         if fitting_data and not spectroscopy_data:
-           self.app.on_fit_btn_click()           
+           ControlsController.on_fit_btn_click(self.app)           
         else:
             ReadData.plot_data(self.app)
         self.close()

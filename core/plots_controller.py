@@ -228,6 +228,7 @@ class PlotsController:
         Returns:
             QWidget: The container widget for the entire spectroscopy plot area.
         """
+        from core.controls_controller import ControlsController
         v_widget = QWidget()
         v_widget.setObjectName("chart_wrapper")
         v_layout = QVBoxLayout()
@@ -260,7 +261,7 @@ class PlotsController:
         v_layout.addLayout(h_decay_layout, 3)
         
         v_widget.setLayout(v_layout)
-        app.fit_button_hide()
+        ControlsController.fit_button_hide(app)
         return v_widget
 
     @staticmethod
