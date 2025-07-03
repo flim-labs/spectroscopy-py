@@ -689,6 +689,7 @@ class ReaderPopup(QWidget):
         return v_box
 
     def init_channels_layout(self):
+        from core.controls_controller import ControlsController
         self.channels_checkboxes.clear()
         file_metadata = self.app.reader_data[self.data_type]["metadata"]
         plots_to_show = self.app.reader_data[self.data_type]["plots"]
@@ -698,7 +699,7 @@ class ReaderPopup(QWidget):
             self.app.selected_channels = selected_channels
             for i, ch in enumerate(self.app.channel_checkboxes):
                 ch.set_checked(i in self.app.selected_channels)
-            self.app.set_selected_channels_to_settings()
+            ControlsController.set_selected_channels_to_settings(self.app)
             if len(plots_to_show) == 0:
                 plots_to_show = selected_channels[:2]
             self.app.plots_to_show = plots_to_show
@@ -871,8 +872,7 @@ class ReaderPopup(QWidget):
             file_spectroscopy = self.app.reader_data["fitting"]["files"]["spectroscopy"]
             if len(file_fitting.strip()) == 0 or len(file_spectroscopy.strip()) == 0:
                 return False
-            channels = ReadData.get_fitting_active_channels(self.app)
-            return not (ReadData.are_spectroscopy_and_fitting_from_same_acquisition(self.app, channels, file_type))
+            return not (ReadData.are_spectroscopy_and_fitting_from_same_acquisition(self.app))
         return False
         
 

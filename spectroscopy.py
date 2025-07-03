@@ -5,6 +5,7 @@ import os
 import queue
 from math import floor, log
 import sys
+from components.export_data import ExportData
 from components.settings_utilities import check_and_update_ini
 import numpy as np
 
@@ -15,11 +16,9 @@ from PyQt6.QtWidgets import (
     QLayout,
     QLabel,
 )
-from components.helpers import calc_SBR, format_size
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
 from components.logo_utilities import OverlayWidget
 from components.read_data import (
-    ReadData,
     ReadDataControls,
 )
 from core.acquisition_controller import AcquisitionController
@@ -165,7 +164,7 @@ class SpectroscopyWindow(QWidget):
             self.settings.value(SETTINGS_PHASORS_RESOLUTION, DEFAULT_PHASORS_RESOLUTION)
         )
         self.replicates = 1
-        self.get_selected_channels_from_settings()
+        ControlsController.get_selected_channels_from_settings(self)
         (self.top_bar, self.grid_layout) = UIController.init_ui(self)
         ControlsController.on_tab_selected(self, TAB_SPECTROSCOPY)
         # self.update_sync_in_button()
@@ -176,7 +175,7 @@ class SpectroscopyWindow(QWidget):
         self.pull_from_queue_timer = QTimer()
         self.pull_from_queue_timer.timeout.connect(partial(AcquisitionController.pull_from_queue, self))
         self.fitting_config_popup = None
-        self.calc_exported_file_size()
+        ExportData.calc_exported_file_size(self)
         self.phasors_harmonic_selected = 1
         ReadDataControls.handle_widgets_visibility(
             self, self.acquire_read_mode == "read"
@@ -197,50 +196,6 @@ class SpectroscopyWindow(QWidget):
 
   
 
-    def acquired_spectroscopy_data_to_fit(self, read):
-        data = []
-        channels_shown = [
-            channel
-            for channel in self.plots_to_show
-            if channel in self.selected_channels
-        ]
-        for channel, channel_index in enumerate(channels_shown):
-            time_shift = (
-                0
-                if channel_index not in self.time_shifts
-                else self.time_shifts[channel_index]
-            )
-            x, _ = self.decay_curves[self.tab_selected][channel_index].getData()
-            y = self.cached_decay_values[self.tab_selected][channel_index]
-            data.append(
-                {
-                    "x": x * 1000 if read else x,
-                    "y": y,
-                    "title": "Channel " + str(channel_index + 1),
-                    "channel_index": channel_index,
-                    "time_shift": time_shift,
-                }
-            )
-        return data, time_shift
-
-    def read_spectroscopy_data_to_fit(self):
-        data = ReadData.get_spectroscopy_data_to_fit(self)
-        return data
-
-    
-
-    def get_selected_channels_from_settings(self):
-        self.selected_channels = []
-        for i in range(MAX_CHANNELS):
-            if self.settings.value(f"channel_{i}", "false") == "true":
-                self.selected_channels.append(i)
-
-    def set_selected_channels_to_settings(self):
-        for i in range(MAX_CHANNELS):
-            self.settings.setValue(f"channel_{i}", "false")
-            if i in self.selected_channels:
-                self.settings.setValue(f"channel_{i}", "true")
-
     def clear_layout_tree(self, layout: QLayout):
         if layout is not None:
             while layout.count():
@@ -251,28 +206,6 @@ class SpectroscopyWindow(QWidget):
                 else:
                     self.clear_layout_tree(item.layout())
             del layout
-
-    def calc_exported_file_size(self):
-        free_running = self.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
-        acquisition_time = self.settings.value(
-            SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME
-        )
-        bin_width = self.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
-        if free_running is True or acquisition_time is None:
-            file_size_MB = len(self.selected_channels) * (1000 / int(bin_width))
-            self.bin_file_size = format_size(file_size_MB * 1024 * 1024)
-            self.bin_file_size_label.setText(
-                "File size: " + str(self.bin_file_size) + "/s"
-            )
-        else:
-            file_size_MB = (
-                int(acquisition_time)
-                * len(self.selected_channels)
-                * (1000 / int(bin_width))
-            )
-            self.bin_file_size = format_size(file_size_MB * 1024 * 1024)
-            self.bin_file_size_label.setText("File size: " + str(self.bin_file_size))
-   
  
  
     def humanize_number(self, number):

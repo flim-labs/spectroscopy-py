@@ -529,6 +529,51 @@ class AcquisitionController:
             cps["last_count"] = cps["current_count"]   
             
             
+            
+    @staticmethod
+    def acquired_spectroscopy_data_to_fit(app, read):
+        """
+        Prepares and formats the acquired spectroscopy data for the fitting process.
+
+        It extracts decay curve data (x and y values) and time shifts for the
+        currently displayed channels. The data is structured into a list of
+        dictionaries, which is the format expected by the fitting module.
+
+        Args:
+            app: The main application instance.
+            read (bool): A flag indicating if the data comes from a loaded file
+                         (True) or a live acquisition (False). This affects
+                         the scaling of the x-axis data.
+
+        Returns:
+            tuple[list[dict], float]: A tuple containing the list of prepared
+                                      data dictionaries and the time shift of
+                                      the last channel.
+        """
+        data = []
+        channels_shown = [
+            channel
+            for channel in app.plots_to_show
+            if channel in app.selected_channels
+        ]
+        for channel, channel_index in enumerate(channels_shown):
+            time_shift = (
+                0
+                if channel_index not in app.time_shifts
+                else app.time_shifts[channel_index]
+            )
+            x, _ = app.decay_curves[app.tab_selected][channel_index].getData()
+            y = app.cached_decay_values[app.tab_selected][channel_index]
+            data.append(
+                {
+                    "x": x * 1000 if read else x,
+                    "y": y,
+                    "title": "Channel " + str(channel_index + 1),
+                    "channel_index": channel_index,
+                    "time_shift": time_shift,
+                }
+            )
+        return data, time_shift        
                      
                 
     @staticmethod

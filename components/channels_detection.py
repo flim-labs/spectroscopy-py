@@ -320,6 +320,7 @@ class DetectChannelsDialog(QDialog):
 
     def update_selected_channels(self, channels_str):
         from core.plots_controller import PlotsController
+        from core.controls_controller import ControlsController
         channels_str_clean = channels_str.replace("[", "").replace("]", "").strip()
         channels = [int(num) - 1 for num in channels_str_clean.split(",")]
         channels.sort()
@@ -328,7 +329,7 @@ class DetectChannelsDialog(QDialog):
             ch_index = extract_channel_from_label(label_text)
             ch_checkbox.set_checked(ch_index in channels)
         self.app.selected_channels = channels
-        self.app.set_selected_channels_to_settings()
+        ControlsController.set_selected_channels_to_settings(self.app)
         self.app.plots_to_show = channels[:4]
         self.app.settings.setValue(
             SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)

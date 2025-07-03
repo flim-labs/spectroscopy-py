@@ -1,3 +1,4 @@
+from functools import partial
 import json
 import flim_labs
 from components.box_message import BoxMessage
@@ -12,7 +13,7 @@ from components.sync_in_popup import SyncInDialog
 from core.acquisition_controller import AcquisitionController
 from core.phasors_controller import PhasorsController
 from core.plots_controller import PlotsController
-from settings import CHANNELS_GRID, DEFAULT_ACQUISITION_TIME, DEFAULT_SETTINGS_CALIBRATION_TYPE, EXPORT_PLOT_IMG_BUTTON, FIT_BTN, FIT_BTN_PLACEHOLDER, HARMONIC_SELECTOR, HARMONIC_SELECTOR_LABEL, LOAD_REF_BTN, MODE_RUNNING, MODE_STOPPED, PHASORS_RESOLUTIONS, SETTINGS_ACQUISITION_TIME, SETTINGS_BIN_WIDTH, SETTINGS_CALIBRATION_TYPE, SETTINGS_CONNECTION_TYPE, SETTINGS_CPS_THRESHOLD, SETTINGS_FREE_RUNNING, SETTINGS_HARMONIC, SETTINGS_HARMONIC_LABEL, SETTINGS_PHASORS_RESOLUTION, SETTINGS_PLOTS_TO_SHOW, SETTINGS_QUANTIZE_PHASORS, SETTINGS_SHOW_SBR, SETTINGS_SYNC, SETTINGS_SYNC_IN_FREQUENCY_MHZ, SETTINGS_TAU_NS, SETTINGS_TIME_SPAN, SETTINGS_WRITE_DATA, TAB_FITTING, TAB_PHASORS, TAB_SPECTROSCOPY, TIME_TAGGER_WIDGET
+from settings import CHANNELS_GRID, DEFAULT_ACQUISITION_TIME, DEFAULT_SETTINGS_CALIBRATION_TYPE, EXPORT_PLOT_IMG_BUTTON, FIT_BTN, FIT_BTN_PLACEHOLDER, HARMONIC_SELECTOR, HARMONIC_SELECTOR_LABEL, LOAD_REF_BTN, MAX_CHANNELS, MODE_RUNNING, MODE_STOPPED, PHASORS_RESOLUTIONS, SETTINGS_ACQUISITION_TIME, SETTINGS_BIN_WIDTH, SETTINGS_CALIBRATION_TYPE, SETTINGS_CONNECTION_TYPE, SETTINGS_CPS_THRESHOLD, SETTINGS_FREE_RUNNING, SETTINGS_HARMONIC, SETTINGS_HARMONIC_LABEL, SETTINGS_PHASORS_RESOLUTION, SETTINGS_PLOTS_TO_SHOW, SETTINGS_QUANTIZE_PHASORS, SETTINGS_SHOW_SBR, SETTINGS_SYNC, SETTINGS_SYNC_IN_FREQUENCY_MHZ, SETTINGS_TAU_NS, SETTINGS_TIME_SPAN, SETTINGS_WRITE_DATA, TAB_FITTING, TAB_PHASORS, TAB_SPECTROSCOPY, TIME_TAGGER_WIDGET
 
 from PyQt6.QtCore import  Qt
 from PyQt6.QtWidgets import (
@@ -215,7 +216,7 @@ class ControlsController:
             app.control_inputs[FIT_BTN].setFlat(True)
             app.control_inputs[FIT_BTN].setFixedHeight(55)
             app.control_inputs[FIT_BTN].setCursor(Qt.CursorShape.PointingHandCursor)
-            app.control_inputs[FIT_BTN].clicked.connect(app.on_fit_btn_click)
+            app.control_inputs[FIT_BTN].clicked.connect(partial(ControlsController.on_fit_btn_click, app))
             app.control_inputs[FIT_BTN].setStyleSheet(
                 """
             QPushButton {
@@ -264,13 +265,14 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
+        from core.acquisition_controller import AcquisitionController
         data = []
         time_shift = 0
         frequency_mhz = ControlsController.get_frequency_mhz(app)
         laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
         if app.acquire_read_mode == "read":
             if app.reader_data["fitting"]["data"]["spectroscopy_data"]:
-                data, time_shift = app.acquired_spectroscopy_data_to_fit(read=True)
+                data, time_shift = AcquisitionController.acquired_spectroscopy_data_to_fit(app, read=True)
             else:
                 active_channels = ReadData.get_fitting_active_channels(app)
                 for channel in active_channels:
@@ -284,7 +286,7 @@ class ControlsController:
                         }
                     )
         else:
-            data, time_shift = app.acquired_spectroscopy_data_to_fit(read=False)
+            data, time_shift = AcquisitionController.acquired_spectroscopy_data_to_fit(app, read=False)
         # check if every x len is the same as y len
         if not all(len(data[0]["x"]) == len(data[i]["x"]) for i in range(1, len(data))):
             BoxMessage.setup(
@@ -394,9 +396,9 @@ class ControlsController:
             app: The main application instance.
             value (int): The new acquisition time in seconds.
         """
+        from components.export_data import ExportData
         app.settings.setValue(SETTINGS_ACQUISITION_TIME, value)
-        app.calc_exported_file_size()
-        
+        ExportData.calc_exported_file_size(app)
 
     @staticmethod
     def on_cps_threshold_change(app, value):
@@ -433,9 +435,10 @@ class ControlsController:
             app: The main application instance.
             state (bool): The new state of the switch.
         """
+        from components.export_data import ExportData
         app.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(not state)
         app.settings.setValue(SETTINGS_FREE_RUNNING, state)
-        app.calc_exported_file_size()
+        ExportData.calc_exported_file_size(app)
 
     
     @staticmethod
@@ -461,8 +464,9 @@ class ControlsController:
             app: The main application instance.
             value (int): The new bin width in microseconds.
         """
+        from components.export_data import ExportData
         app.settings.setValue(SETTINGS_BIN_WIDTH, value)
-        app.calc_exported_file_size()
+        ExportData.calc_exported_file_size(app)
 
     
     @staticmethod
@@ -562,14 +566,15 @@ class ControlsController:
             app: The main application instance.
             state (bool): The new state of the switch.
         """
+        from components.export_data import ExportData
         app.settings.setValue(SETTINGS_WRITE_DATA, state)
         app.write_data_gui = state
         if TIME_TAGGER_WIDGET in app.widgets:
             app.widgets[TIME_TAGGER_WIDGET].setVisible(state)
         app.bin_file_size_label.show() if state else app.bin_file_size_label.hide()
-        app.calc_exported_file_size() if state else None
-        
-    
+        ExportData.calc_exported_file_size(app) if state else None
+
+
     @staticmethod
     def on_show_SBR_changed(app, state):
         """
@@ -867,6 +872,7 @@ class ControlsController:
             checked (bool): The new state of the checkbox.
             channel (int): The channel index that was changed.
         """
+        from components.export_data import ExportData
         app.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show))
         if checked:
             if channel not in app.selected_channels:
@@ -881,10 +887,10 @@ class ControlsController:
         app.selected_channels.sort()
         app.plots_to_show.sort()
         app.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show))
-        app.set_selected_channels_to_settings()
+        ControlsController.set_selected_channels_to_settings(app)
         PlotsController.clear_plots(app)
         PlotsController.generate_plots(app)
-        app.calc_exported_file_size()
+        ExportData.calc_exported_file_size(app)
         LaserbloodMetadataPopup.set_FPGA_firmware(app)
 
     
@@ -1114,3 +1120,39 @@ class ControlsController:
             bool: True if the Phasors tab is active, False otherwise.
         """
         return app.tab_selected == TAB_PHASORS
+    
+    
+    @staticmethod
+    def get_selected_channels_from_settings(app):
+        """
+        Loads the selected channels from the application settings.
+
+        This method iterates through the possible channels and repopulates the
+        `app.selected_channels` list based on the values stored in the
+        persistent settings.
+
+        Args:
+            app: The main application instance.
+        """
+        app.selected_channels = []
+        for i in range(MAX_CHANNELS):
+            if app.settings.value(f"channel_{i}", "false") == "true":
+                app.selected_channels.append(i)
+                
+                
+    @staticmethod
+    def set_selected_channels_to_settings(app):
+        """
+        Saves the currently selected channels to the application settings.
+
+        This method ensures that the user's channel selection is persisted
+        across application sessions by storing the state of each channel
+        in the settings file.
+
+        Args:
+            app: The main application instance.
+        """
+        for i in range(MAX_CHANNELS):
+            app.settings.setValue(f"channel_{i}", "false")
+            if i in app.selected_channels:
+                app.settings.setValue(f"channel_{i}", "true")

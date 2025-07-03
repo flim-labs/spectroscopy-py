@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QFileDialog, QMessageBox
 from components.file_utils import FileUtils
 from components.box_message import BoxMessage
 from components.gui_styles import GUIStyles
-from components.helpers import calc_timestamp
+from components.helpers import calc_timestamp, format_size
 from export_data_scripts.script_files_utils import ScriptFileUtils
 from settings import *
 
@@ -294,3 +294,27 @@ class ExportData:
             return new_file_path, save_dir, save_name
         else:
             return None, None, None
+        
+        
+    
+    @staticmethod
+    def calc_exported_file_size(app):
+        free_running = app.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
+        acquisition_time = app.settings.value(
+            SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME
+        )
+        bin_width = app.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
+        if free_running is True or acquisition_time is None:
+            file_size_MB = len(app.selected_channels) * (1000 / int(bin_width))
+            app.bin_file_size = format_size(file_size_MB * 1024 * 1024)
+            app.bin_file_size_label.setText(
+                "File size: " + str(app.bin_file_size) + "/s"
+            )
+        else:
+            file_size_MB = (
+                int(acquisition_time)
+                * len(app.selected_channels)
+                * (1000 / int(bin_width))
+            )
+            app.bin_file_size = format_size(file_size_MB * 1024 * 1024)
+            app.bin_file_size_label.setText("File size: " + str(app.bin_file_size))
