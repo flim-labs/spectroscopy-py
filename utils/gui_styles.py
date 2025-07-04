@@ -1,4 +1,4 @@
-from PyQt6.QtGui import QColor, QPalette, QFont, QFontDatabase
+from PyQt6.QtGui import QColor, QPalette, QFont
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel
 from PyQt6.QtWidgets import QStyleFactory
 

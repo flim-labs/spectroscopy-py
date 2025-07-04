@@ -15,17 +15,17 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QCheckBox,
 )
-from components.export_data import ExportData
+from utils.export_data import ExportData
 from components.gradient_text import GradientText
-from components.gui_styles import GUIStyles
-from components.layout_utilities import clear_layout_widgets, draw_layout_separator
+from utils.gui_styles import GUIStyles
+from utils.layout_utilities import clear_layout_widgets, draw_layout_separator
 from components.lin_log_control import LinLogControl
-from components.resource_path import resource_path
-from fit_decay_curve import (
+from utils.resource_path import resource_path
+from utils.fitting_utilities import (
     convert_fitting_result_into_json_serializable_item,
     fit_decay_curve,
 )
-from settings import FITTING_POPUP, PALETTE_RED_1, TAB_FITTING, SETTINGS_ROI
+import settings.settings as s
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
@@ -45,6 +45,13 @@ DARK_THEME_LABEL_STYLE = (
 
 
 class FittingDecayConfigPopup(QWidget):
+    """
+    A popup window for configuring, running, and viewing fluorescence decay fitting.
+
+    This widget displays decay curves for multiple channels, allows users to
+    select a Region of Interest (ROI) for fitting, starts the fitting process,
+    and displays the results including the fitted curve, residuals, and calculated parameters.
+    """
     def __init__(
         self,
         window,
@@ -55,6 +62,18 @@ class FittingDecayConfigPopup(QWidget):
         y_data_shift=0,
         laser_period_ns=0
     ):
+        """
+        Initializes the FittingDecayConfigPopup.
+
+        Args:
+            window: The main application window instance.
+            data (list): A list of dictionaries, each containing data for one channel's decay curve.
+            preloaded_fitting (dict, optional): Pre-existing fitting data to display. Defaults to None.
+            read_mode (bool, optional): If True, the popup is in a view-only mode. Defaults to False.
+            save_plot_img (bool, optional): If True, shows a button to save the plot as an image. Defaults to False.
+            y_data_shift (int, optional): A global time shift to apply to the y-data. Defaults to 0.
+            laser_period_ns (float, optional): The laser period in nanoseconds, used for plot limits. Defaults to 0.
+        """
         super().__init__()
         self.app = window
         self.data = data
@@ -116,9 +135,10 @@ class FittingDecayConfigPopup(QWidget):
         self.main_layout.addLayout(self.errors_layout)
         self.main_layout.addSpacing(20)
         self.setLayout(self.main_layout)
-        self.app.widgets[FITTING_POPUP] = self
+        self.app.widgets[s.FITTING_POPUP] = self
 
     def initialize_dicts_for_plot_cached_data(self):
+        """Initializes dictionaries to cache plot data for each channel."""
         for index, item in enumerate(self.data):
             channel_index = item["channel_index"]
             if channel_index not in self.cached_counts_data:
@@ -131,6 +151,12 @@ class FittingDecayConfigPopup(QWidget):
             self.cached_fitted_data[channel_index]["x"] = []
 
     def create_controls_bar(self):
+        """
+        Creates the top control bar with title and action buttons.
+
+        Returns:
+            QWidget: The widget containing the control bar.
+        """
         from components.buttons import ExportPlotImageButton
 
         controls_bar_widget = QWidget()
@@ -142,7 +168,7 @@ class FittingDecayConfigPopup(QWidget):
         fitting_title = GradientText(
             self,
             text="INTENSITY DECAY FITTING",
-            colors=[(0.7, "#1E90FF"), (1.0, PALETTE_RED_1)],
+            colors=[(0.7, "#1E90FF"), (1.0, s.PALETTE_RED_1)],
             stylesheet=GUIStyles.set_main_title_style(),
         )
         controls_row.addSpacing(10)
@@ -196,6 +222,12 @@ class FittingDecayConfigPopup(QWidget):
         return controls_bar_widget
 
     def create_loading_row(self):
+        """
+        Creates the layout for the loading indicator (text and GIF).
+
+        Returns:
+            QHBoxLayout: The layout containing the loading widgets.
+        """
         loading_row = QHBoxLayout()
         loading_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
         loading_row.addSpacing(20)
@@ -216,6 +248,7 @@ class FittingDecayConfigPopup(QWidget):
         return loading_row
 
     def start_fitting(self):
+        """Initiates the fitting process in a background worker thread."""
         clear_layout_widgets(self.errors_layout)
         self.loading_text.setVisible(True)
         self.gif_label.setVisible(True)
@@ -231,17 +264,23 @@ class FittingDecayConfigPopup(QWidget):
         self.worker.start()
 
     def process_fitting_results(self, results):
+        """
+        Processes and displays the fitting results received from the worker.
+
+        Args:
+            results (list): A list of result dictionaries from the fitting process.
+        """
         self.fitting_results = results
         for result in results:
             if "error" in result:
                 title = (
-                    "Channel " + result["channel"] + 1 if "channel" in result else ""
+                    "Channel " + str(result["channel"] + 1) if "channel" in result else ""
                 )
                 self.display_error(result["error"], title)
             else:
                 channel = next(
                     (
-                        result["channel"]
+                        item["channel_index"]
                         for item in self.data
                         if item["channel_index"] == result["channel"]
                     ),
@@ -258,6 +297,12 @@ class FittingDecayConfigPopup(QWidget):
 
     @pyqtSlot(list)
     def handle_fitting_done(self, results):
+        """
+        Slot to handle the successful completion of the fitting process.
+
+        Args:
+            results (list): The list of fitting results from the worker.
+        """
         self.loading_text.setVisible(False)
         self.gif_label.setVisible(False)
         # Process results
@@ -270,18 +315,44 @@ class FittingDecayConfigPopup(QWidget):
 
     @pyqtSlot(str)
     def handle_error(self, error_message):
+        """
+        Slot to handle errors that occurred during the fitting process.
+
+        Args:
+            error_message (str): The error message from the worker.
+        """
         self.loading_text.setVisible(False)
         self.gif_label.setVisible(False)
         print(f"Error: {error_message}")
         self.display_error(error_message, "")
 
     def display_spectroscopy_curve(self, plot_widget, channel):
+        """
+        Displays the initial raw spectroscopy curve on a plot.
+
+        Args:
+            plot_widget (pg.PlotWidget): The widget to plot on.
+            channel (int): The channel index of the data to display.
+
+        Returns:
+            tuple: A tuple containing the x and y data arrays that were plotted.
+        """
         data = [d for d in self.data if d["channel_index"] == channel]
         y = np.roll(data[0]["y"], data[0]["time_shift"])
         plot_widget.plot(data[0]["x"], y, pen=pg.mkPen("#f72828", width=2))
         return data[0]["x"], y
 
     def display_plot(self, title, channel, index):
+        """
+        Creates and displays the entire plot area for a single channel.
+
+        This includes the main plot, residuals plot, title, and controls like ROI and Lin/Log.
+
+        Args:
+            title (str): The title for the plot.
+            channel (int): The channel index for the data.
+            index (int): The sequential index of the plot, used for grid layout.
+        """
         layout = QVBoxLayout()
         title_layout = QHBoxLayout()
         chart_title = QLabel(title)
@@ -306,7 +377,7 @@ class FittingDecayConfigPopup(QWidget):
             time_shifts=0,
             lin_log_modes=self.lin_log_modes,
             persist_changes=False,
-            data_type=TAB_FITTING,
+            data_type=s.TAB_FITTING,
             fitting_popup=self,
             lin_log_switches=self.lin_log_switches,
         )
@@ -384,6 +455,14 @@ class FittingDecayConfigPopup(QWidget):
         LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, False)
 
     def update_plot(self, result, channel):
+        """
+        Updates a channel's plot with the fitting results.
+
+        Args:
+            result (dict): The fitting result dictionary for the channel.
+            channel (int): The channel index to update.
+        """
+        from core.plots_controller import PlotsController
         plot_widget = self.plot_widgets[channel]
         residuals_widget = self.residuals_widgets[channel]
         fitted_params_text = self.fitted_params_labels[channel]
@@ -434,7 +513,7 @@ class FittingDecayConfigPopup(QWidget):
             pen=pg.mkPen("#f72828", width=2),
             name="Fitted curve",
         )
-        self.app.set_plot_y_range(plot_widget)
+        PlotsController.set_plot_y_range(plot_widget)
         # Residuals
         residuals = result["residuals"]
         residuals_widget.clear()
@@ -447,6 +526,13 @@ class FittingDecayConfigPopup(QWidget):
         fitted_params_text.setText(result["fitted_params_text"])
 
     def add_chart_to_grid(self, chart_widget, index):
+        """
+        Adds a chart widget to the main grid layout.
+
+        Args:
+            chart_widget (QWidget): The widget to add.
+            index (int): The sequential index to determine the position in the grid.
+        """
         col_length = 1
         if len(self.data) > 4:
             col_length = 4
@@ -457,6 +543,13 @@ class FittingDecayConfigPopup(QWidget):
         )
 
     def display_error(self, error_message, title):
+        """
+        Displays an error message in the UI.
+
+        Args:
+            error_message (str): The error message to display.
+            title (str): A title for the error (e.g., the channel name).
+        """
         self.error_label = QLabel(f"Error {title}: {error_message}")
         self.error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.error_label.setStyleSheet(
@@ -465,16 +558,40 @@ class FittingDecayConfigPopup(QWidget):
         self.errors_layout.addWidget(self.error_label)
         
     def get_saved_roi(self, channel):
+        """
+        Retrieves the saved Region of Interest (ROI) for a channel from settings.
+
+        Args:
+            channel (int): The channel index.
+
+        Returns:
+            tuple or None: The (min, max) tuple for the ROI, or None if not found.
+        """
         if channel in self.app.roi:
             return self.app.roi[channel]
         else:
             return None
 
     def on_roi_selection_changed(self, roi, x, y, channel):
+        """
+        Callback for when the ROI selection is changed by the user.
+
+        Args:
+            roi (pg.LinearRegionItem): The ROI item that was changed.
+            x (np.ndarray): The x-data array for the plot.
+            y (np.ndarray): The y-data array for the plot.
+            channel (int): The channel index.
+        """
         self.set_roi_mask(roi, x, y, channel)
-        self.app.settings.setValue(SETTINGS_ROI, json.dumps(self.app.roi))    
+        self.app.settings.setValue(s.SETTINGS_ROI, json.dumps(self.app.roi))    
         
     def limit_roi_bounds(self, roi):
+        """
+        Ensures the ROI selection does not go beyond the plot's x-axis limits.
+
+        Args:
+            roi (pg.LinearRegionItem): The ROI item to check.
+        """
         min_val, max_val = roi.getRegion()
         min_limit = 0
         max_limit = self.laser_period_ns
@@ -485,6 +602,15 @@ class FittingDecayConfigPopup(QWidget):
         roi.setRegion([min_val, max_val])             
         
     def set_roi_mask(self, roi, x, y, channel):
+        """
+        Applies the ROI to the data, storing the "cut" data for fitting.
+
+        Args:
+            roi (pg.LinearRegionItem): The ROI item defining the region.
+            x (np.ndarray): The full x-data array.
+            y (np.ndarray): The full y-data array.
+            channel (int): The channel index.
+        """
         if not roi.isVisible():
             return
         min_x, max_x = roi.getRegion()
@@ -497,6 +623,15 @@ class FittingDecayConfigPopup(QWidget):
                 
 
     def create_roi_checkbox(self, channel):
+        """
+        Creates the 'ROI' checkbox for a specific channel.
+
+        Args:
+            channel (int): The channel index.
+
+        Returns:
+            QCheckBox: The created checkbox widget.
+        """
         checkbox = QCheckBox("ROI")
         checkbox.setStyleSheet(GUIStyles.set_checkbox_style())
         checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -509,6 +644,13 @@ class FittingDecayConfigPopup(QWidget):
         return checkbox
 
     def on_roi_checkbox_state_changed(self, checked: bool, channel: int):
+        """
+        Callback for when the ROI checkbox state changes. Shows/hides the ROI tool.
+
+        Args:
+            checked (bool): The new state of the checkbox.
+            channel (int): The channel index.
+        """
         if checked:
             self.roi_warnings[channel].setText(
                 "Please select a significant portion of the curve that includes points from both the rising edge, the peak, and the falling edge for an accurate fit. Insufficient data may lead to unreliable fitting results."
@@ -521,6 +663,12 @@ class FittingDecayConfigPopup(QWidget):
             self.roi_items[channel].setVisible(checked)
 
     def set_roi_checkboxes_visibility(self, visible):
+        """
+        Shows or hides all ROI-related checkboxes and warning labels.
+
+        Args:
+            visible (bool): True to show, False to hide.
+        """
         for ch, widget in self.roi_checkboxes.items():
             if widget is not None:
                 widget.setVisible(visible)
@@ -529,12 +677,14 @@ class FittingDecayConfigPopup(QWidget):
                 widget.setVisible(visible)       
 
     def export_fitting_data(self):
+        """Exports the fitting results to files."""
         parsed_fitting_results = convert_fitting_result_into_json_serializable_item(
             self.fitting_results
         )
         ExportData.save_fitting_data(parsed_fitting_results, self, self.app)
 
     def reset(self):
+        """Resets the popup to its initial state, clearing all plots and results."""
         for ch, plot in self.plot_widgets.items():
             if plot:
                 plot.clear()
@@ -557,6 +707,7 @@ class FittingDecayConfigPopup(QWidget):
         self.export_img_btn.setVisible(False)
 
     def center_window(self):
+        """Centers the popup window on the current screen."""
         screen_number = self.get_current_screen()
         if screen_number == -1:
             screen = QGuiApplication.primaryScreen()
@@ -571,6 +722,12 @@ class FittingDecayConfigPopup(QWidget):
 
     @staticmethod
     def get_current_screen():
+        """
+        Determines which screen the mouse cursor is currently on.
+
+        Returns:
+            int: The screen number, or -1 if not found.
+        """
         cursor_pos = QCursor.pos()
         screens = QGuiApplication.screens()
         for screen_number, screen in enumerate(screens):
@@ -580,6 +737,15 @@ class FittingDecayConfigPopup(QWidget):
 
 
 class FittingWorker(QThread):
+    """
+    A worker thread to perform the decay curve fitting in the background.
+
+    This prevents the GUI from freezing during the potentially long fitting process.
+
+    Signals:
+        fitting_done (pyqtSignal): Emitted when fitting is complete, carrying a list of results.
+        error_occurred (pyqtSignal): Emitted if an error occurs during fitting.
+    """
     fitting_done = pyqtSignal(
         list
     )  # Emit a list of tuples (chart title (channel),  fitting result)
@@ -588,6 +754,17 @@ class FittingWorker(QThread):
     def __init__(
         self, data, roi_checkboxes, cut_data_x, cut_data_y, y_data_shift, parent=None
     ):
+        """
+        Initializes the FittingWorker.
+
+        Args:
+            data (list): The list of channel data to be fitted.
+            roi_checkboxes (dict): A dictionary of ROI checkboxes to check if ROI is active.
+            cut_data_x (dict): A dictionary of x-data, cut by ROI.
+            cut_data_y (dict): A dictionary of y-data, cut by ROI.
+            y_data_shift (int): A global time shift to apply to the data.
+            parent (QObject, optional): The parent object. Defaults to None.
+        """
         super().__init__(parent)
         self.data = data
         self.roi_checkboxes = roi_checkboxes
@@ -596,12 +773,28 @@ class FittingWorker(QThread):
         self.y_data_shift = y_data_shift
 
     def get_data_point(self, data_point, channel):
+        """
+        Gets the appropriate data (full or ROI-cut) for a given channel.
+
+        Args:
+            data_point (dict): The full data dictionary for the channel.
+            channel (int): The channel index.
+
+        Returns:
+            tuple: A tuple of (x_data, y_data) arrays for fitting.
+        """
         if channel in self.roi_checkboxes and self.roi_checkboxes[channel].isChecked():
             return self.cut_data_x[channel], self.cut_data_y[channel]
         else:
             return data_point["x"], data_point["y"]
 
     def run(self):
+        """
+        The main execution method of the thread.
+
+        Iterates through the data for each channel, performs the fitting,
+        and emits the results or an error.
+        """
         results = []
         for data_point in self.data:
             try:

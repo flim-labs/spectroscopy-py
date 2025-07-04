@@ -3,9 +3,9 @@ import os
 from PyQt6.QtWidgets import QMessageBox
 
 from components.box_message import BoxMessage
-from components.gui_styles import GUIStyles
-from components.messages_utilities import MessagesUtilities
-from components.resource_path import resource_path
+from utils.gui_styles import GUIStyles
+from utils.messages_utilities import MessagesUtilities
+from utils.resource_path import resource_path
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))

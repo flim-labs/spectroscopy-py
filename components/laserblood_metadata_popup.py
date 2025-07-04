@@ -19,14 +19,14 @@ from PyQt6.QtGui import QColor, QIcon
 from components.fancy_checkbox import FancyButton
 from components.input_number_control import InputFloatControl, InputNumberControl
 from components.input_text_control import InputTextControl, InputTextareaControl
-from components.layout_utilities import draw_layout_separator
-from components.logo_utilities import TitlebarIcon
-from components.resource_path import resource_path
-from components.gui_styles import GUIStyles
+from utils.layout_utilities import draw_layout_separator, clear_layout_tree
+from utils.logo_utilities import TitlebarIcon
+from utils.resource_path import resource_path
+from utils.gui_styles import GUIStyles
 from components.select_control import SelectControl
 from components.switch_control import SwitchControl
-from laserblood_settings import FILTERS_TYPES, FILTERS_TYPES_NO_BANDPASS, LASER_TYPES, LASERBLOOD_METADATA_POPUP, METADATA_LASERBLOOD_KEY, NEW_ADDED_LASERBLOOD_INPUTS_KEY, SETTINGS_FILTER_TYPE, SETTINGS_LASER_TYPE
-from settings import *
+from settings.laserblood_settings import FILTERS_TYPES, FILTERS_TYPES_NO_BANDPASS, LASER_TYPES, LASERBLOOD_METADATA_POPUP, METADATA_LASERBLOOD_KEY, NEW_ADDED_LASERBLOOD_INPUTS_KEY, SETTINGS_FILTER_TYPE, SETTINGS_LASER_TYPE
+import settings.settings as s
 
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -34,7 +34,21 @@ project_root = os.path.abspath(os.path.join(current_path))
 
 
 class LaserbloodMetadataPopup(QWidget):
+    """
+    A popup window for configuring and editing Laserblood metadata.
+
+    This window provides a comprehensive interface for users to input
+    and modify various parameters related to the experimental setup,
+    sample information, and other metadata required for Laserblood analysis.
+    """
     def __init__(self, window, start_acquisition=False):
+        """
+        Initializes the LaserbloodMetadataPopup.
+
+        Args:
+            window: The main application window instance.
+            start_acquisition (bool, optional): Flag indicating if acquisition should start after saving. Defaults to False.
+        """
         super().__init__()
         self.app = window
         self.setWindowTitle("Spectroscopy - Laserblood Metadata")
@@ -104,6 +118,7 @@ class LaserbloodMetadataPopup(QWidget):
     
     
     def init_laser_filter_settings_layout(self):
+        """Initializes the layout for laser and filter selection settings."""
         main_container = QVBoxLayout()
         lasers_v_box = self.create_laser_layout(title="LASER WAVELENGTH (BANDPASS)", bandpass=True)
         lasers_no_bandpass_v_box = self.create_laser_layout(title="LASER WAVELENGTH (NO BANDPASS)", bandpass=False)
@@ -124,6 +139,16 @@ class LaserbloodMetadataPopup(QWidget):
         
                     
     def create_laser_layout(self, title, bandpass):
+        """
+        Creates the layout with buttons for selecting the laser type.
+
+        Args:
+            title (str): The title for this section.
+            bandpass (bool): True to show bandpass lasers, False for non-bandpass.
+
+        Returns:
+            QVBoxLayout: The layout containing the laser selection buttons.
+        """
         laser_types = [l for l in LASER_TYPES if l["BANDPASS"] == bandpass]
         title = QLabel(title)
         lasers_v_box = QVBoxLayout()
@@ -151,6 +176,14 @@ class LaserbloodMetadataPopup(QWidget):
         
     
     def create_filters_layout(self, title, bandpass, container):
+        """
+        Creates the layout with buttons for selecting the filter type.
+
+        Args:
+            title (str): The title for this section.
+            bandpass (bool): True to show filters compatible with bandpass lasers.
+            container (QGridLayout): The grid layout to add the filter buttons to.
+        """
         laser_selected = next((laser for laser in LASER_TYPES if laser["LABEL"] == self.selected_laser), None)
         if bandpass:
             filter_types = laser_selected["FILTERS"] if laser_selected is not None else []
@@ -184,6 +217,12 @@ class LaserbloodMetadataPopup(QWidget):
                 
             
     def create_no_bandpass_filter_input(self):
+        """
+        Creates the specific input field for non-bandpass filter wavelengths.
+
+        Returns:
+            QHBoxLayout: The layout containing the input field.
+        """
         row = QHBoxLayout()
         filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
         if len(filter_wavelength_input["VALUE"].strip()) == 0:
@@ -193,8 +232,8 @@ class LaserbloodMetadataPopup(QWidget):
             value = int(number_str) if number_str else 0    
         label , inp = InputNumberControl.setup(
             label = "Wavelength:",
-            min = 0,
-            max = 1000000,
+            min_val = 0,
+            max_val = 1000000,
             value = value,
             row = row,
             control_layout="horizontal",
@@ -210,6 +249,12 @@ class LaserbloodMetadataPopup(QWidget):
 
         
     def on_filter_no_bandpass_value_change(self, value):
+        """
+        Handles value changes for the non-bandpass filter input.
+
+        Args:
+            value (int): The new wavelength value.
+        """
         filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None) 
         text = str(value) + " nm"    
         self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(text) 
@@ -217,6 +262,12 @@ class LaserbloodMetadataPopup(QWidget):
                   
         
     def on_laser_selected(self, laser):
+        """
+        Handles the selection of a new laser type.
+
+        Args:
+            laser (str): The label of the selected laser.
+        """
         laser_selected = next((laser_opt for laser_opt in LASER_TYPES if laser_opt["LABEL"] == laser), None)
         laser_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Laser wavelength"), None)
         filter_wavelength_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength"), None)
@@ -228,8 +279,8 @@ class LaserbloodMetadataPopup(QWidget):
         self.selected_filter = None
         self.app.laserblood_filter_type = None
         self.app.settings.remove(SETTINGS_FILTER_TYPE)
-        self.app.clear_layout_tree(self.filters_grid)
-        self.app.clear_layout_tree(self.filters_no_bandpass_grid)
+        clear_layout_tree(self.filters_grid)
+        clear_layout_tree(self.filters_no_bandpass_grid)
         self.filter_buttons.clear()
         self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (BANDPASS)", bandpass=True, container=self.filters_grid)
         self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NO BANDPASS)", bandpass=False, container=self.filters_no_bandpass_grid)
@@ -238,6 +289,12 @@ class LaserbloodMetadataPopup(QWidget):
         self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))
         
     def on_filter_selected(self, filter):
+        """
+        Handles the selection of a new filter type.
+
+        Args:
+            filter (str): The label of the selected filter.
+        """
         self.selected_filter = filter
         if filter not in ['SP', 'LP']:
             filter_selected = next(f for f in FILTERS_TYPES if f == filter)
@@ -258,12 +315,14 @@ class LaserbloodMetadataPopup(QWidget):
       
 
     def set_add_button_enabled(self):
+        """Enables or disables the 'ADD' button based on whether the new input fields are filled."""
         if "add_button" in self.app.laserblood_widgets:
             add_button_enabled = len(self.new_input_type.strip()) > 0 and len(self.new_input_label.strip()) > 0
             self.app.laserblood_widgets["add_button"].setEnabled(add_button_enabled)
             
     
     def init_new_input_added_layout(self):
+        """Initializes the layout for displaying user-added custom metadata fields."""
         max_cols = 4
         for i, new_input in enumerate(self.app.laserblood_new_added_inputs):
             row = i // max_cols
@@ -273,6 +332,7 @@ class LaserbloodMetadataPopup(QWidget):
             
             
     def add_new_input_to_settings(self):
+        """Adds a new custom metadata field definition to the application settings."""
         is_numeric_input = self.new_input_type == "number"
         new_input = {
             "LABEL": self.new_input_label,
@@ -291,8 +351,9 @@ class LaserbloodMetadataPopup(QWidget):
         self.app.settings.setValue(NEW_ADDED_LASERBLOOD_INPUTS_KEY, json.dumps(self.app.laserblood_new_added_inputs))
         
     def on_add_new_input_btn_clicked(self):
+        """Handles the click event for the 'ADD' button to create a new custom input."""
         self.add_new_input_to_settings()
-        self.app.clear_layout_tree(self.new_added_inputs_grid)  
+        clear_layout_tree(self.new_added_inputs_grid)  
         self.init_new_input_added_layout()
         self.new_input_label = ""
         self.new_input_unit = ""
@@ -300,6 +361,12 @@ class LaserbloodMetadataPopup(QWidget):
         self.app.laserblood_widgets["inp_label"].clear()
 
     def create_add_new_input_layout(self):
+        """
+        Creates the layout for the section where users can define a new custom metadata field.
+
+        Returns:
+            QHBoxLayout: The layout containing the UI for adding a new input.
+        """
         h_box = QHBoxLayout()
         def on_inp_type_change(value):
             self.new_input_type = "number" if value == 0 else "text"
@@ -383,6 +450,16 @@ class LaserbloodMetadataPopup(QWidget):
         return h_box
 
     def dispatch_create_input(self, input, new_added):
+        """
+        Factory method to create the correct input widget based on its type.
+
+        Args:
+            input (dict): The dictionary defining the input field.
+            new_added (bool): True if this is a user-added custom field.
+
+        Returns:
+            QWidget: The container widget for the created input field.
+        """
         input_type = input["INPUT_TYPE"]
         if input_type == "int":
             widget_container = self.create_int_input(input, new_added_inp=new_added)
@@ -402,11 +479,22 @@ class LaserbloodMetadataPopup(QWidget):
 
 
     def init_inputs_grid(self):
+        """Initializes the grid with all the standard metadata inputs from settings."""
         inputs = self.app.laserblood_settings 
         for input in inputs:
             self.dispatch_create_input(input, new_added=False)      
     
     def create_int_input(self, input, new_added_inp = False):
+        """
+        Creates an integer input (QSpinBox) widget.
+
+        Args:
+            input (dict): The dictionary defining the input field.
+            new_added_inp (bool): True if this is a user-added custom field.
+
+        Returns:
+            QWidget: The container widget for the created input field.
+        """
         widget_container = QWidget()
         row = QHBoxLayout()
         row.setContentsMargins(0,10,0, 10)        
@@ -414,8 +502,8 @@ class LaserbloodMetadataPopup(QWidget):
         label = input["LABEL"] + ":" if not input["UNIT"] else input["LABEL"] + " (" + input["UNIT"] + "):"
         _, inp = InputNumberControl.setup(
             label = label,
-            min = input["MIN"],
-            max = input["MAX"],
+            min_val = input["MIN"],
+            max_val = input["MAX"],
             value = input["VALUE"],
             row = row,
             event_callback=lambda value, inp=input, new_input = new_added_inp: self.on_input_value_change(value, inp, new_input),
@@ -430,6 +518,16 @@ class LaserbloodMetadataPopup(QWidget):
         return widget_container    
     
     def create_float_input(self, input, new_added_inp = False):
+        """
+        Creates a float input (QDoubleSpinBox) widget.
+
+        Args:
+            input (dict): The dictionary defining the input field.
+            new_added_inp (bool): True if this is a user-added custom field.
+
+        Returns:
+            QWidget: The container widget for the created input field.
+        """
         widget_container = QWidget()
         row = QHBoxLayout()
         row.setContentsMargins(0,10,0, 10)         
@@ -437,8 +535,8 @@ class LaserbloodMetadataPopup(QWidget):
         label = input["LABEL"] + ":" if not input["UNIT"] else input["LABEL"] + " (" + input["UNIT"] + "):"
         _, inp = InputFloatControl.setup(
             label = label,
-            min = input["MIN"],
-            max = input["MAX"],
+            min_val = input["MIN"],
+            max_val = input["MAX"],
             value = input["VALUE"],
             row = row,
             event_callback=lambda value, inp=input, new_input=new_added_inp: self.on_input_value_change(value, inp, new_input),
@@ -454,6 +552,16 @@ class LaserbloodMetadataPopup(QWidget):
         return widget_container    
 
     def create_text_input(self, input, new_added_inp=False):
+        """
+        Creates a text input (QLineEdit) widget.
+
+        Args:
+            input (dict): The dictionary defining the input field.
+            new_added_inp (bool): True if this is a user-added custom field.
+
+        Returns:
+            QWidget: The container widget for the created input field.
+        """
         from PyQt6.QtGui import QIntValidator
         widget_container = QWidget()
         row = QHBoxLayout()
@@ -494,13 +602,23 @@ class LaserbloodMetadataPopup(QWidget):
 
     
     def create_switch_input(self, input, new_added_inp = False):
+        """
+        Creates a boolean switch input widget.
+
+        Args:
+            input (dict): The dictionary defining the input field.
+            new_added_inp (bool): True if this is a user-added custom field.
+
+        Returns:
+            QWidget: The container widget for the created input field.
+        """
         position = input["POSITION"]
         widget_container = QWidget()
         v_box = QVBoxLayout()
         label = input["LABEL"] + ":"
         label = QLabel(label)
         inp = SwitchControl(
-            active_color=PALETTE_BLUE_1, width=100, height=30, checked=input["VALUE"]
+            active_color=s.PALETTE_BLUE_1, width=100, height=30, checked=input["VALUE"]
         )
         inp.setEnabled(input["ENABLED"])
         inp.toggled.connect(lambda state, inp=input, new_input=new_added_inp: self.on_input_state_change(state, inp, new_input))
@@ -514,6 +632,16 @@ class LaserbloodMetadataPopup(QWidget):
         return widget_container    
     
     def create_textarea_input(self, input, new_added_inp = False):
+        """
+        Creates a multi-line text area input (QPlainTextEdit) widget.
+
+        Args:
+            input (dict): The dictionary defining the input field.
+            new_added_inp (bool): True if this is a user-added custom field.
+
+        Returns:
+            QWidget: The container widget for the created input field.
+        """
         widget_container = QWidget()
         control = QVBoxLayout() 
         control.setContentsMargins(0, 10, 12, 10)    
@@ -536,9 +664,29 @@ class LaserbloodMetadataPopup(QWidget):
         return widget_container              
         
     def create_textarea_event_callback(self, input, new_input):       
+        """
+        Creates a closure for the textarea's textChanged event.
+
+        Args:
+            input (dict): The dictionary defining the input field.
+            new_input (bool): True if this is a user-added custom field.
+
+        Returns:
+            callable: A lambda function to be used as the event callback.
+        """
         return lambda: self.on_input_textarea_change(input, self.textarea, new_input)    
             
     def create_select_input(self, input, new_added_inp = False):
+        """
+        Creates a dropdown select (QComboBox) input widget.
+
+        Args:
+            input (dict): The dictionary defining the input field.
+            new_added_inp (bool): True if this is a user-added custom field.
+
+        Returns:
+            QWidget: The container widget for the created input field.
+        """
         widget_container = QWidget()
         h_box = QHBoxLayout()
         h_box.setContentsMargins(0,10,0, 10)      
@@ -563,6 +711,14 @@ class LaserbloodMetadataPopup(QWidget):
     
 
     def on_input_value_change(self, value, input, new_input):        
+        """
+        Handles value changes for numeric or select inputs.
+
+        Args:
+            value (int or float or str): The new value.
+            input (dict): The dictionary defining the input field.
+            new_input (bool): True if this is a user-added custom field.
+        """
         self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], value, input["REQUIRED"], input["LABEL"])
         if new_input:
             self.update_new_added_inputs_settings(value, input)
@@ -586,6 +742,14 @@ class LaserbloodMetadataPopup(QWidget):
                 )
     
     def on_input_state_change(self, state, input, new_input):
+        """
+        Handles state changes for boolean switch inputs.
+
+        Args:
+            state (bool): The new boolean state.
+            input (dict): The dictionary defining the input field.
+            new_input (bool): True if this is a user-added custom field.
+        """
         if new_input:
             self.update_new_added_inputs_settings(state, input)
         else:    
@@ -594,6 +758,14 @@ class LaserbloodMetadataPopup(QWidget):
             
     
     def on_input_text_change(self, text, input, new_input):
+        """
+        Handles text changes for single-line text inputs.
+
+        Args:
+            text (str): The new text.
+            input (dict): The dictionary defining the input field.
+            new_input (bool): True if this is a user-added custom field.
+        """
         self.dispatch_input_warning_styles(self.app.laserblood_widgets[input["LABEL"]], input["INPUT_TYPE"], text, input["REQUIRED"], input["LABEL"])
         if new_input:
             self.update_new_added_inputs_settings(text, input)
@@ -603,6 +775,14 @@ class LaserbloodMetadataPopup(QWidget):
         
     
     def on_input_textarea_change(self, input, textarea, new_input):
+        """
+        Handles text changes for multi-line text area inputs.
+
+        Args:
+            input (dict): The dictionary defining the input field.
+            textarea (QPlainTextEdit): The text area widget.
+            new_input (bool): True if this is a user-added custom field.
+        """
         text_content = textarea.toPlainText()
         if not new_input:
             self.update_settings(text_content, input)
@@ -611,6 +791,16 @@ class LaserbloodMetadataPopup(QWidget):
     
     
     def dispatch_input_warning_styles(self, input, input_type, value, required, input_label):
+        """
+        Applies visual warning styles (e.g., border color) to an input based on its validity.
+
+        Args:
+            input (QWidget): The input widget to style.
+            input_type (str): The type of the input (e.g., 'int', 'text').
+            value: The current value of the input.
+            required (bool): Whether the input is required.
+            input_label (str): The label of the input field.
+        """
         str_value = str(value)
         if input_label == "Weeks":
             if required and (value is None or str_value.strip() == ""):
@@ -628,6 +818,14 @@ class LaserbloodMetadataPopup(QWidget):
         
     
     def toggle_input_border_style(self, input_type, input, color):
+        """
+        Helper method to change the border color of an input widget.
+
+        Args:
+            input_type (str): The type of the input.
+            input (QWidget): The input widget.
+            color (str): The new color for the border.
+        """
         if input_type == 'int' or input_type == 'float':
             input.setStyleSheet(GUIStyles.set_input_number_style(border_color = color, disabled_border_color=color))
         if input_type == 'select':
@@ -636,6 +834,15 @@ class LaserbloodMetadataPopup(QWidget):
            input.setStyleSheet(GUIStyles.set_input_text_style(border_color = color, disabled_border_color=color))         
     
     def create_remove_btn(self, input):
+        """
+        Creates a button to remove a custom metadata field.
+
+        Args:
+            input (dict): The dictionary defining the input field to be removed.
+
+        Returns:
+            QPushButton: The remove button.
+        """
         remove_btn = QPushButton("")
         remove_btn.setStyleSheet("background-color: transparent; border: none")
         remove_btn.setIcon(QIcon(resource_path("assets/close-red-icon.png")))
@@ -644,18 +851,40 @@ class LaserbloodMetadataPopup(QWidget):
         return remove_btn
     
     def remove_input(self, input):
+        """
+        Removes a custom metadata field from settings and the UI.
+
+        Args:
+            input (dict): The dictionary defining the input field to remove.
+        """
         filtered_inputs  = [inp for inp in self.app.laserblood_new_added_inputs if inp.get('LABEL') != input["LABEL"]]
         self.app.laserblood_new_added_inputs = filtered_inputs
         self.app.settings.setValue(NEW_ADDED_LASERBLOOD_INPUTS_KEY, json.dumps(self.app.laserblood_new_added_inputs)) 
-        self.app.clear_layout_tree(self.new_added_inputs_grid)   
+        clear_layout_tree(self.new_added_inputs_grid)   
         self.init_new_input_added_layout()    
     
     
     def on_save_btn_click(self):
-        self.close()
+            """Handles the click event for the 'SAVE' button by closing the popup."""
+            self.close()
     
     @staticmethod
     def laserblood_metadata_valid(app):
+        """
+        Validates all Laserblood metadata fields to ensure requirements are met.
+
+        This method checks standard settings, custom user-added settings,
+        and the selection of laser and filter types. It enforces that all
+        fields marked as 'REQUIRED' are filled. It also contains special
+        logic to make the 'Weeks' field required only when 'Protein source'
+        is 'murine plasma'.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            bool: True if all metadata is valid, False otherwise.
+        """
         settings = app.laserblood_settings
         custom_settings = app.laserblood_new_added_inputs
         protein_source_input = next((d for d in settings if d.get("LABEL") == "Protein source"), None)
@@ -690,16 +919,37 @@ class LaserbloodMetadataPopup(QWidget):
         return settings_valid and custom_settings_valid and laser_type_valid and filter_type_valid
     
     def update_new_added_inputs_settings(self, value, input):
+        """
+        Updates the value of a user-added custom metadata field and saves it to settings.
+
+        Args:
+            value: The new value for the input field.
+            input (dict): The dictionary defining the input field.
+        """
         next((setting.update({"VALUE": value}) for setting in self.app.laserblood_new_added_inputs if setting.get("LABEL") == input["LABEL"]), None)
         self.app.settings.setValue(NEW_ADDED_LASERBLOOD_INPUTS_KEY, json.dumps(self.app.laserblood_new_added_inputs))        
           
     
     def update_settings(self, value, input):
+        """
+        Updates the value of a standard metadata field and saves it to settings.
+
+        Args:
+            value: The new value for the input field.
+            input (dict): The dictionary defining the input field.
+        """
         next((setting.update({"VALUE": value}) for setting in self.app.laserblood_settings if setting.get("LABEL") == input["LABEL"]), None)
         self.app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(self.app.laserblood_settings))
  
     @staticmethod
     def set_average_CPS(cps_counts, app):
+        """
+        Calculates and sets the 'Average CPS' metadata field.
+
+        Args:
+            cps_counts (list): A list of CPS values.
+            app: The main application instance.
+        """
         if cps_counts:
             total_avg = sum(cps_counts) / len(cps_counts)
             total_avg_rounded = round(total_avg, 2)
@@ -711,6 +961,13 @@ class LaserbloodMetadataPopup(QWidget):
     
     @staticmethod
     def set_frequency_mhz(frequency_mhz, app):
+        """
+        Sets the 'Laser repetition rate' metadata field.
+
+        Args:
+            frequency_mhz (float): The laser frequency in MHz.
+            app: The main application instance.
+        """
         if frequency_mhz != 0.0:
              next((setting.update({"VALUE": frequency_mhz}) for setting in app.laserblood_settings if setting.get("LABEL") == "Laser repetition rate"), None)
              app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))   
@@ -718,6 +975,13 @@ class LaserbloodMetadataPopup(QWidget):
 
     @staticmethod
     def set_average_SBR(SBR_counts, app):
+        """
+        Calculates and sets the 'Average SBR' metadata field.
+
+        Args:
+            SBR_counts (list): A list of SBR values.
+            app: The main application instance.
+        """
         if SBR_counts:
             total_avg = sum(SBR_counts) / len(SBR_counts)
             total_avg_rounded = round(total_avg, 2)
@@ -729,8 +993,15 @@ class LaserbloodMetadataPopup(QWidget):
         
     @staticmethod     
     def set_FPGA_firmware(app):
-        frequency_mhz = app.get_frequency_mhz()
-        firmware_selected, _ = app.get_firmware_selected(frequency_mhz)
+        """
+        Determines and sets the 'FPGA firmware type' metadata field based on the selected firmware.
+
+        Args:
+            app: The main application instance.
+        """
+        from core.controls_controller import ControlsController
+        frequency_mhz = ControlsController.get_frequency_mhz(app)
+        firmware_selected, _ = ControlsController.get_firmware_selected(app, frequency_mhz)
         fpga = ""
         if firmware_selected is not None and "100ps" in firmware_selected:
             fpga = "100ps"
@@ -742,15 +1013,20 @@ class LaserbloodMetadataPopup(QWidget):
    
     @staticmethod
     def set_cps_threshold(app, cps_threshold):
+        """
+        Sets the 'Pile-up Threshold' metadata field.
+
+        Args:
+            app: The main application instance.
+            cps_threshold (int): The pile-up threshold value.
+        """
         next((setting.update({"VALUE": cps_threshold}) for setting in app.laserblood_settings if setting.get("LABEL") == "Pile-up Threshold"), 0)
         app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))   
         
           
         
     def center_window(self):   
-        self.setMinimumWidth(700)
-        window_geometry = self.frameGeometry()
-        screen_geometry = QApplication.primaryScreen().availableGeometry().center()
-        window_geometry.moveCenter(screen_geometry)
-        self.move(window_geometry.topLeft())
+        """Centers the popup window on the primary screen."""
+
+
 

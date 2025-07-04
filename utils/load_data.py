@@ -3,10 +3,19 @@ import struct
 import matplotlib.pyplot as plt
 import numpy as np
 
-from components.helpers import ns_to_mhz
+from utils.helpers import ns_to_mhz
 
 
 def extract_metadata(file_path, magic_number):
+    """Extracts JSON metadata from the header of a binary data file.
+
+    Args:
+        file_path (str): The path to the binary file.
+        magic_number (bytes): The expected 4-byte magic number at the start of the file.
+
+    Returns:
+        dict: The parsed metadata from the file header.
+    """
     with open(file_path, "rb") as f:
         assert f.read(4) == magic_number
         header_length = int.from_bytes(f.read(4), byteorder="little")
@@ -16,6 +25,16 @@ def extract_metadata(file_path, magic_number):
 
 
 def load_data(file_path, selected_channels):
+    """Loads and aggregates spectroscopy data from a binary file.
+
+    Args:
+        file_path (str): The path to the spectroscopy data file (format SP01).
+        selected_channels (list): A list of channel indices to load. Note: This is currently
+                                  overridden by the channels specified in the file's metadata.
+
+    Returns:
+        dict: A dictionary where keys are channel indices and values are the summed decay curves.
+    """
     data = {}
     with open(file_path, "rb") as f:
         assert f.read(4) == b"SP01"
@@ -38,6 +57,15 @@ def load_data(file_path, selected_channels):
 
 
 def load_phasors(file_path, selected_channels):
+    """Loads phasor data from a binary file.
+
+    Args:
+        file_path (str): The path to the phasor data file (format SPF1).
+        selected_channels (list): A list of channel indices to load data for.
+
+    Returns:
+        dict: A nested dictionary of phasor data: {channel: {harmonic: [(g, s), ...]}}.
+    """
     data = {}
     with open(file_path, "rb") as f:
         assert f.read(4) == b"SPF1"
@@ -72,6 +100,11 @@ def load_phasors(file_path, selected_channels):
 
 
 def plot_phasors(data):
+    """Generates and displays a simple plot of phasor data.
+
+    Args:
+        data (dict): A nested dictionary of phasor data from load_phasors.
+    """
     fig, ax = plt.subplots()
 
     harmonic_colors = plt.cm.viridis(
@@ -124,6 +157,20 @@ def plot_phasors_data(
     selected_harmonic,
     show_plot=True,
 ):
+    """Creates a comprehensive plot showing both spectroscopy and phasor data.
+
+    Args:
+        phasors_data (dict): The phasor data.
+        laser_period (float): The laser period in nanoseconds.
+        active_channels (list): List of active channel indices.
+        spectroscopy_times (list): List of timestamps for spectroscopy curves.
+        spectroscopy_curves (list): List of spectroscopy decay curves.
+        selected_harmonic (int): The specific harmonic to plot in the phasor plots.
+        show_plot (bool, optional): If True, displays the plot. Defaults to True.
+
+    Returns:
+        matplotlib.figure.Figure: The generated figure object.
+    """
     # plot layout config
     num_channels = len(phasors_data)
     max_channels_per_row = 3
@@ -231,6 +278,17 @@ def plot_phasors_data(
 
 
 def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
+    """Generates and displays a plot of summed spectroscopy decay curves.
+
+    Args:
+        channel_curves (list): A list of lists, where each inner list contains decay curves for a channel.
+        times (list): A list of timestamps for the acquisitions.
+        metadata (dict): Metadata dictionary containing 'laser_period_ns' and 'channels'.
+        show_plot (bool, optional): If True, displays the plot. Defaults to True.
+
+    Returns:
+        matplotlib.figure.Figure: The generated figure object.
+    """
     fig, ax = plt.subplots()
     ax.set_xlabel(f"Time (ns, Laser period = {metadata['laser_period_ns']} ns)")
     ax.set_ylabel("Intensity")
@@ -266,6 +324,19 @@ def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
 
 
 def plot_fitting_data(data, show_plot=True):
+    """Generates and displays plots for curve fitting results.
+
+    Creates a grid of plots, each showing the original data, the fitted curve,
+    and a separate subplot for the residuals.
+
+    Args:
+        data (list): A list of dictionaries, where each dictionary contains the
+                     results of a single fit from `fitting_utilities.fit_decay_curve`.
+        show_plot (bool, optional): If True, displays the plot. Defaults to True.
+
+    Returns:
+        matplotlib.figure.Figure: The generated figure object.
+    """
     valid_results = []
     for d in data:
         if "error" in d:
@@ -342,4 +413,4 @@ def plot_fitting_data(data, show_plot=True):
     plt.tight_layout(rect=[0, 0.1, 1, 1])        
     if show_plot:
         plt.show()
-    return fig    
+    return fig

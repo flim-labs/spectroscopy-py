@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 from PyQt6.QtCore import QPropertyAnimation
 from PyQt6.QtWidgets import (
@@ -11,17 +12,25 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import Qt, QSize
 from components.read_data import ReadData, ReadDataControls
-from components.resource_path import resource_path
-from components.gui_styles import GUIStyles
-from load_data import plot_fitting_data, plot_phasors_data, plot_spectroscopy_data
-from settings import *
+from utils.resource_path import resource_path
+from utils.gui_styles import GUIStyles
+from utils.load_data import plot_fitting_data, plot_phasors_data, plot_spectroscopy_data
+import settings.settings as s
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
 
 
 class CollapseButton(QWidget):
+    """A button widget to collapse or expand another widget."""
     def __init__(self, collapsible_widget, parent=None):
+        """
+        Initializes the CollapseButton.
+
+        Args:
+            collapsible_widget (QWidget): The widget that will be collapsed/expanded.
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.collapsible_widget = collapsible_widget
         self.collapsed = True
@@ -43,6 +52,7 @@ class CollapseButton(QWidget):
         self.animation.setDuration(300)
 
     def toggle_collapsible(self):
+        """Toggles the visibility of the collapsible widget with an animation."""
         self.collapsed = not self.collapsed
         if self.collapsed:
             self.animation.setStartValue(0)
@@ -60,7 +70,15 @@ class CollapseButton(QWidget):
 
 
 class TimeTaggerWidget(QWidget):
+    """A widget containing a checkbox to enable or disable the Time Tagger."""
     def __init__(self, app, parent=None):
+        """
+        Initializes the TimeTaggerWidget.
+
+        Args:
+            app: The main application instance.
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.app = app
         write_data = self.app.write_data_gui
@@ -90,15 +108,29 @@ class TimeTaggerWidget(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         main_layout.addWidget(time_tagger_container)
-        self.app.widgets[TIME_TAGGER_WIDGET] = self
+        self.app.widgets[s.TIME_TAGGER_WIDGET] = self
         self.setLayout(main_layout)
         self.setVisible(write_data)
         
     def on_time_tagger_state_changed(self, checked):
+        """
+        Handles the state change of the time tagger checkbox.
+
+        Args:
+            checked (bool): The new state of the checkbox.
+        """
         self.app.time_tagger = checked
 
 class ReadAcquireModeButton(QWidget):
+    """A widget with 'ACQUIRE' and 'READ' toggle buttons."""
     def __init__(self, app, parent=None):
+        """
+        Initializes the ReadAcquireModeButton widget.
+
+        Args:
+            app: The main application instance.
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.app = app
         layout = QVBoxLayout()
@@ -109,6 +141,12 @@ class ReadAcquireModeButton(QWidget):
         self.setLayout(layout)
 
     def create_buttons(self):
+        """
+        Creates the 'ACQUIRE' and 'READ' buttons and their layout.
+
+        Returns:
+            QHBoxLayout: The layout containing the buttons.
+        """
         buttons_row_layout = QHBoxLayout()
         buttons_row_layout.setSpacing(0)
         buttons_row_layout.setContentsMargins(0, 10, 0, 0)
@@ -128,18 +166,20 @@ class ReadAcquireModeButton(QWidget):
         read_button.setChecked(self.app.acquire_read_mode != "acquire")
         read_button.clicked.connect(self.on_read_btn_pressed)
         buttons_row_layout.addWidget(read_button)
-        self.app.control_inputs[ACQUIRE_BUTTON] = acquire_button
-        self.app.control_inputs[READ_BUTTON] = read_button
+        self.app.control_inputs[s.ACQUIRE_BUTTON] = acquire_button
+        self.app.control_inputs[s.READ_BUTTON] = read_button
         self.apply_base_styles()
         self.set_buttons_styles()
         return buttons_row_layout
 
     def apply_base_styles(self):
+        """Applies the base stylesheet to the buttons."""
         base_style = GUIStyles.acquire_read_btn_style()
-        self.app.control_inputs[ACQUIRE_BUTTON].setStyleSheet(base_style)
-        self.app.control_inputs[READ_BUTTON].setStyleSheet(base_style)
+        self.app.control_inputs[s.ACQUIRE_BUTTON].setStyleSheet(base_style)
+        self.app.control_inputs[s.READ_BUTTON].setStyleSheet(base_style)
 
     def set_buttons_styles(self):
+        """Sets the specific styles for the buttons based on the current mode."""
         def get_buttons_style(color_acquire, color_read, bg_acquire, bg_read):
             return f"""
             QPushButton {{
@@ -179,46 +219,70 @@ class ReadAcquireModeButton(QWidget):
                 bg_acquire="#DA1212",
                 bg_read="#cecece",
             )
-        self.app.control_inputs[ACQUIRE_BUTTON].setStyleSheet(style)
-        self.app.control_inputs[READ_BUTTON].setStyleSheet(style)
+        self.app.control_inputs[s.ACQUIRE_BUTTON].setStyleSheet(style)
+        self.app.control_inputs[s.READ_BUTTON].setStyleSheet(style)
 
     def on_acquire_btn_pressed(self, checked):
-        #self.app.reset_time_shifts_values()    
-        self.app.control_inputs[ACQUIRE_BUTTON].setChecked(checked)
-        self.app.control_inputs[READ_BUTTON].setChecked(not checked)
+        """
+        Handles the click event for the 'ACQUIRE' button.
+
+        Args:
+            checked (bool): The new checked state of the button.
+        """
+        from core.plots_controller import PlotsController
+        from core.phasors_controller import PhasorsController
+        from core.controls_controller import ControlsController  
+        self.app.control_inputs[s.ACQUIRE_BUTTON].setChecked(checked)
+        self.app.control_inputs[s.READ_BUTTON].setChecked(not checked)
         self.app.acquire_read_mode = "acquire" if checked else "read"
         self.app.settings.setValue(
-            SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
+            s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
         )
         self.set_buttons_styles()
-        self.app.reader_data = deepcopy(DEFAULT_READER_DATA)
-        self.app.clear_plots()
-        self.app.generate_plots()
-        self.app.initialize_phasor_feature()
-        self.app.toggle_intensities_widgets_visibility()
+        self.app.reader_data = deepcopy(s.DEFAULT_READER_DATA)
+        PlotsController.clear_plots(self.app)
+        PlotsController.generate_plots(self.app)
+        PhasorsController.initialize_phasor_feature(self.app)
+        ControlsController.toggle_intensities_widgets_visibility(self.app)
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
 
     def on_read_btn_pressed(self, checked):
-        #self.app.reset_time_shifts_values()        
-        self.app.control_inputs[ACQUIRE_BUTTON].setChecked(not checked)
-        self.app.control_inputs[READ_BUTTON].setChecked(checked)
+        """
+        Handles the click event for the 'READ' button.
+
+        Args:
+            checked (bool): The new checked state of the button.
+        """
+        from core.plots_controller import PlotsController
+        from core.controls_controller import ControlsController      
+        self.app.control_inputs[s.ACQUIRE_BUTTON].setChecked(not checked)
+        self.app.control_inputs[s.READ_BUTTON].setChecked(checked)
         self.app.acquire_read_mode = "read" if checked else "acquire"
         self.app.settings.setValue(
-            SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
+            s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
         )
         self.set_buttons_styles()
-        self.app.clear_plots()
-        self.app.generate_plots()
-        self.app.toggle_intensities_widgets_visibility()
+        PlotsController.clear_plots(self.app)
+        PlotsController.generate_plots(self.app)
+        ControlsController.toggle_intensities_widgets_visibility(self.app)
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
 
 
 class ExportPlotImageButton(QWidget):
+    """A button to export the current plot as an image."""
     def __init__(self, app, show=True, parent=None):
+        """
+        Initializes the ExportPlotImageButton.
+
+        Args:
+            app: The main application instance.
+            show (bool, optional): Whether the button is visible. Defaults to True.
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.app = app
         self.show = show
@@ -231,6 +295,12 @@ class ExportPlotImageButton(QWidget):
         self.setLayout(layout)
 
     def create_button(self):
+        """
+        Creates the export image button.
+
+        Returns:
+            QPushButton: The created button.
+        """
         export_img_button = QPushButton()
         export_img_button.setIcon(QIcon(resource_path("assets/save-img-icon.png")))
         export_img_button.setIconSize(QSize(30, 30))
@@ -242,15 +312,26 @@ class ExportPlotImageButton(QWidget):
             ReadDataControls.read_bin_metadata_enabled(self.app) and self.show
         )
         export_img_button.setVisible(button_visible)
-        if self.app.tab_selected != TAB_FITTING:
-            self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON] = export_img_button
+        if self.app.tab_selected != s.TAB_FITTING:
+            self.app.control_inputs[s.EXPORT_PLOT_IMG_BUTTON] = export_img_button
         return export_img_button
 
     def set_data_to_save(self, data):
+        """
+        Sets the data that will be used for plotting and saving.
+
+        Args:
+            data: The data to be saved.
+        """
         self.data = data
 
     def on_export_plot_image(self):
-        if self.app.tab_selected == TAB_SPECTROSCOPY:
+        """
+        Handles the click event to export the plot image.
+
+        Generates a plot based on the currently selected tab and saves it as an image.
+        """
+        if self.app.tab_selected == s.TAB_SPECTROSCOPY:
             channels_curves, times, metadata = (
                 ReadData.prepare_spectroscopy_data_for_export_img(self.app)
             )
@@ -258,7 +339,7 @@ class ExportPlotImageButton(QWidget):
                 channels_curves, times, metadata, show_plot=False
             )
             ReadData.save_plot_image(plot)
-        if self.app.tab_selected == TAB_PHASORS:
+        if self.app.tab_selected == s.TAB_PHASORS:
             (
                 phasors_data,
                 laser_period,
@@ -276,10 +357,10 @@ class ExportPlotImageButton(QWidget):
                 show_plot=False,
             )
             ReadData.save_plot_image(plot)
-        if self.app.tab_selected == TAB_FITTING:
+        if self.app.tab_selected == s.TAB_FITTING:
             if self.data:
                 plot = plot_fitting_data(self.data, show_plot=False)
                 ReadData.save_plot_image(plot)
-            
 
-     
+
+

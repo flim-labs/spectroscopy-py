@@ -1,20 +1,33 @@
 import os
 import json
-from datetime import datetime
 import re
 from PyQt6.QtWidgets import QFileDialog
-from laserblood_settings import LASER_TYPES
-from settings import DEFAULT_BIN_WIDTH, SETTINGS_BIN_WIDTH, SETTINGS_TAU_NS
+from settings.laserblood_settings import LASER_TYPES
+from settings.settings import DEFAULT_BIN_WIDTH, SETTINGS_BIN_WIDTH, SETTINGS_TAU_NS
 
 
 class FileUtils:
+    """A collection of utility methods for file and directory operations."""
     @staticmethod
     def directory_selector(window):
+        """Opens a dialog for the user to select a directory.
+
+        Args:
+            window (QWidget): The parent window for the dialog.
+
+        Returns:
+            str: The path of the selected directory, or an empty string if canceled.
+        """
         folder_path = QFileDialog.getExistingDirectory(window, "Select Directory")
         return folder_path
 
     @staticmethod
     def get_recent_spectroscopy_file():
+        """Finds the most recent spectroscopy data file in the default data directory.
+
+        Returns:
+            str: The full path to the most recent spectroscopy file.
+        """
         data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
         files = [
             f
@@ -30,6 +43,11 @@ class FileUtils:
 
     @staticmethod
     def get_recent_time_tagger_file():
+        """Finds the most recent time tagger data file in the default data directory.
+
+        Returns:
+            str: The full path to the most recent time tagger file.
+        """
         data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
         files = [
             f
@@ -43,6 +61,14 @@ class FileUtils:
 
     @staticmethod
     def get_recent_phasors_file():
+        """Finds the most recent phasors data file in the default data directory.
+
+        Raises:
+            FileNotFoundError: If no suitable phasors file is found.
+
+        Returns:
+            str: The full path to the most recent phasors file.
+        """
         data_folder = os.path.join(os.environ["USERPROFILE"], ".flim-labs", "data")
         files = [
             f
@@ -58,6 +84,16 @@ class FileUtils:
 
     @staticmethod
     def rename_bin_file(source_file, new_filename, window):
+        """Constructs a new, descriptive filename for a binary data file.
+
+        Args:
+            source_file (str): The original path of the binary file.
+            new_filename (str): The base name for the new file.
+            window: The main application window instance.
+
+        Returns:
+            str: The newly constructed filename.
+        """
         laser_key, filter_key = FileUtils.get_laser_and_filter_names_info(window)
         _, file_extension = os.path.splitext(source_file)
         base_name = os.path.basename(source_file).replace(file_extension, "")
@@ -69,6 +105,14 @@ class FileUtils:
 
     @staticmethod
     def get_laser_and_filter_names_info(window):
+        """Retrieves file-safe string representations (slugs) for the current laser and filter settings.
+
+        Args:
+            window: The main application window instance.
+
+        Returns:
+            tuple: A tuple containing the laser slug and the filter slug.
+        """
         filter_wavelength_input = next(
             (
                 input
@@ -86,6 +130,18 @@ class FileUtils:
     def save_laserblood_metadata_json(
         filename, dest_path, window, timestamp, reference_files
     ):
+        """Saves a JSON file containing metadata specific to the LaserBlood project.
+
+        Args:
+            filename (str): The base name for the metadata file.
+            dest_path (str): The directory where the file will be saved.
+            window: The main application window instance.
+            timestamp (str): The timestamp of the acquisition.
+            reference_files (list): A list of paths to the associated data files.
+
+        Returns:
+            str: The full path to the saved JSON file.
+        """
         filter_wavelength_input = next(
             (
                 input
@@ -109,6 +165,17 @@ class FileUtils:
 
     @staticmethod
     def parse_metadata_output(app, reference_files, timestamp):
+        """Gathers and formats all relevant acquisition metadata into a list of dictionaries.
+
+        Args:
+            app: The main application instance.
+            reference_files (list): A list of paths to the associated data files.
+            timestamp (str): The timestamp of the acquisition.
+
+        Returns:
+            list: A list of dictionaries, where each dictionary represents a metadata field.
+        """
+        from core.controls_controller import ControlsController
         reference_filenames = [file.rsplit("\\", 1)[-1] for file in reference_files]
         reference_filenames = [os.path.basename(file) for file in reference_filenames]
         filenames_string = ", ".join(reference_filenames)
@@ -129,8 +196,8 @@ class FileUtils:
             if filter_type in ["LP", "SP"]
             else filter_wavelength_input["VALUE"]
         )
-        frequency_mhz = app.get_frequency_mhz()
-        firmware_selected, connection_type = app.get_firmware_selected(frequency_mhz)
+        frequency_mhz = ControlsController.get_frequency_mhz(app)
+        firmware_selected, connection_type = ControlsController.get_firmware_selected(app, frequency_mhz)
         firmware_selected_name = os.path.basename(firmware_selected)
         num_replicate = app.replicates
         parsed_data = [
@@ -209,6 +276,15 @@ class FileUtils:
 
     @staticmethod
     def get_laser_info_slug(window, filter_input):
+        """Generates file-safe string representations (slugs) for laser and filter types.
+
+        Args:
+            window: The main application window instance.
+            filter_input (dict): The dictionary representing the filter wavelength setting.
+
+        Returns:
+            tuple: A tuple containing the laser slug and the filter slug.
+        """
         laser_type = window.laserblood_laser_type
         filter_type = filter_input["VALUE"]
         laser_key = next(
@@ -221,6 +297,15 @@ class FileUtils:
 
     @staticmethod
     def compare_file_timestamps(file_path1, file_path2):
+        """Calculates the absolute difference in creation time between two files.
+
+        Args:
+            file_path1 (str): Path to the first file.
+            file_path2 (str): Path to the second file.
+
+        Returns:
+            float: The absolute difference in seconds between the files' creation times.
+        """
         ctime1 = os.path.getctime(file_path1)
         ctime2 = os.path.getctime(file_path2)
         time_diff = abs(ctime1 - ctime2)
@@ -228,6 +313,14 @@ class FileUtils:
 
     @staticmethod
     def clean_filename(filename):
+        """Removes characters from a string that are not letters, numbers, or underscores.
+
+        Args:
+            filename (str): The input string.
+
+        Returns:
+            str: The cleaned string, suitable for use as a filename.
+        """
         # Keep only letters, numbers and underscores
         filename = filename.replace(" ", "_")
         return re.sub(r"[^a-zA-Z0-9_]", "", filename)

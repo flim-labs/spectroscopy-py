@@ -1,3 +1,17 @@
+<a name="readme-top"></a>
+
+<div align="center">
+  <h1>Spectroscopy</h1>
+</div>
+<div align="center">
+  <a href="https://www.flimlabs.com/">
+    <img src="./docs/assets/images/shared/spectroscopy-logo.png" alt="Logo" width="120" height="120">
+  </a>
+</div>
+<br>
+
+
+
 <!-- TABLE OF CONTENTS -->
 <details>
   <summary>Table of Contents</summary>
@@ -23,35 +37,29 @@
 
 # About the project
 
-[![Spectroscopy GUI Overview](./docs/assets/images/screenshots/spectroscopy_gui_thumbnail_general.png)](https://www.youtube.com/watch?v=-ys8IoJaCI0)
+<div align="center">
+    <img src="./docs/assets/images/spectroscopy-gui-v2.4.png" alt="Spectroscopy GUI" width="100%">
+</div>
 
-Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py), a Python application designed to **analyze the fluorescence intensity decay as a function of time** and plotting a decay profile histogram. Facilitated by an underlying data processor developed in Rust, responsible for data retrieval from the hardware component, this application enables real-time data analysis and visualization. Whether your focus is on rigorous data analysis or dynamic visualizations, Spectroscopy serves as a flexible tool for the precise measurement and exploration of fluorescence intensity decay profile.
+
+Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py), a Python application designed to **analyze the fluorescence intensity decay as a function of time**. Facilitated by an underlying data processor developed in Rust, responsible for data retrieval from the hardware component, this application enables real-time data analysis and visualization. Whether your focus is on rigorous data analysis or dynamic visualizations, Spectroscopy serves as a flexible tool for the precise measurement and exploration of fluorescence intensity decay profile and lifetimes distributions.
 
 ### Built With
 
-|                                                                      |                                                          |
-| -------------------------------------------------------------------- | -------------------------------------------------------- |
-| [Python](https://www.python.org/)                                    | [click](https://pypi.org/project/click/)                 |
-| [colorama](https://pypi.org/project/colorama/)                       | [contourpy](https://pypi.org/project/contourpy/)         |
-| [cycler](https://pypi.org/project/cycler/)                           | [fonttools](https://pypi.org/project/fonttools/)         |
-| [importlib-resources](https://pypi.org/project/importlib-resources/) | [Jinja2](https://pypi.org/project/Jinja2/)               |
-| [kiwisolver](https://pypi.org/project/kiwisolver/)                   | [MarkupSafe](https://pypi.org/project/MarkupSafe/)       |
-| [matplotlib](https://pypi.org/project/matplotlib/)                   | [mpld3](https://pypi.org/project/mpld3/)                 |
-| [numpy](https://pypi.org/project/numpy/)                             | [packaging](https://pypi.org/project/packaging/)         |
-| [pillow](https://pypi.org/project/pillow/)                           | [pyparsing](https://pypi.org/project/pyparsing/)         |
-| [PyQt6](https://pypi.org/project/PyQt6/)                             | [pyqt6-plugins](https://pypi.org/project/pyqt6-plugins/) |
-| [PyQt6-Qt6](https://pypi.org/project/PyQt6-Qt6/)                     | [PyQt6-sip](https://pypi.org/project/PyQt6-sip/)         |
-| [pyqt6-tools](https://pypi.org/project/pyqt6-tools/)                 | [pyqtgraph](https://pypi.org/project/pyqtgraph/)         |
-| [python-dateutil](https://pypi.org/project/python-dateutil/)         | [python-dotenv](https://pypi.org/project/python-dotenv/) |
-| [qt6-applications](https://pypi.org/project/qt6-applications/)       | [qt6-tools](https://pypi.org/project/qt6-tools/)         |
-| [six](https://pypi.org/project/six/)                                 | [zipp](https://pypi.org/project/zipp/)                   |
-| [flim-labs](https://pypi.org/project/flim-labs/)                     |
+* [Python](https://www.python.org/)
+* [PyQt6](https://pypi.org/project/PyQt6/)
+* [pyqtgraph](https://www.pyqtgraph.org/)
+* [matplotlib](https://pypi.org/project/matplotlib/)
+* [numpy](https://numpy.org/)
+* [scipy](https://scipy.org/)
+* [flim-labs](https://pypi.org/project/flim-labs/)
+
 
 <!-- GETTING STARTED -->
 
 ## Getting Started
 
-To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this [link](https://github.com/flim-labs/spectroscopy-py/releases/tag/v1.0) (_Note: you still need to have the FLIM LABS acquisition card_).
+To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this [link](https://github.com/flim-labs/spectroscopy-py/releases/tag/v2.4) (_Note: you still need to have the FLIM LABS acquisition card_).
 
 To get a local copy up and running follow these steps.
 
@@ -93,7 +101,8 @@ To be able to run this project locally on your machine you need to satisfy these
 
 Navigate to the following links to view detailed application usage guides:
 
-- [Spectroscopy GUI guide](./docs/v1.0/index.md)
+- [Spectroscopy GUI guide](./docs/v2.4/index.md)
+- [Spectroscopy Data Export guide ](./docs/python-flim-labs/spectroscopy-file-format.md)
 - [Spectroscopy Console guide](./docs/python-flim-labs/spectroscopy-console.md)
 
 ## Contact
@@ -103,4 +112,3 @@ FLIM LABS: info@flimlabs.com
 Project Link: [FLIM LABS - Spectroscopy](https://github.com/flim-labs/spectroscopy-py)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
