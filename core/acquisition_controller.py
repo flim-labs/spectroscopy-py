@@ -3,19 +3,19 @@ import flim_labs
 import numpy as np
 from components.box_message import BoxMessage
 from components.check_card import CheckCard
-from components.export_data import ExportData
-from components.gui_styles import GUIStyles
-from components.helpers import calc_SBR, mhz_to_ns, ns_to_mhz
+from utils.export_data import ExportData
+from utils.gui_styles import GUIStyles
+from utils.helpers import calc_SBR, humanize_number, mhz_to_ns, ns_to_mhz
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
 from components.lin_log_control import LinLogControl
 from components.plots_config import PlotsConfigPopup
 from core.phasors_controller import PhasorsController
-from settings import DEFAULT_BIN_WIDTH, DEFAULT_FREE_RUNNING, MODE_RUNNING, MODE_STOPPED, PHASORS_RESOLUTIONS, SETTINGS_ACQUISITION_TIME, SETTINGS_BIN_WIDTH, SETTINGS_CPS_THRESHOLD, SETTINGS_FREE_RUNNING, SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT, SETTINGS_TAU_NS, TAB_FITTING, TAB_PHASORS, TAB_SPECTROSCOPY
+import settings.settings as s
 from PyQt6.QtWidgets import (
     QApplication,
     QMessageBox,
 )
-from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtCore import QTimer
 
 class AcquisitionController:
     """
@@ -44,7 +44,7 @@ class AcquisitionController:
             BoxMessage.setup("Error", "No channels selected", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
             return False
         
-        bin_width_micros = int(app.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH))
+        bin_width_micros = int(app.settings.value(s.SETTINGS_BIN_WIDTH, s.DEFAULT_BIN_WIDTH))
         if bin_width_micros < 1000:
             BoxMessage.setup("Error", "Bin width value cannot be less than 1000μs", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
             return False
@@ -72,7 +72,7 @@ class AcquisitionController:
                         if a configuration dialog was opened, indicating that the
                         process should wait for user input.
         """
-        if app.tab_selected != TAB_PHASORS:
+        if app.tab_selected != s.TAB_PHASORS:
             return True
 
         if not app.reference_file:
@@ -124,20 +124,20 @@ class AcquisitionController:
         acquisition_time = ControlsController.get_acquisition_time(app)
         firmware_selected, _ = ControlsController.get_firmware_selected(app, frequency_mhz)
 
-        tau_ns = float(app.settings.value(SETTINGS_TAU_NS, "0")) if ControlsController.is_reference_phasors(app) else None
+        tau_ns = float(app.settings.value(s.SETTINGS_TAU_NS, "0")) if ControlsController.is_reference_phasors(app) else None
         
         reference_file = None
-        if app.tab_selected == TAB_PHASORS:
+        if app.tab_selected == s.TAB_PHASORS:
             reference_file = app.reference_file
             with open(app.reference_file, "r") as f:
                 reference_data = json.load(f)
                 app.harmonic_selector_value = int(reference_data["harmonics"])
         else:
-             app.harmonic_selector_value = app.control_inputs[SETTINGS_HARMONIC].value()
+             app.harmonic_selector_value = app.control_inputs[s.SETTINGS_HARMONIC].value()
 
         params = {
             "enabled_channels": app.selected_channels,
-            "bin_width_micros": int(app.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)),
+            "bin_width_micros": int(app.settings.value(s.SETTINGS_BIN_WIDTH, s.DEFAULT_BIN_WIDTH)),
             "frequency_mhz": frequency_mhz,
             "firmware_file": firmware_selected,
             "acquisition_time_millis": acquisition_time * 1000 if acquisition_time else None,
@@ -145,7 +145,7 @@ class AcquisitionController:
             "reference_file": reference_file,
             "harmonics": int(app.harmonic_selector_value),
             "write_bin": False,
-            "time_tagger": app.time_tagger and app.write_data_gui and app.tab_selected != TAB_PHASORS
+            "time_tagger": app.time_tagger and app.write_data_gui and app.tab_selected != s.TAB_PHASORS
         }
         return params
 
@@ -184,7 +184,7 @@ class AcquisitionController:
         """
         from core.ui_controller import UIController
         from core.controls_controller import ControlsController
-        app.mode = MODE_RUNNING
+        app.mode = s.MODE_RUNNING
         UIController.style_start_button(app)
         QApplication.processEvents()
         app.update_plots_enabled = True
@@ -219,7 +219,7 @@ class AcquisitionController:
         if not AcquisitionController._validate_parameters(app):
             return
 
-        if (app.tab_selected == TAB_SPECTROSCOPY or app.tab_selected == TAB_FITTING) and len(app.selected_channels) > 4 and not app.plots_to_show_already_appear:
+        if (app.tab_selected == s.TAB_SPECTROSCOPY or app.tab_selected == s.TAB_FITTING) and len(app.selected_channels) > 4 and not app.plots_to_show_already_appear:
             popup = PlotsConfigPopup(app, start_acquisition=True)
             popup.show()
             app.plots_to_show_already_appear = True
@@ -256,7 +256,7 @@ class AcquisitionController:
             flim_labs.request_stop()
         except Exception as e:
             print(f"Could not stop flim_labs gracefully: {e}")
-        app.mode = MODE_STOPPED
+        app.mode = s.MODE_STOPPED
         UIController.style_start_button(app)
         QApplication.processEvents()
 
@@ -281,10 +281,10 @@ class AcquisitionController:
                     widget.setVisible(False)
 
         QTimer.singleShot(400, clear_cps_and_countdown_widgets)
-        if app.tab_selected == TAB_FITTING:
+        if app.tab_selected == s.TAB_FITTING:
             ControlsController.fit_button_show(app)
         
-        harmonic_selected = int(app.settings.value(SETTINGS_HARMONIC, SETTINGS_HARMONIC_DEFAULT))
+        harmonic_selected = int(app.settings.value(s.SETTINGS_HARMONIC, s.SETTINGS_HARMONIC_DEFAULT))
         if harmonic_selected > 1:
             app.harmonic_selector_shown = True
 
@@ -335,7 +335,7 @@ class AcquisitionController:
         
         if app.quantized_phasors:
             PhasorsController.quantize_phasors(
-                app, 1, bins=int(PHASORS_RESOLUTIONS[app.phasors_resolution])
+                app, 1, bins=int(s.PHASORS_RESOLUTIONS[app.phasors_resolution])
             )
             
         PhasorsController.generate_phasors_cluster_center(app, 1)                       
@@ -400,7 +400,7 @@ class AcquisitionController:
                     app.acquisition_stopped = True
                     AcquisitionController.stop_spectroscopy_experiment(app)
                     break
-                if app.mode == MODE_STOPPED:
+                if app.mode == s.MODE_STOPPED:
                     break
                 if "sp_phasors" in v[0]:
                     channel = v[1][0]
@@ -445,8 +445,8 @@ class AcquisitionController:
             app: The main application instance.
             time_ns (int): The elapsed time of the acquisition in nanoseconds.
         """
-        free_running = app.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING)
-        acquisition_time = app.control_inputs[SETTINGS_ACQUISITION_TIME].value()
+        free_running = app.settings.value(s.SETTINGS_FREE_RUNNING, s.DEFAULT_FREE_RUNNING)
+        acquisition_time = app.control_inputs[s.SETTINGS_ACQUISITION_TIME].value()
         if free_running is True or free_running == "true":
             return
         elapsed_time_sec = time_ns / 1_000_000_000
@@ -514,9 +514,9 @@ class AcquisitionController:
                 time_elapsed / 1_000_000_000
             )
             app.all_cps_counts.append(cps_value)            
-            humanized_number = app.humanize_number(cps_value)
+            humanized_number = humanize_number(cps_value)
             app.cps_widgets[channel_index].setText(f"{humanized_number} CPS")
-            cps_threshold = app.control_inputs[SETTINGS_CPS_THRESHOLD].value()
+            cps_threshold = app.control_inputs[s.SETTINGS_CPS_THRESHOLD].value()
             if cps_threshold > 0:
                 if cps_value > cps_threshold:
                     app.cps_widgets_animation[channel_index].start()

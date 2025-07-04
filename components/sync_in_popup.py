@@ -2,15 +2,21 @@ import flim_labs
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QDialog
 from PyQt6.QtGui import  QIcon, QPixmap, QTransform
-from components.gui_styles import GUIStyles
-from components.resource_path import resource_path
-from settings import *
+from utils.gui_styles import GUIStyles
+from utils.resource_path import resource_path
+
 
 class FrequencyWorker(QThread):
+    """A worker thread for detecting the laser frequency without blocking the GUI.
+
+    Emits a 'finished' signal with the frequency in MHz on success, or an 'error'
+    signal with an error message on failure.
+    """
     finished = pyqtSignal(float)
     error = pyqtSignal(str)
 
     def run(self):
+        """Executes the frequency detection process."""
         try:
             res = flim_labs.detect_laser_frequency()
             if res is None or res == 0.0:
@@ -21,7 +27,9 @@ class FrequencyWorker(QThread):
             self.error.emit(str(e))
 
 class SyncInDialog(QDialog):
+    """A dialog for measuring the laser frequency via the Sync In port."""
     def __init__(self):
+        """Initializes the SyncInDialog."""
         super().__init__()
         self.setWindowTitle("Sync In Measure Frequency")
         self.setWindowIcon(QIcon(resource_path("assets/wave-icon.png")))
@@ -105,6 +113,7 @@ class SyncInDialog(QDialog):
         self.flipped = False  
 
     def flip_loader(self):
+        """Animates the loader icon by flipping it horizontally."""
         transform = QTransform()
         if self.flipped:
             transform.scale(1, 1) 
@@ -115,6 +124,10 @@ class SyncInDialog(QDialog):
         self.flipped = not self.flipped  
 
     def on_yes_button_click(self):
+        """Handles the 'DO IT' / 'RETRY' button click.
+        
+        Updates the UI to a loading state and starts the FrequencyWorker thread.
+        """
         self.error_icon.setVisible(False)
         self.success_icon.setVisible(False)        
         self.label.setText("Measuring frequency... The process can take a few seconds. Please wait and don't close the window. After 60 seconds, the process "
@@ -131,6 +144,13 @@ class SyncInDialog(QDialog):
         self.worker.start()
 
     def on_measurement_complete(self, frequency_mhz):
+        """Handles the successful completion of the frequency measurement.
+
+        Updates the UI to show the detected frequency or a 'not detected' message.
+
+        Args:
+            frequency_mhz (float): The detected frequency in MHz.
+        """
         self.frequency_mhz = round(frequency_mhz, 3)
         self.flip_timer.stop() 
         self.loader_label.setVisible(False) 
@@ -153,6 +173,13 @@ class SyncInDialog(QDialog):
         self.no_button.setText("DONE")
 
     def on_measurement_error(self, error_msg):
+        """Handles errors reported by the FrequencyWorker.
+
+        Updates the UI to display the error message.
+
+        Args:
+            error_msg (str): The error message from the worker.
+        """
         self.flip_timer.stop()  
         self.loader_label.setVisible(False)  
         self.error_icon.setVisible(True)
@@ -164,12 +191,18 @@ class SyncInDialog(QDialog):
         self.no_button.setText("CANCEL")
 
     def on_no_button_click(self):
+        """Handles the 'NO' / 'DONE' / 'CANCEL' button click by closing the dialog."""
         self.error_icon.setVisible(False)
         self.success_icon.setVisible(False)
         self.loader_label.setVisible(False)
         self.close()
 
     def closeEvent(self, event):
+        """Ensures the worker thread is terminated when the dialog is closed.
+
+        Args:
+            event (QCloseEvent): The close event.
+        """
         if self.worker and self.worker.isRunning():
             self.worker.terminate()
         super().closeEvent(event)

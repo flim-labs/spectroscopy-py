@@ -3,17 +3,18 @@ import json
 import flim_labs
 from components.box_message import BoxMessage
 from components.fitting_config_popup import FittingDecayConfigPopup
-from components.gui_styles import GUIStyles
-from components.helpers import mhz_to_ns
+from utils.gui_styles import GUIStyles
+from utils.helpers import mhz_to_ns
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
-from components.layout_utilities import hide_layout, show_layout
+from utils.layout_utilities import hide_layout, show_layout
 from components.plots_config import PlotsConfigPopup
 from components.read_data import ReadData, ReadDataControls, ReaderMetadataPopup, ReaderPopup
 from components.sync_in_popup import SyncInDialog
 from core.acquisition_controller import AcquisitionController
 from core.phasors_controller import PhasorsController
 from core.plots_controller import PlotsController
-from settings import CHANNELS_GRID, DEFAULT_ACQUISITION_TIME, DEFAULT_SETTINGS_CALIBRATION_TYPE, EXPORT_PLOT_IMG_BUTTON, FIT_BTN, FIT_BTN_PLACEHOLDER, HARMONIC_SELECTOR, HARMONIC_SELECTOR_LABEL, LOAD_REF_BTN, MAX_CHANNELS, MODE_RUNNING, MODE_STOPPED, PHASORS_RESOLUTIONS, SETTINGS_ACQUISITION_TIME, SETTINGS_BIN_WIDTH, SETTINGS_CALIBRATION_TYPE, SETTINGS_CONNECTION_TYPE, SETTINGS_CPS_THRESHOLD, SETTINGS_FREE_RUNNING, SETTINGS_HARMONIC, SETTINGS_HARMONIC_LABEL, SETTINGS_PHASORS_RESOLUTION, SETTINGS_PLOTS_TO_SHOW, SETTINGS_QUANTIZE_PHASORS, SETTINGS_SHOW_SBR, SETTINGS_SYNC, SETTINGS_SYNC_IN_FREQUENCY_MHZ, SETTINGS_TAU_NS, SETTINGS_TIME_SPAN, SETTINGS_WRITE_DATA, TAB_FITTING, TAB_PHASORS, TAB_SPECTROSCOPY, TIME_TAGGER_WIDGET
+import settings.settings as s
+
 
 from PyQt6.QtCore import  Qt
 from PyQt6.QtWidgets import (
@@ -45,12 +46,12 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        if app.mode == MODE_STOPPED:
+        if app.mode == s.MODE_STOPPED:
             app.acquisition_stopped = False
             if not (ControlsController.is_phasors(app)):
                 app.harmonic_selector_shown = False
             AcquisitionController.begin_spectroscopy_experiment(app)
-        elif app.mode == MODE_RUNNING:
+        elif app.mode == s.MODE_RUNNING:
             app.acquisition_stopped = True
             AcquisitionController.stop_spectroscopy_experiment(app)
 
@@ -66,26 +67,26 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        app.widgets[TIME_TAGGER_WIDGET].setVisible(app.write_data_gui)
+        app.widgets[s.TIME_TAGGER_WIDGET].setVisible(app.write_data_gui)
         ControlsController.fit_button_hide(app)
         ControlsController.hide_harmonic_selector(app)
         hide_layout(app.control_inputs["phasors_resolution_container"])
         hide_layout(app.control_inputs["quantize_phasors_container"])
         app.control_inputs["tau_label"].hide()
         app.control_inputs["tau"].hide()
-        app.control_inputs[SETTINGS_HARMONIC].hide()
-        app.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
+        app.control_inputs[s.SETTINGS_HARMONIC].hide()
+        app.control_inputs[s.SETTINGS_HARMONIC_LABEL].hide()
         app.control_inputs["calibration"].show()
         app.control_inputs["calibration_label"].show()
-        current_tau = app.settings.value(SETTINGS_TAU_NS, "0")
+        current_tau = app.settings.value(s.SETTINGS_TAU_NS, "0")
         app.control_inputs["tau"].setValue(float(current_tau))
         ControlsController.on_tau_change(app, float(current_tau))
         current_calibration = app.settings.value(
-            SETTINGS_CALIBRATION_TYPE, DEFAULT_SETTINGS_CALIBRATION_TYPE
+            s.SETTINGS_CALIBRATION_TYPE, s.DEFAULT_SETTINGS_CALIBRATION_TYPE
         )
         ControlsController.on_calibration_change(app, int(current_calibration))
-        app.control_inputs[LOAD_REF_BTN].hide()
-        channels_grid = app.widgets[CHANNELS_GRID]
+        app.control_inputs[s.LOAD_REF_BTN].hide()
+        channels_grid = app.widgets[s.CHANNELS_GRID]
         plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
         if plot_config_btn is not None:
             plot_config_btn.setVisible(True)
@@ -101,12 +102,12 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        app.widgets[TIME_TAGGER_WIDGET].setVisible(app.write_data_gui)
+        app.widgets[s.TIME_TAGGER_WIDGET].setVisible(app.write_data_gui)
         if ReadDataControls.fit_button_enabled(app):
             ControlsController.fit_button_show(app)
         else:
             ControlsController.fit_button_hide(app)
-        app.control_inputs[LOAD_REF_BTN].hide()
+        app.control_inputs[s.LOAD_REF_BTN].hide()
         ControlsController.hide_harmonic_selector(app)
         hide_layout(app.control_inputs["phasors_resolution_container"])
         hide_layout(app.control_inputs["quantize_phasors_container"])
@@ -114,9 +115,9 @@ class ControlsController:
         app.control_inputs["tau"].hide()
         app.control_inputs["calibration"].hide()
         app.control_inputs["calibration_label"].hide()
-        app.control_inputs[SETTINGS_HARMONIC].hide()
-        app.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
-        channels_grid = app.widgets[CHANNELS_GRID]
+        app.control_inputs[s.SETTINGS_HARMONIC].hide()
+        app.control_inputs[s.SETTINGS_HARMONIC_LABEL].hide()
+        channels_grid = app.widgets[s.CHANNELS_GRID]
         plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
         if plot_config_btn is not None:
             plot_config_btn.setVisible(True)
@@ -132,7 +133,7 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        app.widgets[TIME_TAGGER_WIDGET].setVisible(False)
+        app.widgets[s.TIME_TAGGER_WIDGET].setVisible(False)
         ControlsController.fit_button_hide(app)
         (
             show_layout(app.control_inputs["phasors_resolution_container"])
@@ -144,13 +145,13 @@ class ControlsController:
         app.control_inputs["tau"].hide()
         app.control_inputs["calibration"].hide()
         app.control_inputs["calibration_label"].hide()
-        app.control_inputs[SETTINGS_HARMONIC].hide()
-        app.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
+        app.control_inputs[s.SETTINGS_HARMONIC].hide()
+        app.control_inputs[s.SETTINGS_HARMONIC_LABEL].hide()
         if app.acquire_read_mode == "read":
-            app.control_inputs[LOAD_REF_BTN].hide()
+            app.control_inputs[s.LOAD_REF_BTN].hide()
         else:
-            app.control_inputs[LOAD_REF_BTN].show()
-            app.control_inputs[LOAD_REF_BTN].setText("LOAD REFERENCE")
+            app.control_inputs[s.LOAD_REF_BTN].show()
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
         
         PhasorsController.initialize_phasor_feature(app)
         ControlsController._update_phasor_plots_for_harmonic(app)
@@ -158,10 +159,10 @@ class ControlsController:
         if app.harmonic_selector_shown:
             ControlsController.show_harmonic_selector(
                 app,
-                app.control_inputs[SETTINGS_HARMONIC].value()
+                app.control_inputs[s.SETTINGS_HARMONIC].value()
             )
         
-        channels_grid = app.widgets[CHANNELS_GRID]
+        channels_grid = app.widgets[s.CHANNELS_GRID]
         plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
         if plot_config_btn is not None:
             plot_config_btn.setVisible(False)
@@ -184,8 +185,8 @@ class ControlsController:
         
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(app)
         app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
-        app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(
-            bin_metadata_btn_visible and app.tab_selected != TAB_FITTING
+        app.control_inputs[s.EXPORT_PLOT_IMG_BUTTON].setVisible(
+            bin_metadata_btn_visible and app.tab_selected != s.TAB_FITTING
         )
         
         if app.acquire_read_mode == "acquire":
@@ -195,11 +196,11 @@ class ControlsController:
         else:
             ReadDataControls.plot_data_on_tab_change(app)
             
-        if tab_name == TAB_SPECTROSCOPY:
+        if tab_name == s.TAB_SPECTROSCOPY:
             ControlsController._handle_spectroscopy_tab_selection(app)
-        elif tab_name == TAB_FITTING:
+        elif tab_name == s.TAB_FITTING:
             ControlsController._handle_fitting_tab_selection(app)
-        elif tab_name == TAB_PHASORS:
+        elif tab_name == s.TAB_PHASORS:
             ControlsController._handle_phasors_tab_selection(app)
 
     
@@ -211,13 +212,13 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        if FIT_BTN not in app.control_inputs:
-            app.control_inputs[FIT_BTN] = QPushButton("FIT")
-            app.control_inputs[FIT_BTN].setFlat(True)
-            app.control_inputs[FIT_BTN].setFixedHeight(55)
-            app.control_inputs[FIT_BTN].setCursor(Qt.CursorShape.PointingHandCursor)
-            app.control_inputs[FIT_BTN].clicked.connect(partial(ControlsController.on_fit_btn_click, app))
-            app.control_inputs[FIT_BTN].setStyleSheet(
+        if s.FIT_BTN not in app.control_inputs:
+            app.control_inputs[s.FIT_BTN] = QPushButton("FIT")
+            app.control_inputs[s.FIT_BTN].setFlat(True)
+            app.control_inputs[s.FIT_BTN].setFixedHeight(55)
+            app.control_inputs[s.FIT_BTN].setCursor(Qt.CursorShape.PointingHandCursor)
+            app.control_inputs[s.FIT_BTN].clicked.connect(partial(ControlsController.on_fit_btn_click, app))
+            app.control_inputs[s.FIT_BTN].setStyleSheet(
                 """
             QPushButton {
                 background-color: #1E90FF;
@@ -230,8 +231,8 @@ class ControlsController:
             }
             """
             )
-            app.control_inputs[FIT_BTN_PLACEHOLDER].layout().addWidget(
-                app.control_inputs[FIT_BTN]
+            app.control_inputs[s.FIT_BTN_PLACEHOLDER].layout().addWidget(
+                app.control_inputs[s.FIT_BTN]
             )
 
 
@@ -243,13 +244,13 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        if FIT_BTN in app.control_inputs:
-            app.control_inputs[FIT_BTN_PLACEHOLDER].layout().removeWidget(
-                app.control_inputs[FIT_BTN]
+        if s.FIT_BTN in app.control_inputs:
+            app.control_inputs[s.FIT_BTN_PLACEHOLDER].layout().removeWidget(
+                app.control_inputs[s.FIT_BTN]
             )
-            app.control_inputs[FIT_BTN].deleteLater()
-            del app.control_inputs[FIT_BTN]
-            app.control_inputs[FIT_BTN_PLACEHOLDER].layout().setContentsMargins(
+            app.control_inputs[s.FIT_BTN].deleteLater()
+            del app.control_inputs[s.FIT_BTN]
+            app.control_inputs[s.FIT_BTN_PLACEHOLDER].layout().setContentsMargins(
                 0, 0, 0, 0
             )
    
@@ -319,7 +320,7 @@ class ControlsController:
             app: The main application instance.
             value (float): The new TAU value in nanoseconds.
         """
-        app.settings.setValue(SETTINGS_TAU_NS, value)
+        app.settings.setValue(s.SETTINGS_TAU_NS, value)
         
         
     @staticmethod
@@ -331,7 +332,7 @@ class ControlsController:
             app: The main application instance.
             value (int): The new harmonic number.
         """
-        app.settings.setValue(SETTINGS_HARMONIC, value) 
+        app.settings.setValue(s.SETTINGS_HARMONIC, value) 
         
         
     @staticmethod 
@@ -355,7 +356,7 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        if app.tab_selected == TAB_PHASORS:
+        if app.tab_selected == s.TAB_PHASORS:
             dialog = QFileDialog()
             dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
             # extension supported: .reference.json
@@ -383,7 +384,7 @@ class ControlsController:
         Returns:
             bool: True if free running mode is enabled, False otherwise.
         """
-        return app.control_inputs[SETTINGS_FREE_RUNNING].isChecked()   
+        return app.control_inputs[s.SETTINGS_FREE_RUNNING].isChecked()   
     
     
     
@@ -396,8 +397,8 @@ class ControlsController:
             app: The main application instance.
             value (int): The new acquisition time in seconds.
         """
-        from components.export_data import ExportData
-        app.settings.setValue(SETTINGS_ACQUISITION_TIME, value)
+        from utils.export_data import ExportData
+        app.settings.setValue(s.SETTINGS_ACQUISITION_TIME, value)
         ExportData.calc_exported_file_size(app)
 
     @staticmethod
@@ -409,7 +410,7 @@ class ControlsController:
             app: The main application instance.
             value (int): The new CPS threshold.
         """
-        app.settings.setValue(SETTINGS_CPS_THRESHOLD, value)
+        app.settings.setValue(s.SETTINGS_CPS_THRESHOLD, value)
         LaserbloodMetadataPopup.set_cps_threshold(app, value)
 
 
@@ -422,7 +423,7 @@ class ControlsController:
             app: The main application instance.
             value (int): The new time span in seconds.
         """
-        app.settings.setValue(SETTINGS_TIME_SPAN, value)
+        app.settings.setValue(s.SETTINGS_TIME_SPAN, value)
 
 
 
@@ -435,9 +436,9 @@ class ControlsController:
             app: The main application instance.
             state (bool): The new state of the switch.
         """
-        from components.export_data import ExportData
-        app.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(not state)
-        app.settings.setValue(SETTINGS_FREE_RUNNING, state)
+        from utils.export_data import ExportData
+        app.control_inputs[s.SETTINGS_ACQUISITION_TIME].setEnabled(not state)
+        app.settings.setValue(s.SETTINGS_FREE_RUNNING, state)
         ExportData.calc_exported_file_size(app)
 
     
@@ -464,8 +465,8 @@ class ControlsController:
             app: The main application instance.
             value (int): The new bin width in microseconds.
         """
-        from components.export_data import ExportData
-        app.settings.setValue(SETTINGS_BIN_WIDTH, value)
+        from utils.export_data import ExportData
+        app.settings.setValue(s.SETTINGS_BIN_WIDTH, value)
         ExportData.calc_exported_file_size(app)
 
     
@@ -478,7 +479,7 @@ class ControlsController:
             app: The main application instance.
             value (int): The index of the selected connection type.
         """
-        app.settings.setValue(SETTINGS_CONNECTION_TYPE, value)
+        app.settings.setValue(s.SETTINGS_CONNECTION_TYPE, value)
         LaserbloodMetadataPopup.set_FPGA_firmware(app)
 
     
@@ -492,13 +493,13 @@ class ControlsController:
             value (bool): The new state of the switch.
         """
         PhasorsController.clear_phasors_points(app)
-        harmonic_value = int(app.control_inputs[HARMONIC_SELECTOR].currentText())
+        harmonic_value = int(app.control_inputs[s.HARMONIC_SELECTOR].currentText())
         app.quantized_phasors = value
-        app.settings.setValue(SETTINGS_QUANTIZE_PHASORS, value)
+        app.settings.setValue(s.SETTINGS_QUANTIZE_PHASORS, value)
         container = app.control_inputs["phasors_resolution_container"]
         if value:
             show_layout(container)
-            bins = int(PHASORS_RESOLUTIONS[app.phasors_resolution])
+            bins = int(s.PHASORS_RESOLUTIONS[app.phasors_resolution])
             PhasorsController.quantize_phasors(app,harmonic_value, bins)
         else:
             hide_layout(container)
@@ -526,12 +527,12 @@ class ControlsController:
             value (int): The index of the selected resolution.
         """
         app.phasors_resolution = int(value)
-        harmonic_value = int(app.control_inputs[HARMONIC_SELECTOR].currentText())
-        app.settings.setValue(SETTINGS_PHASORS_RESOLUTION, value)
+        harmonic_value = int(app.control_inputs[s.HARMONIC_SELECTOR].currentText())
+        app.settings.setValue(s.SETTINGS_PHASORS_RESOLUTION, value)
         PhasorsController.quantize_phasors(
             app,
             harmonic_value,
-            bins=int(PHASORS_RESOLUTIONS[app.phasors_resolution]),
+            bins=int(s.PHASORS_RESOLUTIONS[app.phasors_resolution]),
         )
 
     
@@ -544,17 +545,17 @@ class ControlsController:
             app: The main application instance.
             value (int): The index of the selected calibration type.
         """
-        app.settings.setValue(SETTINGS_CALIBRATION_TYPE, value)
+        app.settings.setValue(s.SETTINGS_CALIBRATION_TYPE, value)
         if value == 1:
             app.control_inputs["tau_label"].show()
             app.control_inputs["tau"].show()
-            app.control_inputs[SETTINGS_HARMONIC].show()
-            app.control_inputs[SETTINGS_HARMONIC_LABEL].show()
+            app.control_inputs[s.SETTINGS_HARMONIC].show()
+            app.control_inputs[s.SETTINGS_HARMONIC_LABEL].show()
         else:
             app.control_inputs["tau_label"].hide()
             app.control_inputs["tau"].hide()
-            app.control_inputs[SETTINGS_HARMONIC].hide()
-            app.control_inputs[SETTINGS_HARMONIC_LABEL].hide()
+            app.control_inputs[s.SETTINGS_HARMONIC].hide()
+            app.control_inputs[s.SETTINGS_HARMONIC_LABEL].hide()
 
     
     @staticmethod
@@ -566,11 +567,11 @@ class ControlsController:
             app: The main application instance.
             state (bool): The new state of the switch.
         """
-        from components.export_data import ExportData
-        app.settings.setValue(SETTINGS_WRITE_DATA, state)
+        from utils.export_data import ExportData
+        app.settings.setValue(s.SETTINGS_WRITE_DATA, state)
         app.write_data_gui = state
-        if TIME_TAGGER_WIDGET in app.widgets:
-            app.widgets[TIME_TAGGER_WIDGET].setVisible(state)
+        if s.TIME_TAGGER_WIDGET in app.widgets:
+            app.widgets[s.TIME_TAGGER_WIDGET].setVisible(state)
         app.bin_file_size_label.show() if state else app.bin_file_size_label.hide()
         ExportData.calc_exported_file_size(app) if state else None
 
@@ -584,7 +585,7 @@ class ControlsController:
             app: The main application instance.
             state (bool): The new state of the switch.
         """
-        app.settings.setValue(SETTINGS_SHOW_SBR, state)
+        app.settings.setValue(s.SETTINGS_SHOW_SBR, state)
         app.show_SBR = state
         ControlsController.SBR_set_visible(app, state)        
   
@@ -607,7 +608,7 @@ class ControlsController:
             PhasorsController.quantize_phasors(
                 app,
                 app.harmonic_selector_value,
-                bins=int(PHASORS_RESOLUTIONS[app.phasors_resolution]),
+                bins=int(s.PHASORS_RESOLUTIONS[app.phasors_resolution]),
             )
         
         if not app.quantized_phasors:
@@ -672,7 +673,7 @@ class ControlsController:
             for _, widget in app.control_inputs["time_shift_inputs"].items():
                 widget.setEnabled(enabled)
         if enabled:
-            app.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(
+            app.control_inputs[s.SETTINGS_ACQUISITION_TIME].setEnabled(
                 not ControlsController.get_free_running_state(app))
             
     
@@ -842,7 +843,7 @@ class ControlsController:
             None
             if ControlsController.get_free_running_state(app)
             else int(
-                app.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)
+                app.settings.value(s.SETTINGS_ACQUISITION_TIME, s.DEFAULT_ACQUISITION_TIME)
             )
         )  
         
@@ -872,8 +873,8 @@ class ControlsController:
             checked (bool): The new state of the checkbox.
             channel (int): The channel index that was changed.
         """
-        from components.export_data import ExportData
-        app.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show))
+        from utils.export_data import ExportData
+        app.settings.setValue(s.SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show))
         if checked:
             if channel not in app.selected_channels:
                 app.selected_channels.append(channel)
@@ -886,7 +887,7 @@ class ControlsController:
                 app.plots_to_show.remove(channel)
         app.selected_channels.sort()
         app.plots_to_show.sort()
-        app.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show))
+        app.settings.setValue(s.SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show))
         ControlsController.set_selected_channels_to_settings(app)
         PlotsController.clear_plots(app)
         PlotsController.generate_plots(app)
@@ -909,7 +910,7 @@ class ControlsController:
             if frequency_mhz != 0.0:
                 ControlsController.time_shifts_set_enabled(app, True)
                 laser_period_ns = mhz_to_ns(frequency_mhz)
-                harmonic = app.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1
+                harmonic = app.control_inputs[s.HARMONIC_SELECTOR].currentIndex() + 1
                 for _, channel in enumerate(app.plots_to_show):
                     PhasorsController.draw_lifetime_points_in_phasors(
                         app,
@@ -924,7 +925,7 @@ class ControlsController:
             update_phasors_lifetimes()
             return
         app.selected_sync = sync
-        app.settings.setValue(SETTINGS_SYNC, sync)
+        app.settings.setValue(s.SETTINGS_SYNC, sync)
         LaserbloodMetadataPopup.set_FPGA_firmware(app)
         update_phasors_lifetimes()
            
@@ -942,7 +943,7 @@ class ControlsController:
         if dialog.frequency_mhz != 0.0:
             app.sync_in_frequency_mhz = dialog.frequency_mhz
             app.settings.setValue(
-                SETTINGS_SYNC_IN_FREQUENCY_MHZ, app.sync_in_frequency_mhz
+                s.SETTINGS_SYNC_IN_FREQUENCY_MHZ, app.sync_in_frequency_mhz
             )
             ControlsController.update_sync_in_button(app)
 
@@ -974,22 +975,22 @@ class ControlsController:
             harmonics (int): The number of harmonics to display.
         """
         if harmonics > 1:
-            app.control_inputs[HARMONIC_SELECTOR].show()
-            app.control_inputs[HARMONIC_SELECTOR_LABEL].show()
+            app.control_inputs[s.HARMONIC_SELECTOR].show()
+            app.control_inputs[s.HARMONIC_SELECTOR_LABEL].show()
             selector_harmonics = [
-                int(app.control_inputs[HARMONIC_SELECTOR].itemText(index))
-                for index in range(app.control_inputs[HARMONIC_SELECTOR].count())
+                int(app.control_inputs[s.HARMONIC_SELECTOR].itemText(index))
+                for index in range(app.control_inputs[s.HARMONIC_SELECTOR].count())
             ]
             if (
                 len(selector_harmonics)
-                != app.control_inputs[SETTINGS_HARMONIC].value()
+                != app.control_inputs[s.SETTINGS_HARMONIC].value()
                 or app.acquire_read_mode == "read"
             ):
                 # clear the items
-                app.control_inputs[HARMONIC_SELECTOR].clear()
+                app.control_inputs[s.HARMONIC_SELECTOR].clear()
                 for i in range(harmonics):
-                    app.control_inputs[HARMONIC_SELECTOR].addItem(str(i + 1))
-            app.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(           
+                    app.control_inputs[s.HARMONIC_SELECTOR].addItem(str(i + 1))
+            app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(           
                 app.phasors_harmonic_selected - 1)  
             
             
@@ -1002,8 +1003,8 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        app.control_inputs[HARMONIC_SELECTOR].hide()
-        app.control_inputs[HARMONIC_SELECTOR_LABEL].hide() 
+        app.control_inputs[s.HARMONIC_SELECTOR].hide()
+        app.control_inputs[s.HARMONIC_SELECTOR_LABEL].hide() 
         
         
     
@@ -1103,9 +1104,9 @@ class ControlsController:
             bool: True if in spectroscopy tab with 'Phasors Ref.' calibration.
         """
         selected_calibration = app.settings.value(
-            SETTINGS_CALIBRATION_TYPE, DEFAULT_SETTINGS_CALIBRATION_TYPE
+            s.SETTINGS_CALIBRATION_TYPE, s.DEFAULT_SETTINGS_CALIBRATION_TYPE
         )
-        return app.tab_selected == TAB_SPECTROSCOPY and selected_calibration == 1   
+        return app.tab_selected == s.TAB_SPECTROSCOPY and selected_calibration == 1   
     
     
     @staticmethod
@@ -1119,7 +1120,7 @@ class ControlsController:
         Returns:
             bool: True if the Phasors tab is active, False otherwise.
         """
-        return app.tab_selected == TAB_PHASORS
+        return app.tab_selected == s.TAB_PHASORS
     
     
     @staticmethod
@@ -1129,15 +1130,19 @@ class ControlsController:
 
         This method iterates through the possible channels and repopulates the
         `app.selected_channels` list based on the values stored in the
-        persistent settings.
+        persistent settings. It also updates the visual state of the checkboxes.
 
         Args:
             app: The main application instance.
         """
         app.selected_channels = []
-        for i in range(MAX_CHANNELS):
-            if app.settings.value(f"channel_{i}", "false") == "true":
+        for i in range(s.MAX_CHANNELS):
+            is_selected = app.settings.value(f"channel_{i}", "false") == "true"
+            if is_selected:
                 app.selected_channels.append(i)
+            # Update the checkbox UI if it already exists
+            if i < len(app.channel_checkboxes):
+                app.channel_checkboxes[i].set_checked(is_selected)
                 
                 
     @staticmethod
@@ -1152,7 +1157,7 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        for i in range(MAX_CHANNELS):
+        for i in range(s.MAX_CHANNELS):
             app.settings.setValue(f"channel_{i}", "false")
             if i in app.selected_channels:
                 app.settings.setValue(f"channel_{i}", "true")

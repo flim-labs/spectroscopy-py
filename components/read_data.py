@@ -1,20 +1,18 @@
 from functools import partial
 import json
 import os
-import re
 import struct
 from matplotlib import pyplot as plt
 import numpy as np
 from components.box_message import BoxMessage
-from components.file_utils import FileUtils
-from components.gui_styles import GUIStyles
-from components.helpers import extract_channel_from_label, ns_to_mhz
+from utils.gui_styles import GUIStyles
+from utils.helpers import extract_channel_from_label, ns_to_mhz
 from components.input_text_control import InputTextControl
-from components.layout_utilities import clear_layout
-from components.messages_utilities import MessagesUtilities
-from components.resource_path import resource_path
-from fit_decay_curve import convert_json_serializable_item_into_np_fitting_result
-from settings import *
+from utils.layout_utilities import clear_layout
+from utils.messages_utilities import MessagesUtilities
+from utils.resource_path import resource_path
+from utils.fitting_utilities import convert_json_serializable_item_into_np_fitting_result
+import settings.settings as s
 from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
@@ -30,15 +28,24 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QRunnable, QThreadPool, pyqtSignal, QObject, pyqtSlot
 from PyQt6.QtGui import QColor, QIcon
-from components.logo_utilities import TitlebarIcon
+from utils.logo_utilities import TitlebarIcon
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
 
 
 class ReadData:
+    """A collection of static methods for reading and processing data from files."""
     @staticmethod
     def read_bin_data(window, app, tab_selected, file_type):
+        """Reads binary data for spectroscopy or phasors from a .bin file.
+
+        Args:
+            window: The parent window for the file dialog.
+            app: The main application instance.
+            tab_selected (str): The currently active tab identifier.
+            file_type (str): The type of data to read ('spectroscopy' or 'phasors').
+        """
         active_tab = ReadData.get_data_type(tab_selected)
         file_info = {
             "spectroscopy": (b"SP01", "Spectroscopy", ReadData.read_spectroscopy_data),
@@ -74,6 +81,14 @@ class ReadData:
    
     @staticmethod
     def get_bin_filter_file_string(file_type):
+        """Gets the file filter string for binary file dialogs.
+
+        Args:
+            file_type (str): The type of binary file ('spectroscopy' or 'phasors').
+
+        Returns:
+            str: The corresponding filter string.
+        """
         if file_type == "spectroscopy":
             return "_spectroscopy_"
         elif file_type == "phasors":
@@ -83,6 +98,13 @@ class ReadData:
             
     @staticmethod
     def read_laserblood_metadata(window, app, tab_selected):
+        """Reads LaserBlood-specific metadata from a JSON file.
+
+        Args:
+            window: The parent window for the file dialog.
+            app: The main application instance.
+            tab_selected (str): The currently active tab identifier.
+        """
         active_tab = ReadData.get_data_type(tab_selected)
         result = ReadData.read_json(window, "Laserblood metadata", "laserblood_metadata")
         if None in result:
@@ -95,6 +117,14 @@ class ReadData:
     
     @staticmethod
     def get_bin_filter_file_string(file_type):
+        """Gets the file filter string for binary file dialogs.
+
+        Args:
+            file_type (str): The type of binary file ('spectroscopy' or 'phasors').
+
+        Returns:
+            str: The corresponding filter string.
+        """
         if file_type == "spectroscopy":
             return "_spectroscopy_"
         elif file_type == "phasors":
@@ -104,6 +134,12 @@ class ReadData:
 
     @staticmethod
     def read_fitting_data(window, app):
+        """Reads fitting results from a JSON file.
+
+        Args:
+            window: The parent window for the file dialog.
+            app: The main application instance.
+        """
         result = ReadData.read_json(window, "Fitting", "fitting_result")
         if None in result:
             return
@@ -116,13 +152,30 @@ class ReadData:
 
     @staticmethod
     def get_fitting_active_channels(app):
+        """Extracts the list of active channels from loaded fitting data.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            list: A list of active channel indices.
+        """
         data = app.reader_data["fitting"]["data"]["fitting_data"]
         if data:
             return [item["channel"] for item in data]
         return []
 
+
     @staticmethod
     def preloaded_fitting_data(app):
+        """Retrieves and parses preloaded fitting data if available.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            list or None: A list of parsed fitting results, or None if not available.
+        """
         fitting_file = app.reader_data["fitting"]["files"]["fitting"]
         if len(fitting_file.strip()) > 0 and app.acquire_read_mode == "read":
             fitting_results = app.reader_data["fitting"]["data"]["fitting_data"]
@@ -133,6 +186,16 @@ class ReadData:
 
     @staticmethod
     def are_spectroscopy_and_fitting_from_same_acquisition(app):
+        """Checks if the loaded spectroscopy and fitting files are from the same acquisition.
+
+        It compares the active channels in both datasets.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            bool: True if channels match, False otherwise.
+        """
         def show_error():
             ReadData.show_warning_message(
                 "Channels mismatch",
@@ -148,6 +211,16 @@ class ReadData:
 
     @staticmethod
     def read_json(window, file_type, filter_string = None):
+        """Opens a file dialog to read a generic JSON file.
+
+        Args:
+            window: The parent window for the dialog.
+            file_type (str): A description of the file type for the dialog title.
+            filter_string (str, optional): A string to filter files by name. Defaults to None.
+
+        Returns:
+            tuple: A tuple containing (file_name, data). Returns (None, None) on failure.
+        """
         dialog = QFileDialog()
         dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
         if filter_string:
@@ -187,12 +260,21 @@ class ReadData:
 
     @staticmethod
     def get_data_type(active_tab):
-        return {TAB_SPECTROSCOPY: "spectroscopy", TAB_PHASORS: "phasors"}.get(
+        """Converts a tab identifier constant to a string representation.
+
+        Args:
+            active_tab (str): The tab identifier from settings.
+
+        Returns:
+            str: The string representation ('spectroscopy', 'phasors', or 'fitting').
+        """
+        return {s.TAB_SPECTROSCOPY: "spectroscopy", s.TAB_PHASORS: "phasors"}.get(
             active_tab, "fitting"
         )
 
     @staticmethod
     def plot_data(app):
+        """Plots the loaded data based on the currently selected tab."""
         data_type = ReadData.get_data_type(app.tab_selected)
         spectroscopy_data = (
             app.reader_data[data_type]["data"]
@@ -227,13 +309,22 @@ class ReadData:
     def plot_spectroscopy_data(
         app, times, channels_curves, laser_period_ns, metadata_channels
     ):
+        """Plots spectroscopy decay curves on the appropriate widgets.
+
+        Args:
+            app: The main application instance.
+            times (list): A list of timestamps for the measurements.
+            channels_curves (dict): A dictionary of decay curve data per channel.
+            laser_period_ns (float): The laser period in nanoseconds.
+            metadata_channels (list): A list of active channel indices from metadata.
+        """
         from core.plots_controller import PlotsController
         num_bins = 256
         x_values = np.linspace(0, laser_period_ns, num_bins) / 1_000
         for channel, curves in channels_curves.items():
             if metadata_channels[channel] in app.plots_to_show:
                 y_values = np.sum(curves, axis=0)
-                if app.tab_selected != TAB_PHASORS:
+                if app.tab_selected != s.TAB_PHASORS:
                     app.cached_decay_values[app.tab_selected][
                         metadata_channels[channel]
                     ] = y_values
@@ -244,6 +335,14 @@ class ReadData:
 
     @staticmethod
     def get_spectroscopy_data_to_fit(app):
+        """Prepares spectroscopy data for the fitting process.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            list: A list of dictionaries, each containing the data for one channel to be fitted.
+        """
         spectroscopy_data = app.reader_data["fitting"]["data"]["spectroscopy_data"]
         metadata = app.reader_data["fitting"]["metadata"]
         channels_curves = spectroscopy_data["channels_curves"]
@@ -259,7 +358,7 @@ class ReadData:
         for channel, curves in channels_curves.items():
             if channels[channel] in app.plots_to_show:
                 y_values = np.sum(curves, axis=0)
-                if app.tab_selected != TAB_PHASORS:
+                if app.tab_selected != s.TAB_PHASORS:
                     app.cached_decay_values[app.tab_selected][
                         channels[channel]
                     ] = y_values
@@ -276,10 +375,17 @@ class ReadData:
 
     @staticmethod
     def plot_phasors_data(app, data, harmonics):
+        """Plots phasor data on the phasor plot widget.
+
+        Args:
+            app: The main application instance.
+            data (dict): The phasor data (g, s coordinates) per channel and harmonic.
+            harmonics (list): A list of harmonics present in the data.
+        """
         from core.controls_controller import ControlsController
         laser_period_ns = ReadData.get_phasors_laser_period_ns(app)
         app.all_phasors_points = app.get_empty_phasors_points()
-        app.control_inputs[HARMONIC_SELECTOR].setCurrentIndex(0)
+        app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
         harmonics_length = len(harmonics) if isinstance(harmonics, list) else harmonics
         if harmonics_length > 1:
             app.harmonic_selector_shown = True
@@ -293,7 +399,7 @@ class ReadData:
         if app.quantized_phasors:
             app.quantize_phasors(
                 app.phasors_harmonic_selected,
-                bins=int(PHASORS_RESOLUTIONS[app.phasors_resolution]),
+                bins=int(s.PHASORS_RESOLUTIONS[app.phasors_resolution]),
             )
         else:
             ControlsController.on_quantize_phasors_changed(app, False)
@@ -312,6 +418,17 @@ class ReadData:
     def are_phasors_and_spectroscopy_ref_from_same_acquisition(
         app, file, file_type, metadata
     ):
+        """Checks if phasor and spectroscopy files are from the same acquisition.
+
+        Args:
+            app: The main application instance.
+            file (str): The path to the file being checked.
+            file_type (str): The type of the file ('phasors' or 'spectroscopy').
+            metadata (dict): The metadata of the file.
+
+        Returns:
+            bool: True if the files are compatible, False otherwise.
+        """
         reader_data = app.reader_data["phasors"]
         file_type_to_compare = "spectroscopy" if file_type == "phasors" else "phasors"
         metadata_to_compare = (
@@ -331,12 +448,32 @@ class ReadData:
 
     @staticmethod
     def show_warning_message(title, message):
+        """Displays a standardized warning message box.
+
+        Args:
+            title (str): The title of the message box.
+            message (str): The content of the message.
+        """
         BoxMessage.setup(
             title, message, QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style()
         )
 
     @staticmethod
     def read_bin(window, app, magic_bytes, file_type, read_data_cb, tab_selected, filter_string = None):
+        """Generic method to read a binary file after verifying its magic bytes.
+
+        Args:
+            window: The parent window for the file dialog.
+            app: The main application instance.
+            magic_bytes (bytes): The expected magic bytes at the start of the file.
+            file_type (str): A description of the file type.
+            read_data_cb (function): The callback function to parse the file content.
+            tab_selected (str): The currently active tab identifier.
+            filter_string (str, optional): A string to filter files by name. Defaults to None.
+
+        Returns:
+            The result of the read_data_cb function, or None on failure.
+        """
         dialog = QFileDialog()
         dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
         if filter_string:
@@ -376,6 +513,18 @@ class ReadData:
 
     @staticmethod
     def read_spectroscopy_data(file, file_name, file_type, tab_selected, app):
+        """Parses spectroscopy data from an open binary file.
+
+        Args:
+            file (file object): The open binary file stream.
+            file_name (str): The name of the file.
+            file_type (str): The type of file ('spectroscopy').
+            tab_selected (str): The currently active tab.
+            app: The main application instance.
+
+        Returns:
+            tuple or None: A tuple containing file_name, file_type, times, channel_curves, and metadata, or None on error.
+        """
         try:
             json_length = struct.unpack("I", file.read(4))[0]
             metadata = json.loads(file.read(json_length).decode("utf-8"))
@@ -402,6 +551,18 @@ class ReadData:
 
     @staticmethod
     def read_phasors_data(file, file_name, file_type, tab_selected, app):
+        """Parses phasors data from an open binary file.
+
+        Args:
+            file (file object): The open binary file stream.
+            file_name (str): The name of the file.
+            file_type (str): The type of file ('phasors').
+            tab_selected (str): The currently active tab.
+            app: The main application instance.
+
+        Returns:
+            tuple or None: A tuple containing file_name, file_type, phasors_data, and metadata, or None on error.
+        """
         phasors_data = {}
         try:
             json_length = struct.unpack("I", file.read(4))[0]
@@ -431,6 +592,11 @@ class ReadData:
 
     @staticmethod
     def save_plot_image(plot):
+        """Saves a matplotlib plot to an image file (PNG and EPS).
+
+        Args:
+            plot (matplotlib.figure.Figure): The plot figure to save.
+        """
         dialog = QFileDialog()
         base_path, _ = dialog.getSaveFileName(
             None,
@@ -463,6 +629,14 @@ class ReadData:
 
     @staticmethod
     def get_phasors_laser_period_ns(app):
+        """Retrieves the laser period from the phasors metadata.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            float: The laser period in nanoseconds, or 0.0 if not found.
+        """
         metadata = app.reader_data["phasors"]["phasors_metadata"]
         if "laser_period_ns" in metadata:
             return metadata["laser_period_ns"]
@@ -471,6 +645,14 @@ class ReadData:
 
     @staticmethod
     def get_phasors_frequency_mhz(app):
+        """Calculates the laser frequency from the phasors metadata.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            float: The frequency in MHz, or 0.0 if not found.
+        """
         metadata = app.reader_data["phasors"]["phasors_metadata"]
         if "laser_period_ns" in metadata:
             return ns_to_mhz(metadata["laser_period_ns"])
@@ -478,6 +660,14 @@ class ReadData:
 
     @staticmethod
     def get_spectroscopy_frequency_mhz(app):
+        """Calculates the laser frequency from the spectroscopy metadata.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            float: The frequency in MHz, or 0.0 if not found.
+        """
         metadata = app.reader_data["spectroscopy"]["metadata"]
         if "laser_period_ns" in metadata:
             return ns_to_mhz(metadata["laser_period_ns"])
@@ -485,15 +675,31 @@ class ReadData:
 
     @staticmethod
     def get_frequency_mhz(app):
-        if app.tab_selected == TAB_SPECTROSCOPY:
+        """Gets the laser frequency based on the currently selected tab.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            float: The frequency in MHz.
+        """
+        if app.tab_selected == s.TAB_SPECTROSCOPY:
             return ReadData.get_spectroscopy_frequency_mhz(app)
-        elif app.tab_selected == TAB_PHASORS:
+        elif app.tab_selected == s.TAB_PHASORS:
             return ReadData.get_phasors_frequency_mhz(app)
         else:
             return 0.0
 
     @staticmethod
     def get_spectroscopy_file_x_values(app):
+        """Generates the x-axis values (time in microseconds) for spectroscopy plots from file data.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            np.ndarray or None: An array of x-values, or None if data is not available.
+        """
         if app.acquire_read_mode == 'read':
             metadata = app.reader_data[ReadData.get_data_type(app.tab_selected)]["metadata"]
             if metadata and "laser_period_ns" in metadata:
@@ -502,6 +708,14 @@ class ReadData:
         return None    
         
     def prepare_spectroscopy_data_for_export_img(app):
+        """Prepares spectroscopy data for exporting as an image.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            tuple: A tuple containing channels_curves, times, and metadata.
+        """
         metadata = app.reader_data["spectroscopy"]["metadata"]
         channels_curves = app.reader_data["spectroscopy"]["data"]["channels_curves"]
         times = app.reader_data["spectroscopy"]["data"]["times"]
@@ -509,6 +723,14 @@ class ReadData:
 
     @staticmethod
     def prepare_phasors_data_for_export_img(app):
+        """Prepares phasors and related spectroscopy data for exporting as an image.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            tuple: A tuple containing all necessary data for plotting.
+        """
         phasors_data = app.reader_data["phasors"]["data"]["phasors_data"]
         laser_period = app.reader_data["phasors"]["metadata"]["laser_period_ns"]
         active_channels = app.reader_data["phasors"]["metadata"]["channels"]
@@ -528,9 +750,16 @@ class ReadData:
 
 
 class ReadDataControls:
+    """A collection of static methods for managing UI controls in read mode."""
 
     @staticmethod
     def handle_widgets_visibility(app, read_mode):
+        """Shows or hides UI controls based on whether the app is in read mode.
+
+        Args:
+            app: The main application instance.
+            read_mode (bool): True if the application is in read mode.
+        """
         from core.controls_controller import ControlsController
         if not read_mode:
             ControlsController.fit_button_hide(app)
@@ -541,24 +770,30 @@ class ReadDataControls:
         app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
         app.control_inputs["start_button"].setVisible(not read_mode)
         app.control_inputs["read_bin_button"].setVisible(read_mode)
-        app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(
-            bin_metadata_btn_visible and app.tab_selected != TAB_FITTING
+        app.control_inputs[s.EXPORT_PLOT_IMG_BUTTON].setVisible(
+            bin_metadata_btn_visible and app.tab_selected != s.TAB_FITTING
         ) 
-        app.widgets[TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
+        app.widgets[s.TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
         app.widgets["collapse_button"].setVisible(not read_mode)
-        app.control_inputs[SETTINGS_BIN_WIDTH].setEnabled(not read_mode)
-        app.control_inputs[SETTINGS_ACQUISITION_TIME].setEnabled(not read_mode)
-        app.control_inputs[SETTINGS_FREE_RUNNING].setEnabled(not read_mode)
-        app.control_inputs[SETTINGS_CALIBRATION_TYPE].setEnabled(not read_mode)
-        app.control_inputs[SETTINGS_CPS_THRESHOLD].setEnabled(not read_mode)
+        app.control_inputs[s.SETTINGS_BIN_WIDTH].setEnabled(not read_mode)
+        app.control_inputs[s.SETTINGS_ACQUISITION_TIME].setEnabled(not read_mode)
+        app.control_inputs[s.SETTINGS_FREE_RUNNING].setEnabled(not read_mode)
+        app.control_inputs[s.SETTINGS_CALIBRATION_TYPE].setEnabled(not read_mode)
+        app.control_inputs[s.SETTINGS_CPS_THRESHOLD].setEnabled(not read_mode)
         app.control_inputs["tau"].setEnabled(not read_mode)
-        app.control_inputs[SETTINGS_TIME_SPAN].setEnabled(not read_mode)
-        app.control_inputs[SETTINGS_HARMONIC].setEnabled(not read_mode)
-        if app.tab_selected == TAB_PHASORS:
-            app.control_inputs[LOAD_REF_BTN].setVisible(not read_mode)
+        app.control_inputs[s.SETTINGS_TIME_SPAN].setEnabled(not read_mode)
+        app.control_inputs[s.SETTINGS_HARMONIC].setEnabled(not read_mode)
+        if app.tab_selected == s.TAB_PHASORS:
+            app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode)
 
     @staticmethod
     def handle_plots_config(app, file_type):
+        """Configures channel selection checkboxes based on loaded file metadata.
+
+        Args:
+            app: The main application instance.
+            file_type (str): The data type ('spectroscopy', 'phasors', etc.).
+        """
         file_metadata = app.reader_data[file_type].get("metadata", {})
         if file_metadata.get("channels"):
             app.selected_channels = sorted(file_metadata["channels"])
@@ -568,6 +803,11 @@ class ReadDataControls:
 
     @staticmethod
     def plot_data_on_tab_change(app):
+        """Handles UI updates and data plotting when the main tab changes in read mode.
+
+        Args:
+            app: The main application instance.
+        """
         from core.plots_controller import PlotsController
         from core.controls_controller import ControlsController
         file_type = ReadData.get_data_type(app.tab_selected)
@@ -580,6 +820,14 @@ class ReadDataControls:
 
     @staticmethod
     def read_bin_metadata_enabled(app):
+        """Determines if the 'view metadata' button should be enabled.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            bool: True if the button should be enabled, False otherwise.
+        """
         data_type = ReadData.get_data_type(app.tab_selected)
         metadata = app.reader_data[data_type]["metadata"]
         if data_type != "phasors":
@@ -594,7 +842,15 @@ class ReadDataControls:
 
     @staticmethod
     def fit_button_enabled(app):
-        tab_selected_fitting = app.tab_selected == TAB_FITTING
+        """Determines if the 'Fit Data' button should be enabled.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            bool: True if the button should be enabled, False otherwise.
+        """
+        tab_selected_fitting = app.tab_selected == s.TAB_FITTING
         read_mode = app.acquire_read_mode == "read"
         fitting_file = app.reader_data["fitting"]["files"]["fitting"]
         spectroscopy_file = app.reader_data["fitting"]["files"]["spectroscopy"]
@@ -606,7 +862,14 @@ class ReadDataControls:
 
 
 class ReaderPopup(QWidget):
+    """A popup window for loading data files and selecting plots to display."""
     def __init__(self, window, tab_selected):
+        """Initializes the ReaderPopup.
+
+        Args:
+            window: The main application window instance.
+            tab_selected (str): The identifier of the tab that opened the popup.
+        """
         super().__init__()
         self.app = window
         self.tab_selected = tab_selected
@@ -636,10 +899,15 @@ class ReaderPopup(QWidget):
         self.layout.insertLayout(3, plot_btn_row)
         self.setLayout(self.layout)
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
-        self.app.widgets[READER_POPUP] = self
+        self.app.widgets[s.READER_POPUP] = self
         self.center_window()
 
     def init_file_load_ui(self):
+        """Initializes the UI for loading different types of data files.
+
+        Returns:
+            QVBoxLayout: The layout containing the file input controls.
+        """
         v_box = QVBoxLayout()
         files = self.app.reader_data[self.data_type]["files"]
         for file_type, file_path in files.items():
@@ -689,6 +957,11 @@ class ReaderPopup(QWidget):
         return v_box
 
     def init_channels_layout(self):
+        """Initializes the grid of checkboxes for selecting which channels to plot.
+
+        Returns:
+            QVBoxLayout or None: The layout for channel selection, or None if no channels are available.
+        """
         from core.controls_controller import ControlsController
         self.channels_checkboxes.clear()
         file_metadata = self.app.reader_data[self.data_type]["metadata"]
@@ -704,7 +977,7 @@ class ReaderPopup(QWidget):
                 plots_to_show = selected_channels[:2]
             self.app.plots_to_show = plots_to_show
             self.app.settings.setValue(
-                SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
+                s.SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
             )
             channels_layout = QVBoxLayout()
             desc = QLabel("CHOOSE MAX 4 PLOTS TO DISPLAY:")
@@ -726,6 +999,11 @@ class ReaderPopup(QWidget):
             return None
 
     def create_plot_btn_layout(self):
+        """Creates the layout containing the 'Plot Data' or 'Fit Data' button.
+
+        Returns:
+            QHBoxLayout: The layout with the main action button.
+        """
         fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
         spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]        
         row_btn = QHBoxLayout()
@@ -749,17 +1027,26 @@ class ReaderPopup(QWidget):
         return row_btn
 
     def remove_channels_grid(self):
+        """Removes the channel selection grid from the layout."""
         if "ch_layout" in self.layouts:
             clear_layout(self.layouts["ch_layout"])
             del self.layouts["ch_layout"]
 
     def set_checkboxes(self, text):
+        """Creates a styled checkbox widget for channel selection.
+
+        Args:
+            text (str): The label for the checkbox.
+
+        Returns:
+            tuple: A tuple containing the QCheckBox and its wrapper QWidget.
+        """
         checkbox_wrapper = QWidget()
         checkbox_wrapper.setObjectName(f"simple_checkbox_wrapper")
         row = QHBoxLayout()
         checkbox = QCheckBox(text)
         checkbox.setStyleSheet(
-            GUIStyles.set_simple_checkbox_style(color=PALETTE_BLUE_1)
+            GUIStyles.set_simple_checkbox_style(color=s.PALETTE_BLUE_1)
         )
         checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         checkbox.toggled.connect(
@@ -770,7 +1057,14 @@ class ReaderPopup(QWidget):
         checkbox_wrapper.setStyleSheet(GUIStyles.checkbox_wrapper_style())
         return checkbox, checkbox_wrapper
 
+
     def on_channel_toggled(self, state, checkbox):
+        """Handles the toggling of a channel selection checkbox.
+
+        Args:
+            state (bool): The new checked state.
+            checkbox (QCheckBox): The checkbox that was toggled.
+        """
         from core.plots_controller import PlotsController
         from core.controls_controller import ControlsController
         label_text = checkbox.text()
@@ -783,7 +1077,7 @@ class ReaderPopup(QWidget):
                 self.app.plots_to_show.remove(ch_index)
         self.app.plots_to_show.sort()
         self.app.settings.setValue(
-            SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
+            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
         )
         self.app.reader_data[self.data_type]["plots"] = self.app.plots_to_show
         if len(self.app.plots_to_show) >= 4:
@@ -812,6 +1106,12 @@ class ReaderPopup(QWidget):
             ControlsController.fit_button_hide(self.app)
 
     def on_loaded_file_change(self, text, file_type):
+        """Handles changes to the file path input field.
+
+        Args:
+            text (str): The new file path.
+            file_type (str): The type of file associated with the input.
+        """
         from core.plots_controller import PlotsController
         from core.controls_controller import ControlsController
         if (text != self.app.reader_data[self.data_type]["files"][file_type] 
@@ -824,6 +1124,11 @@ class ReaderPopup(QWidget):
         
 
     def on_load_file_btn_clicked(self, file_type):
+        """Handles the click event for the 'load file' button.
+
+        Args:
+            file_type (str): The type of file to load.
+        """
         from core.controls_controller import ControlsController
         if file_type == "laserblood_metadata":
             ReadData.read_laserblood_metadata(self, self.app, self.tab_selected)
@@ -839,8 +1144,8 @@ class ReaderPopup(QWidget):
             self.app.control_inputs["bin_metadata_button"].setVisible(
                 bin_metadata_btn_visible
             )
-            self.app.control_inputs[EXPORT_PLOT_IMG_BUTTON].setVisible(
-                bin_metadata_btn_visible and self.tab_selected != TAB_FITTING
+            self.app.control_inputs[s.EXPORT_PLOT_IMG_BUTTON].setVisible(
+                bin_metadata_btn_visible and self.tab_selected != s.TAB_FITTING
             )
             widget_key = f"load_{file_type}_input"
             self.widgets[widget_key].setText(file_name)
@@ -863,6 +1168,14 @@ class ReaderPopup(QWidget):
                  
 
     def errors_in_data(self, file_type):
+        """Checks for data consistency errors, like channel mismatches between files.
+
+        Args:
+            file_type (str): The data type to check.
+
+        Returns:
+            bool: True if an error is found, False otherwise.
+        """
         if file_type == "phasors":
             file = self.app.reader_data["phasors"]["files"]["phasors"]
             metadata = self.app.reader_data["phasors"]["phasors_metadata"]
@@ -877,6 +1190,7 @@ class ReaderPopup(QWidget):
         
 
     def on_plot_data_btn_clicked(self):
+        """Handles the click event for the main 'Plot Data' or 'Fit Data' button."""
         from core.controls_controller import ControlsController
         file_type = self.data_type
         if self.errors_in_data(file_type):
@@ -890,6 +1204,7 @@ class ReaderPopup(QWidget):
         self.close()
 
     def center_window(self):
+        """Centers the popup window on the primary screen."""
         self.setMinimumWidth(500)
         window_geometry = self.frameGeometry()
         screen_geometry = QApplication.primaryScreen().availableGeometry().center()
@@ -900,7 +1215,14 @@ class ReaderPopup(QWidget):
 
 
 class ReaderMetadataPopup(QWidget):
+    """A popup window to display the metadata from a loaded data file."""
     def __init__(self, window, tab_selected):
+        """Initializes the ReaderMetadataPopup.
+
+        Args:
+            window: The main application window instance.
+            tab_selected (str): The identifier of the tab that opened the popup.
+        """
         super().__init__()
         self.app = window
         self.tab_selected = tab_selected
@@ -922,10 +1244,15 @@ class ReaderMetadataPopup(QWidget):
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.setMinimumWidth(900)
         self.setMinimumHeight(600)
-        self.app.widgets[READER_METADATA_POPUP] = self
+        self.app.widgets[s.READER_METADATA_POPUP] = self
         self.center_window()
 
     def get_metadata_keys_dict(self):
+        """Returns a dictionary mapping metadata keys to human-readable labels.
+
+        Returns:
+            dict: The mapping of keys to labels.
+        """
         return {
             "channels": "Enabled Channels",
             "bin_width_micros": "Bin width (μs)",
@@ -936,6 +1263,14 @@ class ReaderMetadataPopup(QWidget):
         }
         
     def parse_laserblood_metadata(self, laserblood_metadata): 
+        """Parses the LaserBlood-specific metadata list into a dictionary.
+
+        Args:
+            laserblood_metadata (list): The list of metadata items.
+
+        Returns:
+            dict: The parsed metadata as key-value pairs.
+        """
         data = {} 
         for item in laserblood_metadata:
             key = item["label"] + " (" + item["unit"] + ")" if item["unit"] else item["label"]
@@ -944,6 +1279,17 @@ class ReaderMetadataPopup(QWidget):
         return data    
 
     def create_label_row(self, key, value, key_bg_color, value_bg_color):
+        """Creates a styled horizontal layout for a key-value pair.
+
+        Args:
+            key (str): The key (label).
+            value (str): The value.
+            key_bg_color (str): The background color for the key label.
+            value_bg_color (str): The background color for the value label.
+
+        Returns:
+            QHBoxLayout: The layout containing the styled labels.
+        """
         h_box = QHBoxLayout()
         h_box.setContentsMargins(0, 0, 0, 0)
         h_box.setSpacing(0)
@@ -956,6 +1302,11 @@ class ReaderMetadataPopup(QWidget):
         return h_box
 
     def create_metadata_table(self):
+        """Creates the main layout displaying all metadata in a table-like format.
+
+        Returns:
+            QVBoxLayout: The layout containing all metadata rows.
+        """
         metadata_keys = self.get_metadata_keys_dict()
         metadata = self.app.reader_data[self.data_type]["metadata"]
         laserblood_metadata = self.app.reader_data[self.data_type]["laserblood_metadata"]
@@ -993,6 +1344,7 @@ class ReaderMetadataPopup(QWidget):
         return v_box
     
     def center_window(self):    
+        """Centers the popup window on the primary screen."""
         self.setMinimumWidth(900)
         window_geometry = self.frameGeometry()
         screen_geometry = QApplication.primaryScreen().availableGeometry().center()
@@ -1002,12 +1354,21 @@ class ReaderMetadataPopup(QWidget):
     
 
 class WorkerSignals(QObject):
+    """Defines signals available from a running worker thread."""
     success = pyqtSignal(str)
     error = pyqtSignal(str)
 
 
 class SavePlotTask(QRunnable):
+    """A QRunnable task for saving a plot in a separate thread."""
     def __init__(self, plot, base_path, signals):
+        """Initializes the SavePlotTask.
+
+        Args:
+            plot (matplotlib.figure.Figure): The plot to save.
+            base_path (str): The base file path for the saved images.
+            signals (WorkerSignals): The signals object to communicate results.
+        """
         super().__init__()
         self.plot = plot
         self.base_path = base_path
@@ -1015,6 +1376,7 @@ class SavePlotTask(QRunnable):
 
     @pyqtSlot()
     def run(self):
+        """Executes the task: saves the plot to PNG and EPS formats."""
         try:
             # png
             png_path = (

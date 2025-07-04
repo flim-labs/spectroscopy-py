@@ -4,11 +4,11 @@ import numpy as np
 import pyqtgraph as pg
 
 from components.animations import VibrantAnimation
-from components.gui_styles import GUIStyles
-from components.helpers import get_realtime_adjustment_value
+from utils.gui_styles import GUIStyles
+from utils.helpers import get_realtime_adjustment_value
 from components.lin_log_control import LinLogControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
-from settings import DEFAULT_BIN_WIDTH, DEFAULT_CACHED_DECAY_VALUES, DEFAULT_DECAY_CURVES, DEFAULT_INTENSITY_LINES, SETTINGS_BIN_WIDTH, TAB_FITTING, TAB_PHASORS, TAB_SPECTROSCOPY
+import settings.settings as s
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -18,6 +18,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QApplication,
 )
+
+from utils.layout_utilities import clear_layout_tree
 
 
 class PlotsController:
@@ -81,7 +83,7 @@ class PlotsController:
             return np.arange(1)
 
         decay_curves = app.decay_curves[app.tab_selected]
-        if app.tab_selected in [TAB_SPECTROSCOPY, TAB_FITTING]:
+        if app.tab_selected in [s.TAB_SPECTROSCOPY, s.TAB_FITTING]:
             cached_decay_values = app.cached_decay_values[app.tab_selected]
             if channel in cached_decay_values and channel in decay_curves:
                 x, _ = decay_curves[channel].getData()
@@ -361,9 +363,9 @@ class PlotsController:
 
         for i, channel in enumerate(app.plots_to_show):
             plot_widget = None
-            if app.tab_selected in [TAB_SPECTROSCOPY, TAB_FITTING]:
+            if app.tab_selected in [s.TAB_SPECTROSCOPY, s.TAB_FITTING]:
                 plot_widget = PlotsController._create_spectroscopy_plot_widget(app, channel, frequency_mhz)
-            elif app.tab_selected == TAB_PHASORS:
+            elif app.tab_selected == s.TAB_PHASORS:
                 plot_widget = PlotsController._create_phasor_plot_widget(app, channel, frequency_mhz)
 
             if plot_widget:
@@ -390,11 +392,11 @@ class PlotsController:
             curve (np.ndarray): The array of photon counts for the new data slice.
         """
         bin_width_micros = int(
-            app.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)
+            app.settings.value(s.SETTINGS_BIN_WIDTH, s.DEFAULT_BIN_WIDTH)
         )
         adjustment = (
             get_realtime_adjustment_value(
-                app.selected_channels, app.tab_selected == TAB_PHASORS
+                app.selected_channels, app.tab_selected == s.TAB_PHASORS
             )
             / bin_width_micros
         )
@@ -482,9 +484,9 @@ class PlotsController:
                 x, y = time_ns, curve
             else:
                 x, y = decay_curve.getData()
-                if app.tab_selected == TAB_PHASORS:
+                if app.tab_selected == s.TAB_PHASORS:
                     decay_curve.setData(x, curve + y)
-                elif app.tab_selected in (TAB_SPECTROSCOPY, TAB_FITTING):
+                elif app.tab_selected in (s.TAB_SPECTROSCOPY, s.TAB_FITTING):
                     last_cached_decay_value = app.cached_decay_values[
                         app.tab_selected
                     ][channel_index]
@@ -492,7 +494,7 @@ class PlotsController:
                         np.array(curve) + last_cached_decay_value
                     )
                     y = app.cached_decay_values[app.tab_selected][channel_index]
-            if app.tab_selected in (TAB_SPECTROSCOPY, TAB_FITTING):
+            if app.tab_selected in (s.TAB_SPECTROSCOPY, s.TAB_FITTING):
                 PlotsController.update_spectroscopy_plots(app, x, y, channel_index, decay_curve)
             else:
                 decay_curve.setData(x, curve + y)
@@ -544,12 +546,12 @@ class PlotsController:
         app.SBR_items.clear()
         app.acquisition_time_countdown_widgets.clear()
         if deep_clear:
-            app.intensity_lines = deepcopy(DEFAULT_INTENSITY_LINES)
-            app.decay_curves = deepcopy(DEFAULT_DECAY_CURVES)
-            app.cached_decay_values = deepcopy(DEFAULT_CACHED_DECAY_VALUES)
+            app.intensity_lines = deepcopy(s.DEFAULT_INTENSITY_LINES)
+            app.decay_curves = deepcopy(s.DEFAULT_DECAY_CURVES)
+            app.cached_decay_values = deepcopy(s.DEFAULT_CACHED_DECAY_VALUES)
             PhasorsController.clear_phasors_points(app)
             for ch in app.plots_to_show:
-                if app.tab_selected != TAB_PHASORS:
+                if app.tab_selected != s.TAB_PHASORS:
                     app.cached_decay_values[app.tab_selected][ch] = np.array([0])
             if "time_shift_sliders" in app.control_inputs:
                 app.control_inputs["time_shift_sliders"].clear()
@@ -561,7 +563,7 @@ class PlotsController:
                     widget.deleteLater()
                 layout = app.grid_layout.itemAt(i).layout()
                 if layout is not None:
-                    app.clear_layout_tree(layout)
+                    clear_layout_tree(layout)
                     
                     
     

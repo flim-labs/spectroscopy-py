@@ -4,8 +4,9 @@ from PyQt6.QtCore import  Qt
 from PyQt6.QtGui import QFont
 
 
-from components.helpers import mhz_to_ns
-from settings import CURSOR_TEXT, HARMONIC_SELECTOR
+from utils.helpers import mhz_to_ns
+import settings.settings as s
+
 
 
 class PhasorsController:
@@ -172,7 +173,7 @@ class PhasorsController:
                 PhasorsController.draw_lifetime_points_in_phasors(
                     app,
                     channel,
-                    app.control_inputs[HARMONIC_SELECTOR].currentIndex() + 1,
+                    app.control_inputs[s.HARMONIC_SELECTOR].currentIndex() + 1,
                     laser_period_ns,
                     frequency_mhz,
                 )         
@@ -439,13 +440,13 @@ class PhasorsController:
             return
         mouse_point = phasor_widget.plotItem.vb.mapSceneToView(event)
         crosshair.setPos(mouse_point.x(), mouse_point.y())
-        crosshair.setText(CURSOR_TEXT)
+        crosshair.setText(s.CURSOR_TEXT)
         text.setPos(mouse_point.x(), mouse_point.y())
         freq_mhz = ControlsController.get_current_frequency_mhz(app)
-        harmonic = int(app.control_inputs[HARMONIC_SELECTOR].currentText())
+        harmonic = int(app.control_inputs[s.HARMONIC_SELECTOR].currentText())
         g = mouse_point.x()
-        s = mouse_point.y()
-        tau_phi, tau_m = PhasorsController.calculate_tau(g, s, freq_mhz, harmonic)
+        s_coord = mouse_point.y()
+        tau_phi, tau_m = PhasorsController.calculate_tau(g, s_coord, freq_mhz, harmonic)
         if tau_phi is None:
             return
         if tau_m is None:

@@ -5,18 +5,18 @@ from components.channels_detection import DetectChannelsButton
 from components.check_card import CheckCard
 from components.fancy_checkbox import FancyButton
 from components.gradient_text import GradientText
-from components.gui_styles import GUIStyles
+from utils.gui_styles import GUIStyles
 from components.input_number_control import InputFloatControl, InputNumberControl
 from components.laserblood_metadata_popup import LaserbloodMetadataPopup
-from components.layout_utilities import draw_layout_separator, hide_layout, show_layout
+from utils.layout_utilities import draw_layout_separator, hide_layout, show_layout
 from components.link_widget import LinkWidget
-from components.logo_utilities import TitlebarIcon
+from utils.logo_utilities import TitlebarIcon
 from components.progress_bar import ProgressBar
 from components.read_data import ReadDataControls
-from components.resource_path import resource_path
+from utils.resource_path import resource_path
 from components.select_control import SelectControl
 from components.switch_control import SwitchControl
-from settings import APP_DEFAULT_HEIGHT, APP_DEFAULT_WIDTH, CHANNELS_GRID, DEFAULT_ACQUISITION_TIME, DEFAULT_BIN_WIDTH, DEFAULT_CONNECTION_TYPE, DEFAULT_CPS_THRESHOLD, DEFAULT_FREE_RUNNING, DEFAULT_SETTINGS_CALIBRATION_TYPE, DEFAULT_TIME_SPAN, FIT_BTN, FIT_BTN_PLACEHOLDER, HARMONIC_SELECTOR, HARMONIC_SELECTOR_LABEL, LOAD_REF_BTN, MAX_CHANNELS, MODE_STOPPED, PALETTE_BLUE_1, PALETTE_RED_1, PHASORS_RESOLUTIONS, SETTINGS_ACQUISITION_TIME, SETTINGS_BIN_WIDTH, SETTINGS_CALIBRATION_TYPE, SETTINGS_CONNECTION_TYPE, SETTINGS_CPS_THRESHOLD, SETTINGS_FREE_RUNNING, SETTINGS_HARMONIC, SETTINGS_HARMONIC_LABEL, SETTINGS_PHASORS_RESOLUTION, SETTINGS_QUANTIZE_PHASORS, SETTINGS_REPLICATES, SETTINGS_SHOW_SBR, SETTINGS_TAU_NS, SETTINGS_TIME_SPAN, TAB_FITTING, TAB_PHASORS, TAB_SPECTROSCOPY, TIME_TAGGER_PROGRESS_BAR, TOP_COLLAPSIBLE_WIDGET, VERSION
+import settings.settings as s
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import (
@@ -57,7 +57,7 @@ class UIController:
                                          widget and the main grid layout for plots.
         """
         app.setWindowTitle(
-            "FlimLabs - SPECTROSCOPY v" + VERSION + " - API v" + flim_labs.get_version()
+            "FlimLabs - SPECTROSCOPY v" + s.VERSION + " - API v" + flim_labs.get_version()
         )
         TitlebarIcon.setup(app)
         GUIStyles.customize_theme(app)
@@ -68,7 +68,7 @@ class UIController:
         time_tagger_progress_bar = ProgressBar(
             visible=False, indeterminate=True, label_text="Time tagger processing..."
         )
-        app.widgets[TIME_TAGGER_PROGRESS_BAR] = time_tagger_progress_bar
+        app.widgets[s.TIME_TAGGER_PROGRESS_BAR] = time_tagger_progress_bar
         main_layout.addWidget(time_tagger_progress_bar)
         main_layout.addSpacing(5)
         grid_layout = QGridLayout()
@@ -76,7 +76,7 @@ class UIController:
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         app.setLayout(main_layout)
         app.resize(
-            app.settings.value("size", QSize(APP_DEFAULT_WIDTH, APP_DEFAULT_HEIGHT))
+            app.settings.value("size", QSize(s.APP_DEFAULT_WIDTH, s.APP_DEFAULT_HEIGHT))
         )
         app.move(
             app.settings.value(
@@ -110,7 +110,7 @@ class UIController:
         top_collapsible_layout = QVBoxLayout()
         top_collapsible_layout.setContentsMargins(0, 0, 0, 0)
         top_collapsible_layout.setSpacing(0)
-        app.widgets[TOP_COLLAPSIBLE_WIDGET] = top_collapsible_widget
+        app.widgets[s.TOP_COLLAPSIBLE_WIDGET] = top_collapsible_widget
         top_bar_header = QHBoxLayout()
         top_bar_header.addSpacing(10)
         top_bar_header.addLayout(UIController.create_logo_and_title(app))
@@ -120,45 +120,45 @@ class UIController:
         tabs_layout.setContentsMargins(0, 0, 0, 0)
         # no spacing
         tabs_layout.setSpacing(0)
-        app.control_inputs[TAB_SPECTROSCOPY] = QPushButton("SPECTROSCOPY")
-        app.control_inputs[TAB_SPECTROSCOPY].setFlat(True)
-        app.control_inputs[TAB_SPECTROSCOPY].setSizePolicy(
+        app.control_inputs[s.TAB_SPECTROSCOPY] = QPushButton("SPECTROSCOPY")
+        app.control_inputs[s.TAB_SPECTROSCOPY].setFlat(True)
+        app.control_inputs[s.TAB_SPECTROSCOPY].setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
         )
-        app.control_inputs[TAB_SPECTROSCOPY].setCursor(
+        app.control_inputs[s.TAB_SPECTROSCOPY].setCursor(
             Qt.CursorShape.PointingHandCursor
         )
-        app.control_inputs[TAB_SPECTROSCOPY].setCheckable(True)
-        GUIStyles.set_config_btn_style(app.control_inputs[TAB_SPECTROSCOPY])
-        app.control_inputs[TAB_SPECTROSCOPY].setChecked(True)
-        app.control_inputs[TAB_SPECTROSCOPY].clicked.connect(
-            lambda: ControlsController.on_tab_selected(app, TAB_SPECTROSCOPY)
+        app.control_inputs[s.TAB_SPECTROSCOPY].setCheckable(True)
+        GUIStyles.set_config_btn_style(app.control_inputs[s.TAB_SPECTROSCOPY])
+        app.control_inputs[s.TAB_SPECTROSCOPY].setChecked(True)
+        app.control_inputs[s.TAB_SPECTROSCOPY].clicked.connect(
+            lambda: ControlsController.on_tab_selected(app, s.TAB_SPECTROSCOPY)
         )
-        tabs_layout.addWidget(app.control_inputs[TAB_SPECTROSCOPY])
-        app.control_inputs[TAB_PHASORS] = QPushButton("PHASORS")
-        app.control_inputs[TAB_PHASORS].setFlat(True)
-        app.control_inputs[TAB_PHASORS].setSizePolicy(
+        tabs_layout.addWidget(app.control_inputs[s.TAB_SPECTROSCOPY])
+        app.control_inputs[s.TAB_PHASORS] = QPushButton("PHASORS")
+        app.control_inputs[s.TAB_PHASORS].setFlat(True)
+        app.control_inputs[s.TAB_PHASORS].setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
         )
-        app.control_inputs[TAB_PHASORS].setCursor(Qt.CursorShape.PointingHandCursor)
-        app.control_inputs[TAB_PHASORS].setCheckable(True)
-        GUIStyles.set_config_btn_style(app.control_inputs[TAB_PHASORS])
-        app.control_inputs[TAB_PHASORS].clicked.connect(
-            lambda: ControlsController.on_tab_selected(app, TAB_PHASORS)
+        app.control_inputs[s.TAB_PHASORS].setCursor(Qt.CursorShape.PointingHandCursor)
+        app.control_inputs[s.TAB_PHASORS].setCheckable(True)
+        GUIStyles.set_config_btn_style(app.control_inputs[s.TAB_PHASORS])
+        app.control_inputs[s.TAB_PHASORS].clicked.connect(
+            lambda: ControlsController.on_tab_selected(app, s.TAB_PHASORS)
         )
-        tabs_layout.addWidget(app.control_inputs[TAB_PHASORS])
-        app.control_inputs[TAB_FITTING] = QPushButton("FITTING")
-        app.control_inputs[TAB_FITTING].setFlat(True)
-        app.control_inputs[TAB_FITTING].setSizePolicy(
+        tabs_layout.addWidget(app.control_inputs[s.TAB_PHASORS])
+        app.control_inputs[s.TAB_FITTING] = QPushButton("FITTING")
+        app.control_inputs[s.TAB_FITTING].setFlat(True)
+        app.control_inputs[s.TAB_FITTING].setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
         )
-        app.control_inputs[TAB_FITTING].setCursor(Qt.CursorShape.PointingHandCursor)
-        app.control_inputs[TAB_FITTING].setCheckable(True)
-        GUIStyles.set_config_btn_style(app.control_inputs[TAB_FITTING])
-        app.control_inputs[TAB_FITTING].clicked.connect(
-            lambda: ControlsController.on_tab_selected(app, TAB_FITTING)
+        app.control_inputs[s.TAB_FITTING].setCursor(Qt.CursorShape.PointingHandCursor)
+        app.control_inputs[s.TAB_FITTING].setCheckable(True)
+        GUIStyles.set_config_btn_style(app.control_inputs[s.TAB_FITTING])
+        app.control_inputs[s.TAB_FITTING].clicked.connect(
+            lambda: ControlsController.on_tab_selected(app, s.TAB_FITTING)
         )
-        tabs_layout.addWidget(app.control_inputs[TAB_FITTING])
+        tabs_layout.addWidget(app.control_inputs[s.TAB_FITTING])
         top_bar_header.addLayout(tabs_layout)
         top_bar_header.addStretch(1)
         # LASERBLOOD METADATA
@@ -240,7 +240,7 @@ class UIController:
         ctl = GradientText(
             app,
             text="SPECTROSCOPY",
-            colors=[(0.7, "#1E90FF"), (1.0, PALETTE_RED_1)],
+            colors=[(0.7, "#1E90FF"), (1.0, s.PALETTE_RED_1)],
             stylesheet=GUIStyles.set_main_title_style(),
         )
         ctl_layout.addWidget(ctl)
@@ -279,7 +279,7 @@ class UIController:
         export_data_control.setSpacing(0)
         export_data_label = QLabel("Export data:")
         inp = SwitchControl(
-            active_color=PALETTE_BLUE_1, width=70, height=30, checked=export_data_active
+            active_color=s.PALETTE_BLUE_1, width=70, height=30, checked=export_data_active
         )
         inp.toggled.connect(partial(ControlsController.on_export_data_changed, app))
         export_data_control.addWidget(export_data_label)
@@ -327,36 +327,36 @@ class UIController:
         """
         from core.controls_controller import ControlsController
         _, inp = InputNumberControl.setup(
-            "Bin width (µs):", 1000, 1000000, int(app.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)),
+            "Bin width (µs):", 1000, 1000000, int(app.settings.value(s.SETTINGS_BIN_WIDTH, s.DEFAULT_BIN_WIDTH)),
             layout, partial(ControlsController.on_bin_width_change, app),
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style())
-        app.control_inputs[SETTINGS_BIN_WIDTH] = inp
+        app.control_inputs[s.SETTINGS_BIN_WIDTH] = inp
 
         _, inp = InputNumberControl.setup(
-            "Time span (s):", 1, 300, int(app.settings.value(SETTINGS_TIME_SPAN, DEFAULT_TIME_SPAN)),
+            "Time span (s):", 1, 300, int(app.settings.value(s.SETTINGS_TIME_SPAN, s.DEFAULT_TIME_SPAN)),
             layout, partial(ControlsController.on_time_span_change, app),
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style())
-        app.control_inputs[SETTINGS_TIME_SPAN] = inp
+        app.control_inputs[s.SETTINGS_TIME_SPAN] = inp
 
         switch_control = QVBoxLayout()
-        inp = SwitchControl(active_color="#11468F", checked=app.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING) == "true")
+        inp = SwitchControl(active_color="#11468F", checked=app.settings.value(s.SETTINGS_FREE_RUNNING, s.DEFAULT_FREE_RUNNING) == "true")
         inp.toggled.connect(partial(ControlsController.on_free_running_changed, app))
         switch_control.addWidget(QLabel("Free running:"))
         switch_control.addSpacing(8)
         switch_control.addWidget(inp)
         layout.addLayout(switch_control)
         layout.addSpacing(20)
-        app.control_inputs[SETTINGS_FREE_RUNNING] = inp
+        app.control_inputs[s.SETTINGS_FREE_RUNNING] = inp
 
         _, inp = InputNumberControl.setup(
-            "Acquisition time (s):", 1, 1800, int(app.settings.value(SETTINGS_ACQUISITION_TIME, DEFAULT_ACQUISITION_TIME)),
+            "Acquisition time (s):", 1, 1800, int(app.settings.value(s.SETTINGS_ACQUISITION_TIME, s.DEFAULT_ACQUISITION_TIME)),
             layout, partial(ControlsController.on_acquisition_time_change, app),
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style())
-        app.control_inputs[SETTINGS_ACQUISITION_TIME] = inp
-        ControlsController.on_free_running_changed(app, app.settings.value(SETTINGS_FREE_RUNNING, DEFAULT_FREE_RUNNING) == "true")
+        app.control_inputs[s.SETTINGS_ACQUISITION_TIME] = inp
+        ControlsController.on_free_running_changed(app, app.settings.value(s.SETTINGS_FREE_RUNNING, s.DEFAULT_FREE_RUNNING) == "true")
 
     @staticmethod
     def _create_pileup_sbr_controls(app, layout):
@@ -368,21 +368,21 @@ class UIController:
             layout (QLayout): The layout to add the controls to.
         """
         from core.controls_controller import ControlsController
-        cps_threshold = int(app.settings.value(SETTINGS_CPS_THRESHOLD, DEFAULT_CPS_THRESHOLD))
+        cps_threshold = int(app.settings.value(s.SETTINGS_CPS_THRESHOLD, s.DEFAULT_CPS_THRESHOLD))
         _, inp = InputNumberControl.setup(
             "Pile-up threshold (CPS):", 0, 100000000, cps_threshold,
             layout, partial(ControlsController.on_cps_threshold_change, app),
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="70px"))
-        app.control_inputs[SETTINGS_CPS_THRESHOLD] = inp
+        app.control_inputs[s.SETTINGS_CPS_THRESHOLD] = inp
         LaserbloodMetadataPopup.set_cps_threshold(app, cps_threshold)
         
         show_SBR_control = QVBoxLayout()
         show_SBR_control.setContentsMargins(0, 0, 0, 0)
         show_SBR_control.setSpacing(0)
         show_SBR_label = QLabel("Show SBR:")
-        inp = SwitchControl(active_color=PALETTE_BLUE_1, width=60, height=30, checked=app.show_SBR)
-        app.control_inputs[SETTINGS_SHOW_SBR] = inp
+        inp = SwitchControl(active_color=s.PALETTE_BLUE_1, width=60, height=30, checked=app.show_SBR)
+        app.control_inputs[s.SETTINGS_SHOW_SBR] = inp
         inp.toggled.connect(partial(ControlsController.on_show_SBR_changed, app))
         show_SBR_control.addWidget(show_SBR_label)
         show_SBR_control.addSpacing(5)
@@ -403,22 +403,22 @@ class UIController:
         quantize_phasors_switch_control = QVBoxLayout()
         inp_quantize = SwitchControl(active_color="#11468F", checked=app.quantized_phasors)
         inp_quantize.toggled.connect(partial(ControlsController.on_quantize_phasors_changed, app))
-        app.control_inputs[SETTINGS_QUANTIZE_PHASORS] = inp_quantize
+        app.control_inputs[s.SETTINGS_QUANTIZE_PHASORS] = inp_quantize
         quantize_phasors_switch_control.addWidget(QLabel("Quantize Phasors:"))
         quantize_phasors_switch_control.addSpacing(8)
         quantize_phasors_switch_control.addWidget(inp_quantize)
         app.control_inputs["quantize_phasors_container"] = quantize_phasors_switch_control
-        (show_layout(quantize_phasors_switch_control) if app.tab_selected == TAB_PHASORS else hide_layout(quantize_phasors_switch_control))
+        (show_layout(quantize_phasors_switch_control) if app.tab_selected == s.TAB_PHASORS else hide_layout(quantize_phasors_switch_control))
         layout.addLayout(quantize_phasors_switch_control)
         layout.addSpacing(20)
 
         phasors_resolution_container, inp, __, container  = SelectControl.setup(
-            "Squares:", app.phasors_resolution, layout, PHASORS_RESOLUTIONS,
+            "Squares:", app.phasors_resolution, layout, s.PHASORS_RESOLUTIONS,
             partial(ControlsController.on_phasors_resolution_changed, app), width=70,
         )
         inp.setStyleSheet(GUIStyles.set_input_select_style())
-        (show_layout(phasors_resolution_container) if (app.tab_selected == TAB_PHASORS and app.quantized_phasors) else hide_layout(phasors_resolution_container))
-        app.control_inputs[SETTINGS_PHASORS_RESOLUTION] = inp
+        (show_layout(phasors_resolution_container) if (app.tab_selected == s.TAB_PHASORS and app.quantized_phasors) else hide_layout(phasors_resolution_container))
+        app.control_inputs[s.SETTINGS_PHASORS_RESOLUTION] = inp
         app.control_inputs["phasors_resolution_container"] = phasors_resolution_container
 
     @staticmethod
@@ -432,7 +432,7 @@ class UIController:
         """
         from core.controls_controller import ControlsController
         _, inp, label, container  = SelectControl.setup(
-            "Calibration:", int(app.settings.value(SETTINGS_CALIBRATION_TYPE, DEFAULT_SETTINGS_CALIBRATION_TYPE)),
+            "Calibration:", int(app.settings.value(s.SETTINGS_CALIBRATION_TYPE, s.DEFAULT_SETTINGS_CALIBRATION_TYPE)),
             layout, ["None", "Phasors Ref."], partial(ControlsController.on_calibration_change, app),
         )
         inp.setStyleSheet(GUIStyles.set_input_select_style())
@@ -440,7 +440,7 @@ class UIController:
         app.control_inputs["calibration_label"] = label
 
         label, inp = InputFloatControl.setup(
-            "TAU (ns):", 0, 1000, float(app.settings.value(SETTINGS_TAU_NS, "0")),
+            "TAU (ns):", 0, 1000, float(app.settings.value(s.SETTINGS_TAU_NS, "0")),
             layout, partial(ControlsController.on_tau_change, app),
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style())
@@ -448,12 +448,12 @@ class UIController:
         app.control_inputs["tau_label"] = label
 
         label, inp = InputNumberControl.setup(
-            "Harmonics:", 1, 4, int(app.settings.value(SETTINGS_HARMONIC, "1")),
+            "Harmonics:", 1, 4, int(app.settings.value(s.SETTINGS_HARMONIC, "1")),
             layout, partial(ControlsController.on_harmonic_change, app)
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style())
-        app.control_inputs[SETTINGS_HARMONIC] = inp
-        app.control_inputs[SETTINGS_HARMONIC_LABEL] = label
+        app.control_inputs[s.SETTINGS_HARMONIC] = inp
+        app.control_inputs[s.SETTINGS_HARMONIC_LABEL] = label
 
     @staticmethod
     def _create_replicate_and_harmonic_controls(app, layout):
@@ -470,8 +470,8 @@ class UIController:
             partial(ControlsController.on_harmonic_selector_change, app),
         )
         inp.setStyleSheet(GUIStyles.set_input_select_style())
-        app.control_inputs[HARMONIC_SELECTOR_LABEL] = label
-        app.control_inputs[HARMONIC_SELECTOR] = inp
+        app.control_inputs[s.HARMONIC_SELECTOR_LABEL] = label
+        app.control_inputs[s.HARMONIC_SELECTOR] = inp
         label.hide()
         inp.hide()
         
@@ -480,7 +480,7 @@ class UIController:
             layout, partial(ControlsController.on_replicate_change, app),
         )
         inp.setStyleSheet(GUIStyles.set_input_number_style(min_width="40px", border_color="#11468F"))
-        app.control_inputs[SETTINGS_REPLICATES] = inp
+        app.control_inputs[s.SETTINGS_REPLICATES] = inp
         app.control_inputs["replicates_label"] = label
 
     @staticmethod
@@ -503,7 +503,7 @@ class UIController:
         save_button.setHidden(True)
         save_button.clicked.connect(partial(ControlsController.on_load_reference, app))
         save_button.setStyleSheet("QPushButton { background-color: #1E90FF; color: white; border-radius: 5px; padding: 5px 12px; font-weight: bold; font-size: 16px; }")
-        app.control_inputs[LOAD_REF_BTN] = save_button
+        app.control_inputs[s.LOAD_REF_BTN] = save_button
         layout.addWidget(save_button)
 
         # EXPORT Button
@@ -518,10 +518,10 @@ class UIController:
         layout.addWidget(export_button)
 
         # FIT Button Placeholder
-        app.control_inputs[FIT_BTN_PLACEHOLDER] = QWidget()
-        app.control_inputs[FIT_BTN_PLACEHOLDER].setLayout(QHBoxLayout())
-        app.control_inputs[FIT_BTN_PLACEHOLDER].layout().setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(app.control_inputs[FIT_BTN_PLACEHOLDER])
+        app.control_inputs[s.FIT_BTN_PLACEHOLDER] = QWidget()
+        app.control_inputs[s.FIT_BTN_PLACEHOLDER].setLayout(QHBoxLayout())
+        app.control_inputs[s.FIT_BTN_PLACEHOLDER].layout().setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(app.control_inputs[s.FIT_BTN_PLACEHOLDER])
 
         # START Button
         start_button = QPushButton("START")
@@ -593,7 +593,7 @@ class UIController:
         UIController._create_replicate_and_harmonic_controls(app, controls_row)
         UIController._create_action_buttons(app, controls_row)
         
-        collapse_button = CollapseButton(app.widgets[TOP_COLLAPSIBLE_WIDGET])
+        collapse_button = CollapseButton(app.widgets[s.TOP_COLLAPSIBLE_WIDGET])
         controls_row.addWidget(collapse_button)
         app.widgets["collapse_button"] = collapse_button
         controls_row.addSpacing(10)
@@ -612,7 +612,7 @@ class UIController:
             app: The main application instance.
         """
         GUIStyles.set_start_btn_style(app.control_inputs["read_bin_button"])
-        if app.mode == MODE_STOPPED:
+        if app.mode == s.MODE_STOPPED:
             app.control_inputs["start_button"].setText("START")
             GUIStyles.set_start_btn_style(app.control_inputs["start_button"])
         else:
@@ -630,7 +630,7 @@ class UIController:
             layout (QLayout): The layout to add the checkboxes to.
         """
         from core.controls_controller import ControlsController
-        for i in range(MAX_CHANNELS):
+        for i in range(s.MAX_CHANNELS):
             ch_wrapper = QWidget()
             ch_wrapper.setObjectName(f"ch_checkbox_wrapper")
             ch_wrapper.setFixedHeight(40)
@@ -680,7 +680,7 @@ class UIController:
         row_channel_type = QHBoxLayout()
         row_channel_type.setContentsMargins(0,0,0,0)
         _, inp, __, container = SelectControl.setup(
-            "Channel type:", int(app.settings.value(SETTINGS_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)),
+            "Channel type:", int(app.settings.value(s.SETTINGS_CONNECTION_TYPE, s.DEFAULT_CONNECTION_TYPE)),
             row_channel_type, ["USB", "SMA"], partial(ControlsController.on_connection_type_value_change, app), spacing=None,
         )
         inp.setFixedHeight(40)
@@ -692,7 +692,7 @@ class UIController:
         UIController._create_channel_checkboxes(app, grid)
         
         grid.addWidget(plots_config_btn, alignment=Qt.AlignmentFlag.AlignBottom)
-        app.widgets[CHANNELS_GRID] = grid
+        app.widgets[s.CHANNELS_GRID] = grid
         return grid   
     
     
