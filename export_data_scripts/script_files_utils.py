@@ -1,3 +1,12 @@
+"""
+Script File Utilities Module
+
+This module provides utilities for exporting and generating analysis scripts for different
+types of spectroscopy data analysis including spectroscopy, phasors, and fitting analysis.
+It handles the creation of both Python and MATLAB scripts with appropriate file paths
+and requirements.
+"""
+
 import os
 
 from PyQt6.QtWidgets import QMessageBox
@@ -22,9 +31,31 @@ phasors_macro_py_script_path = resource_path("export_data_scripts/macro_phasors_
 
 
 class ScriptFileUtils:
+    """
+    Utility class for handling script file operations.
+    
+    This class provides methods to export analysis scripts for different types of
+    spectroscopy data analysis. It supports generating Python and MATLAB scripts
+    for spectroscopy, phasors, and fitting analysis, along with macro scripts
+    and requirements files.
+    """
     
     @classmethod
     def export_scripts(cls, bin_file_paths, file_name, directory, script_type, time_tagger=False, time_tagger_file_path=""):
+        """
+        Export analysis scripts based on the specified script type.
+        
+        Args:
+            bin_file_paths (dict): Dictionary containing file paths for different data types
+            file_name (str): Base name for the output script files
+            directory (str): Target directory for saving the scripts
+            script_type (str): Type of script to generate ('spectroscopy', 'phasors', 'fitting')
+            time_tagger (bool, optional): Whether to include time tagger functionality. Defaults to False.
+            time_tagger_file_path (str, optional): Path to time tagger file. Defaults to "".
+            
+        Raises:
+            Exception: If an error occurs during script generation or file writing
+        """
         try:
             if time_tagger:
                 python_modifier = cls.get_time_tagger_content_modifiers()
@@ -53,6 +84,17 @@ class ScriptFileUtils:
 
     @classmethod
     def write_new_scripts_content(cls, content_modifier, bin_file_paths, file_name, directory, file_extension, script_type):
+        """
+        Write new script content to files based on content modifiers.
+        
+        Args:
+            content_modifier (dict): Configuration for content modification including source file and patterns
+            bin_file_paths (dict or None): Dictionary of file paths to be embedded in the script
+            file_name (str): Base name for the output file
+            directory (str): Target directory for saving the file
+            file_extension (str): File extension ('py' or 'm')
+            script_type (str): Type of script being generated
+        """
         is_phasors = script_type == "phasors"
         content = cls.read_file_content(content_modifier["source_file"])
         if bin_file_paths is not None:
@@ -72,6 +114,15 @@ class ScriptFileUtils:
         
     @classmethod
     def get_spectroscopy_content_modifiers(cls, time_tagger=False):
+        """
+        Get content modifiers for spectroscopy scripts.
+        
+        Args:
+            time_tagger (bool, optional): Whether to include time tagger functionality. Defaults to False.
+            
+        Returns:
+            tuple: A tuple containing (python_modifier, matlab_modifier) dictionaries
+        """
         python_modifier = {
             "source_file": spectroscopy_py_script_path,
             "skip_pattern": "def get_recent_spectroscopy_file():",
@@ -90,6 +141,15 @@ class ScriptFileUtils:
     
     @classmethod    
     def get_phasors_content_modifiers(cls, time_tagger=False):
+        """
+        Get content modifiers for phasors analysis scripts.
+        
+        Args:
+            time_tagger (bool, optional): Whether to include time tagger functionality. Defaults to False.
+            
+        Returns:
+            tuple: A tuple containing (python_modifier, matlab_modifier) dictionaries
+        """
         python_modifier = {
             "source_file": phasors_py_script_path,
             "skip_pattern": "get_recent_spectroscopy_file():",
@@ -108,6 +168,15 @@ class ScriptFileUtils:
     
     @classmethod    
     def get_fitting_content_modifiers(cls, time_tagger=False):
+        """
+        Get content modifiers for fitting analysis scripts.
+        
+        Args:
+            time_tagger (bool, optional): Whether to include time tagger functionality. Defaults to False.
+            
+        Returns:
+            tuple: A tuple containing (python_modifier, matlab_modifier) dictionaries
+        """
         python_modifier = {
             "source_file": fitting_py_script_path,
             "skip_pattern": "def get_recent_spectroscopy_file():",
@@ -126,6 +195,12 @@ class ScriptFileUtils:
 
     @classmethod    
     def get_time_tagger_content_modifiers(cls):
+        """
+        Get content modifiers for time tagger scripts.
+        
+        Returns:
+            dict: Dictionary containing configuration for time tagger script generation
+        """
         python_modifier = {
             "source_file": time_tagger_py_script_path,
             "skip_pattern": "def get_recent_time_tagger_file():",
@@ -137,6 +212,12 @@ class ScriptFileUtils:
     
     @classmethod    
     def get_spectroscopy_macro_content_modifiers(cls):
+        """
+        Get content modifiers for spectroscopy macro scripts.
+        
+        Returns:
+            dict: Dictionary containing configuration for spectroscopy macro script generation
+        """
         python_modifier = {
             "source_file": spectroscopy_macro_py_script_path,
             "skip_pattern": "",
@@ -148,6 +229,12 @@ class ScriptFileUtils:
     
     @classmethod    
     def get_phasors_macro_content_modifiers(cls):
+        """
+        Get content modifiers for phasors macro scripts.
+        
+        Returns:
+            dict: Dictionary containing configuration for phasors macro script generation
+        """
         python_modifier = {
             "source_file": phasors_macro_py_script_path,
             "skip_pattern": "",
@@ -159,21 +246,57 @@ class ScriptFileUtils:
 
     @classmethod
     def write_file(cls, file_name, content):
+        """
+        Write content to a file.
+        
+        Args:
+            file_name (str): Path and name of the file to write
+            content (list): List of strings representing file content lines
+        """
         with open(file_name, "w") as file:
             file.writelines(content)
 
     @classmethod
     def create_requirements_content(cls, requirements):
+        """
+        Create content for requirements.txt file.
+        
+        Args:
+            requirements (list): List of package names to include in requirements
+            
+        Returns:
+            list: List of formatted requirement strings with newlines
+        """
         requirements_content = [f"{requirement}\n" for requirement in requirements]
         return requirements_content
 
     @classmethod
     def read_file_content(cls, file_path):
+        """
+        Read content from a file.
+        
+        Args:
+            file_path (str): Path to the file to read
+            
+        Returns:
+            list: List of strings representing file content lines
+        """
         with open(file_path, "r") as file:
             return file.readlines()
 
     @classmethod
     def manipulate_file_content(cls, content, file_paths, is_phasors):
+        """
+        Manipulate file content by replacing placeholders with actual file paths.
+        
+        Args:
+            content (list): List of strings representing original file content
+            file_paths (dict): Dictionary containing file paths for replacement
+            is_phasors (bool): Whether the script is for phasors analysis
+            
+        Returns:
+            list: List of strings with placeholders replaced by actual file paths
+        """
         manipulated_lines = []
         for line in content:
             if "time_tagger" not in file_paths:
@@ -190,6 +313,12 @@ class ScriptFileUtils:
 
     @classmethod
     def show_success_message(cls, file_name):
+        """
+        Display a success message dialog.
+        
+        Args:
+            file_name (str): Name of the successfully processed file
+        """
         info_title, info_msg = MessagesUtilities.info_handler(
             "SavedDataFiles", file_name
         )
@@ -202,6 +331,12 @@ class ScriptFileUtils:
 
     @classmethod
     def show_error_message(cls, error_message):
+        """
+        Display an error message dialog.
+        
+        Args:
+            error_message (str): Error message to display
+        """
         error_title, error_msg = MessagesUtilities.error_handler(
             "ErrorSavingDataFiles", error_message
         )
