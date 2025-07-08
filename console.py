@@ -1,7 +1,5 @@
 import threading
-
 import flim_labs
-
 
 def stop():
     print("stop")
@@ -9,70 +7,58 @@ def stop():
 
 def process(time, _x, counts):
     seconds = round(time / 1_000_000_000, 5)
-    seconds = str(seconds).zfill(5)
-    print("[" + seconds + "s] " + str(counts[0]))
+    print(f"[{str(seconds).zfill(5)}s] {counts[0]}")
 
 
 def thread_function():
     print("Thread: Start reading from queue")
-    continue_reading = True
-    while continue_reading:
-        val = flim_labs.pull_from_queue()
+    while True:
+        for v in flim_labs.pull_from_queue():
+            if v == ('end',):
+                print("Experiment ended")
+                return
+            (ch,), (time,), decay = v
+            print(f"Channel={ch} Time={time} Decay={decay}")
 
-        if len(val) > 0:
-            for v in val:
-                if v == ('end',):
-                    print("Experiment ended")
-                    continue_reading = False
-                    break
-                ((ch,), (time,),(decay)) = v
-                print("Channel=" + str(ch) + " Time=" + str(time) + " Decay=" + str(decay))
-                # print (v)
-                
 
 def detect_laser_sync_in_frequency():
-    try: 
-        print(
-            "Measuring frequency... The process can take a few seconds. Please wait. After 30 seconds, the process "
-            "will be interrupted automatically.") 
-        res= flim_labs.detect_laser_frequency()
-        if res is None or res == 0.0:
-                    frequency_mhz = 0.0
-                    print("Frequency not detected. Please check the connection and try again.")
-        else:
-            frequency_mhz = round(res, 3)
-            print(f"Frequency detected: {frequency_mhz} MHz")
+    print("Measuring frequency... Please wait (timeout: 30s).")
+    try:
+        res = flim_labs.detect_laser_frequency()
+        if not res:
+            print("Frequency not detected. Check the connection.")
+            return 0.0
+        freq = round(res, 3)
+        print(f"Frequency detected: {freq} MHz")
+        return freq
     except Exception as e:
-            frequency_mhz = 0.0
-            print("Error: " + str(e))  
+        print(f"Error: {e}")
+        return 0.0
 
 
-
-def select_firmware():
-    firmware_selected = flim_labs.get_spectroscopy_firmware(
-            sync="in" if selected_sync == "sync_in" else "out",
-            frequency_mhz=frequency_mhz,
-            channel=connection_type.lower(),
-            sync_connection="sma"
-        )
-    return firmware_selected
-
+def select_firmware(sync, freq, conn_type, channels):
+    return flim_labs.get_spectroscopy_firmware(
+        sync="in" if sync == "sync_in" else "out",
+        frequency_mhz=freq,
+        channel=conn_type.lower(),
+        sync_connection="sma",
+        channels = channels
+    )
 
 
-def select_frequency_mhz():
-     if selected_sync == "sync_in":
-        frequency_mhz = sync_in_frequency_mhz
-     else:
-        frequency_mhz = int(selected_sync.split("_")[-1])
-     if frequency_mhz == 0.0:
-            print("Error", "Frequency not detected"),
-            return
-     return frequency_mhz
+def select_frequency_mhz(sync, sync_in_freq):
+    if sync == "sync_in":
+        return sync_in_freq
+    return int(sync.split("_")[-1])
 
-     
-            
+
 if __name__ == "__main__":
-
+    # Configuration
+    enabled_channels = [2, 3]               # Channels to acquire (0-indexed)
+    connection_type = "USB"                 # USB or SMA
+    time_tagger = True                     # Set True to export time tagger data
+    bin_width_micros = 1000                 # Bin width in microseconds
+    acquisition_time_millis = 3000          # Total acquisition time in milliseconds
     
     #SELECTED SYNC
     #choose between:
@@ -82,38 +68,30 @@ if __name__ == "__main__":
     #  -  "sync_out_20": 20Mhz, the field 'sync_in_frequency'_mhz will not be taken into account accordingly 
     #  -  "sync_out_40": 40Mhz, the field 'sync_in_frequency'_mhz will not be taken into account accordingly
     #  -  "sync_out_80": 80Mhz,the field 'sync_in_frequency'_mhz will not be taken into account accordingly
+    selected_sync = "sync_out_40"           
 
-    selected_sync= "sync_out_80"
-# -------------------------------------------------------------------------------------------------------------------
-    if selected_sync=="sync_in":
+    sync_in_frequency_mhz = 0.0
+    if selected_sync == "sync_in":
+        # Manually or automatically detect sync in frequency
+        sync_in_frequency_mhz = detect_laser_sync_in_frequency()
 
-    # SYNC IN FREQUENCY
-    # leaves this line uncommented to set manually the frequency
-     sync_in_frequency_mhz=0.0
+    frequency_mhz = select_frequency_mhz(selected_sync, sync_in_frequency_mhz)
 
-    #or uncomment this line to run the automatic laser frequency detecion and comment the line above
-    #  sync_in_frequency_mhz= detect_laser_sync_in_frequency() 
-
-# -------------------------------------------------------------------------------------------------------------------
-
-    frequency_mhz=select_frequency_mhz()
-
-    # choose between USB or SMA
-    connection_type="USB" 
-   
     if frequency_mhz:
         result = flim_labs.start_spectroscopy(
-            enabled_channels=[0],
-            bin_width_micros=1000,
+            enabled_channels=enabled_channels,
+            bin_width_micros=bin_width_micros,
             frequency_mhz=frequency_mhz,
-            firmware_file= select_firmware(),
-            acquisition_time_millis=3000,
+            firmware_file=select_firmware(selected_sync, frequency_mhz, connection_type, enabled_channels),
+            acquisition_time_millis=acquisition_time_millis,
+            time_tagger=time_tagger
         )
-        x = threading.Thread(target=thread_function)
-        x.start()
-        x.join()
-        # print result
-        bin_file = result.bin_file
-        data_file = result.data_file
-        print("Binary file=" + str(bin_file))
-        print("Data file=" + str(data_file))
+
+        # Start processing thread
+        reader_thread = threading.Thread(target=thread_function)
+        reader_thread.start()
+        reader_thread.join()
+       
+        print(f"Data file = {result.data_file}")
+        if time_tagger:
+            print(f"Time tagger file = {result.data_file.replace("spectroscopy_", "time_tagger_spectroscopy_")}")

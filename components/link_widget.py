@@ -1,5 +1,4 @@
 import os
-from PyQt6 import QtCore
 from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QLabel, QHBoxLayout, QWidget
@@ -10,6 +9,8 @@ project_root = os.path.abspath(os.path.join(current_path, ".."))
 
 
 class LinkWidget(QWidget):
+    """A custom widget that displays a clickable link with an optional icon and text."""
+
     def __init__(
         self,
         icon_filename=None,
@@ -19,6 +20,16 @@ class LinkWidget(QWidget):
         icon_hover_dimensions=28,
         link="",
     ):
+        """Initializes the LinkWidget.
+
+        Args:
+            icon_filename (str, optional): The file path to the icon. Defaults to None.
+            text (str, optional): The text to display next to the icon. Defaults to None.
+            parent (QWidget, optional): The parent widget. Defaults to None.
+            icon_dimensions (int, optional): The default size of the icon. Defaults to 25.
+            icon_hover_dimensions (int, optional): The size of the icon on hover. Defaults to 28.
+            link (str, optional): The URL to open when the widget is clicked. Defaults to "".
+        """
         super(LinkWidget, self).__init__(parent)
 
         layout = QHBoxLayout()
@@ -47,4 +58,9 @@ class LinkWidget(QWidget):
         self.link_label.mousePressEvent = self.open_link
 
     def open_link(self, event):
+        """Opens the link in the default web browser.
+
+        Args:
+            event: The mouse press event.
+        """
         QDesktopServices.openUrl(QUrl(self.link))

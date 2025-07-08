@@ -1,17 +1,73 @@
 import numpy as np
 from scipy.optimize import curve_fit
-from components.helpers import convert_ndarray_to_list, convert_np_num_to_py_num, convert_py_num_to_np_num
+from utils.helpers import convert_ndarray_to_list, convert_np_num_to_py_num, convert_py_num_to_np_num
 
 def decay_model_1_with_B(t, A1, tau1, B):
+    """Single-exponential decay model with a constant background.
+
+    Args:
+        t (np.ndarray): Time values.
+        A1 (float): Amplitude of the first exponential component.
+        tau1 (float): Decay time of the first exponential component.
+        B (float): Constant background offset.
+
+    Returns:
+        np.ndarray: The calculated decay curve.
+    """
     return A1 * np.exp(-t / tau1) + B
 
 def decay_model_2_with_B(t, A1, tau1, A2, tau2, B):
+    """Double-exponential decay model with a constant background.
+
+    Args:
+        t (np.ndarray): Time values.
+        A1 (float): Amplitude of the first exponential component.
+        tau1 (float): Decay time of the first exponential component.
+        A2 (float): Amplitude of the second exponential component.
+        tau2 (float): Decay time of the second exponential component.
+        B (float): Constant background offset.
+
+    Returns:
+        np.ndarray: The calculated decay curve.
+    """
     return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + B
 
 def decay_model_3_with_B(t, A1, tau1, A2, tau2, A3, tau3, B):
+    """Triple-exponential decay model with a constant background.
+
+    Args:
+        t (np.ndarray): Time values.
+        A1 (float): Amplitude of the first exponential component.
+        tau1 (float): Decay time of the first exponential component.
+        A2 (float): Amplitude of the second exponential component.
+        tau2 (float): Decay time of the second exponential component.
+        A3 (float): Amplitude of the third exponential component.
+        tau3 (float): Decay time of the third exponential component.
+        B (float): Constant background offset.
+
+    Returns:
+        np.ndarray: The calculated decay curve.
+    """
     return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + A3 * np.exp(-t / tau3) + B
 
 def decay_model_4_with_B(t, A1, tau1, A2, tau2, A3, tau3, A4, tau4, B):
+    """Quadruple-exponential decay model with a constant background.
+
+    Args:
+        t (np.ndarray): Time values.
+        A1 (float): Amplitude of the first exponential component.
+        tau1 (float): Decay time of the first exponential component.
+        A2 (float): Amplitude of the second exponential component.
+        tau2 (float): Decay time of the second exponential component.
+        A3 (float): Amplitude of the third exponential component.
+        tau3 (float): Decay time of the third exponential component.
+        A4 (float): Amplitude of the fourth exponential component.
+        tau4 (float): Decay time of the fourth exponential component.
+        B (float): Constant background offset.
+
+    Returns:
+        np.ndarray: The calculated decay curve.
+    """
     return A1 * np.exp(-t / tau1) + A2 * np.exp(-t / tau2) + A3 * np.exp(-t / tau3) + A4 * np.exp(-t / tau4) + B
 
 model_formulas = {  
@@ -22,6 +78,25 @@ model_formulas = {
 }
 
 def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_threshold=0.01):
+    """Fits a decay curve to the provided data using multiple exponential models.
+
+    It automatically selects the best model (from 1 to 4 exponential components)
+    based on the reduced chi-square value. It also handles data scaling and
+    identifies the start of the decay.
+
+    Args:
+        x_values (np.ndarray): The x-axis data (time).
+        y_values (np.ndarray): The y-axis data (counts).
+        channel (int): The channel index associated with this data.
+        y_shift (int, optional): A vertical shift to apply to the data. Defaults to 0.
+        tau_similarity_threshold (float, optional): The threshold for considering
+            decay times (tau) as similar. Defaults to 0.01.
+
+    Returns:
+        dict: A dictionary containing the fitting results, including the fitted
+              parameters, R-squared, chi-squared, residuals, and the model used.
+              Returns a dictionary with an 'error' key if fitting fails.
+    """
     decay_models = [
         (decay_model_1_with_B, [1, 1, 1]),
         (decay_model_2_with_B, [1, 1, 1, 1, 1]),
@@ -132,6 +207,16 @@ def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_thres
     }
 
 def convert_fitting_result_into_json_serializable_item(results):
+    """Converts a list of fitting result dictionaries into a JSON-serializable format.
+
+    This involves converting NumPy arrays and numbers to standard Python lists and numbers.
+
+    Args:
+        results (list): A list of fitting result dictionaries from fit_decay_curve.
+
+    Returns:
+        list: A list of JSON-serializable dictionaries.
+    """
     parsed_results = []
     for result in results:
         parsed_result = {
@@ -154,6 +239,14 @@ def convert_fitting_result_into_json_serializable_item(results):
 
 
 def convert_json_serializable_item_into_np_fitting_result(parsed_results):
+    """Converts a list of JSON-serializable fitting results back into the standard format with NumPy objects.
+
+    Args:
+        parsed_results (list): A list of JSON-serializable fitting result dictionaries.
+
+    Returns:
+        list: A list of fitting result dictionaries with NumPy arrays and numbers.
+    """
     results = []
     for parsed_result in parsed_results:
         result = {
@@ -171,4 +264,4 @@ def convert_json_serializable_item_into_np_fitting_result(parsed_results):
             'model': parsed_result.get('model')
         }
         results.append(result)
-    return results        
+    return results

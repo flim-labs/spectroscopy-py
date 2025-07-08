@@ -1,21 +1,29 @@
-
 import os
-import re
 import json
 
 from PyQt6.QtWidgets import QWidget, QPushButton, QCheckBox, QHBoxLayout, QGridLayout, QVBoxLayout, QLabel, QApplication
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QColor
-from components.logo_utilities import TitlebarIcon
-from components.resource_path import resource_path
-from components.gui_styles import GUIStyles
-from settings import *
+from utils.helpers import extract_channel_from_label
+from utils.logo_utilities import TitlebarIcon
+from utils.resource_path import resource_path
+from utils.gui_styles import GUIStyles
+import settings.settings as s
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_path))
 
 
 class PlotsConfigPopup(QWidget): 
+    """A popup window for configuring which plots to display."""
     def __init__(self, window, start_acquisition = False, is_reference_loaded = False, reference_channels = []):
+        """Initializes the PlotsConfigPopup.
+
+        Args:
+            window: The main application window instance.
+            start_acquisition (bool, optional): If True, a "START" button is shown to begin acquisition. Defaults to False.
+            is_reference_loaded (bool, optional): Flag indicating if a reference measurement is loaded. Defaults to False.
+            reference_channels (list, optional): A list of channels available from the reference measurement. Defaults to [].
+        """
         super().__init__()
         self.app = window
         self.setWindowTitle("Spectroscopy - Plots config")
@@ -60,12 +68,13 @@ class PlotsConfigPopup(QWidget):
               
         self.setLayout(layout)
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
-        self.app.widgets[PLOTS_CONFIG_POPUP] = self
+        self.app.widgets[s.PLOTS_CONFIG_POPUP] = self
         
         self.center_window()
         
         
     def center_window(self):   
+        """Centers the popup window on the primary screen."""
         self.setMinimumWidth(500)
         window_geometry = self.frameGeometry()
         screen_geometry = QApplication.primaryScreen().availableGeometry().center()
@@ -73,6 +82,12 @@ class PlotsConfigPopup(QWidget):
         self.move(window_geometry.topLeft())
 
     def init_ch_grid(self, reference_channels, is_reference_loaded):
+        """Initializes the grid of channel selection checkboxes.
+
+        Args:
+            reference_channels (list): The channels available from a reference measurement.
+            is_reference_loaded (bool): True if a reference is loaded, restricting channel selection.
+        """
         selected_channels = [ch for ch in reference_channels if ch in self.app.selected_channels] if is_reference_loaded else self.app.selected_channels
         selected_channels.sort()
         for ch in selected_channels:
@@ -85,11 +100,19 @@ class PlotsConfigPopup(QWidget):
 
 
     def set_checkboxes(self, text):
+        """Creates and configures a single channel checkbox.
+
+        Args:
+            text (str): The label for the checkbox (e.g., "Channel 1").
+
+        Returns:
+            QCheckBox: The created checkbox widget.
+        """
         checkbox_wrapper = QWidget()
         checkbox_wrapper.setObjectName(f"simple_checkbox_wrapper")
         row = QHBoxLayout()
         checkbox = QCheckBox(text)
-        checkbox.setStyleSheet(GUIStyles.set_simple_checkbox_style(color = PALETTE_BLUE_1))
+        checkbox.setStyleSheet(GUIStyles.set_simple_checkbox_style(color = s.PALETTE_BLUE_1))
         checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         checkbox.toggled.connect(lambda state, checkbox=checkbox: self.on_ch_intensity_toggled(state, checkbox) )
         row.addWidget(checkbox)
@@ -100,6 +123,14 @@ class PlotsConfigPopup(QWidget):
         return checkbox  
 
     def set_data_empty_row(self, text):    
+        """Creates a layout row to display a message when no channels are enabled.
+
+        Args:
+            text (str): The message to display.
+
+        Returns:
+            QHBoxLayout: The layout containing the icon and message.
+        """
         row = QHBoxLayout()
         remove_icon_label = QLabel()
         remove_icon_label.setPixmap(QPixmap(resource_path("assets/close-icon-red.png")).scaledToWidth(15))
@@ -111,6 +142,14 @@ class PlotsConfigPopup(QWidget):
         return row
 
     def update_layout(self, widgets, grid):       
+        """Arranges widgets into a responsive grid layout.
+
+        The number of columns is adjusted based on the window's width.
+
+        Args:
+            widgets (list): A list of QWidget items to arrange.
+            grid (QGridLayout): The grid layout to populate.
+        """
         screen_width = self.width()
         if screen_width < 500:
             num_columns = 4 
@@ -126,8 +165,18 @@ class PlotsConfigPopup(QWidget):
             
 
     def on_ch_intensity_toggled(self, state, checkbox):
+        """Handles the toggling of a channel selection checkbox.
+
+        Updates the list of plots to show, saves the configuration, enforces the
+        maximum plot limit, and regenerates the main window's plots.
+
+        Args:
+            state (bool): The new checked state of the checkbox.
+            checkbox (QCheckBox): The checkbox that was toggled.
+        """
+        from core.plots_controller import PlotsController
         label_text = checkbox.text() 
-        ch_num_index = self.extract_channel_from_label(label_text) 
+        ch_num_index = extract_channel_from_label(label_text) 
         if state:
             if ch_num_index not in self.app.plots_to_show:
                 self.app.plots_to_show.append(ch_num_index)
@@ -135,7 +184,7 @@ class PlotsConfigPopup(QWidget):
             if ch_num_index in self.app.plots_to_show:
                 self.app.plots_to_show.remove(ch_num_index) 
         self.app.plots_to_show.sort()        
-        self.app.settings.setValue(SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)) 
+        self.app.settings.setValue(s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)) 
         if len(self.app.plots_to_show) >= 4:
             for checkbox in self.checkboxes:
                 if checkbox.text() != label_text and not checkbox.isChecked():
@@ -146,20 +195,16 @@ class PlotsConfigPopup(QWidget):
         if hasattr(self, 'start_btn'):        
             start_btn_enabled = len(self.app.plots_to_show) > 0
             self.start_btn.setEnabled(start_btn_enabled)
-        self.app.clear_plots()   
-        self.app.generate_plots() 
-        
-                           
-    def start_acquisition(self):
-        self.close()
-        self.app.begin_spectroscopy_experiment()
-        
-        
-    def extract_channel_from_label(self,text):
-        ch = re.search(r'\d+', text).group()  
-        ch_num = int(ch) 
-        ch_num_index = ch_num - 1 
-        return ch_num_index
+        PlotsController.clear_plots(self.app)   
+        PlotsController.generate_plots(self.app) 
 
-    
- 
+
+    def start_acquisition(self):
+        """Closes the popup and starts the spectroscopy experiment."""
+        from core.acquisition_controller import AcquisitionController
+        self.close()
+        AcquisitionController.begin_spectroscopy_experiment(self.app)
+
+
+
+
