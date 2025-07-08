@@ -8,7 +8,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QLabel,
     QDialog,
-    QRadioButton
 )
 from PyQt6.QtGui import QIcon, QPixmap, QTransform
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
@@ -16,11 +15,12 @@ import flim_labs
 
 
 from components.fancy_checkbox import FancyButton
-from components.gui_styles import GUIStyles
-from components.helpers import extract_channel_from_label
-from components.layout_utilities import clear_layout_widgets, draw_layout_separator
-from components.resource_path import resource_path
-from settings import *
+from utils.gui_styles import GUIStyles
+from utils.helpers import extract_channel_from_label
+from utils.layout_utilities import clear_layout_widgets, draw_layout_separator
+from utils.resource_path import resource_path
+from core.acquisition_controller import AcquisitionController
+import settings.settings as s
 
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -28,10 +28,20 @@ project_root = os.path.abspath(os.path.join(current_path))
 
 
 class ChannelsDetectionWorker(QThread):
+    """
+    A worker thread to run the channel detection process without blocking the GUI.
+    
+    Signals:
+        finished (pyqtSignal): Emitted when the detection is complete, carrying the result object.
+        error (pyqtSignal): Emitted when an error occurs, carrying the error message string.
+    """
     finished = pyqtSignal(object)
     error = pyqtSignal(str)
 
     def run(self):
+        """
+        Executes the channel detection function from flim_labs and emits the result.
+        """
         try:
             result = flim_labs.detect_channels_connections()
             self.finished.emit(result)
@@ -40,7 +50,19 @@ class ChannelsDetectionWorker(QThread):
 
 
 class DetectChannelsDialog(QDialog):
+    """
+    A dialog window for detecting hardware channel connections.
+    
+    It manages the detection process, displays the results, and allows the user
+    to apply the detected settings to the main application.
+    """
     def __init__(self, app):
+        """
+        Initializes the DetectChannelsDialog.
+
+        Args:
+            app: The main application instance.
+        """
         super().__init__()
         self.app = app
         self.setWindowTitle("Detect Channels")
@@ -139,6 +161,7 @@ class DetectChannelsDialog(QDialog):
         self.sync_in_detected = False
 
     def flip_loader(self):
+        """Animates the loader icon by flipping it horizontally."""
         transform = QTransform()
         if self.flipped:
             transform.scale(1, 1)
@@ -153,6 +176,7 @@ class DetectChannelsDialog(QDialog):
         self.flipped = not self.flipped
 
     def on_yes_button_click(self):
+        """Starts the channel detection process when the 'DO IT' or 'RETRY' button is clicked."""
         self.error_icon.setVisible(False)
         self.success_icon.setVisible(False)
         self.connection_type = None
@@ -184,7 +208,13 @@ class DetectChannelsDialog(QDialog):
 
 
     def on_detection_complete(self, result):
-        self.app.check_card_connection()
+        """
+        Handles the successful completion of the channel detection.
+
+        Args:
+            result: The result object from the detection worker.
+        """
+        AcquisitionController.check_card_connection(self.app)
         self.connections_obj = result
         self.flip_timer.stop()
         self.loader_label.setVisible(False)
@@ -209,7 +239,6 @@ class DetectChannelsDialog(QDialog):
             self.label.setVisible(False)
             channels_sma = []
             channels_usb = []
-            channels_usb_sma = False
             channels_usb_sma = False
             # Check Sync In
             self.sync_in_detected = detection_result[4][0][1] == "Detected"
@@ -257,6 +286,12 @@ class DetectChannelsDialog(QDialog):
         )
 
     def choose_connection_layout(self):
+        """
+        Creates and returns a widget for choosing between USB and SMA connections.
+        
+        Returns:
+            QWidget: The container widget with the connection type choice.
+        """
         self.choose_connection_container = QWidget()
         layout = QVBoxLayout()
         layout.addWidget(draw_layout_separator())
@@ -286,6 +321,12 @@ class DetectChannelsDialog(QDialog):
     
     
     def sync_in_warning_layout(self):
+        """
+        Creates and returns a widget to warn the user about Sync In detection.
+        
+        Returns:
+            QWidget: The container widget with the warning message.
+        """
         self.sync_in_warning_container = QWidget()
         layout = QVBoxLayout()
         layout.addSpacing(5)
@@ -297,6 +338,12 @@ class DetectChannelsDialog(QDialog):
         return self.sync_in_warning_container
     
     def update_settings(self, detection_result):
+        """
+        Applies the detected settings to the main application.
+
+        Args:
+            detection_result: The processed detection result.
+        """
         if detection_result[0][0][1] is not None:
             channel_sma_str = detection_result[0][0][1]
             channels_usb_str = detection_result[0][1][1]
@@ -311,13 +358,22 @@ class DetectChannelsDialog(QDialog):
         self.close()
         
     def update_sync_in(self):
+        """Updates the sync setting to 'Sync In' in the main application."""
+        from core.controls_controller import ControlsController
         for button, name in self.app.sync_buttons:
             button.set_selected(name == "sync_in") 
-        self.app.on_sync_selected("sync_in", start_sync_in_dialog=False) 
-        self.app.start_sync_in_dialog()
-        
-     
+        ControlsController.on_sync_selected(self.app, "sync_in", start_sync_in_dialog=False) 
+        ControlsController.start_sync_in_dialog(self.app)
+
     def update_selected_channels(self, channels_str):
+        """
+        Updates the selected channels in the main application based on detection results.
+
+        Args:
+            channels_str (str): A string representation of the detected channel list (e.g., "[1, 2, 3]").
+        """
+        from core.plots_controller import PlotsController
+        from core.controls_controller import ControlsController
         channels_str_clean = channels_str.replace("[", "").replace("]", "").strip()
         channels = [int(num) - 1 for num in channels_str_clean.split(",")]
         channels.sort()
@@ -326,20 +382,35 @@ class DetectChannelsDialog(QDialog):
             ch_index = extract_channel_from_label(label_text)
             ch_checkbox.set_checked(ch_index in channels)
         self.app.selected_channels = channels
-        self.app.set_selected_channels_to_settings()
+        ControlsController.set_selected_channels_to_settings(self.app)
         self.app.plots_to_show = channels[:4]
         self.app.settings.setValue(
-            SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
+            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
         )
-        self.app.clear_plots()
-        self.app.generate_plots()
+        PlotsController.clear_plots(self.app)
+        PlotsController.generate_plots(self.app)
 
     def update_channel_connection_type(self, connection_type):
+        """
+        Updates the channel connection type (USB/SMA) in the main application.
+
+        Args:
+            connection_type (str): The selected connection type ("USB" or "SMA").
+        """
         index = 0 if connection_type == "USB" else 1
         self.app.control_inputs["channel_type"].setCurrentIndex(index)
-        self.app.settings.setValue(SETTINGS_CONNECTION_TYPE, index)
+        self.app.settings.setValue(s.SETTINGS_CONNECTION_TYPE, index)
 
     def process_detection_result(self, result):
+        """
+        Processes the raw detection result into a structured format.
+
+        Args:
+            result: The raw result object from flim_labs.
+
+        Returns:
+            list: A list of parsed detection data.
+        """
         detection = ChannelsDetection(
             result.sma_channels,
             result.usb_channels,
@@ -357,7 +428,13 @@ class DetectChannelsDialog(QDialog):
         return parsed_detection
 
     def on_detection_error(self, error_msg):
-        self.app.check_card_connection()
+        """
+        Handles errors that occur during the detection process.
+
+        Args:
+            error_msg (str): The error message from the worker.
+        """
+        AcquisitionController.check_card_connection(self.app)
         self.flip_timer.stop()
         if hasattr(self, 'connection_type_choose_container'):
             self.choose_connection_container.setVisible(False) 
@@ -374,16 +451,33 @@ class DetectChannelsDialog(QDialog):
         self.no_button.setText("CANCEL")
 
     def on_no_button_click(self):
+        """Closes the dialog when the 'NO' or 'CANCEL' button is clicked."""
         self.close()
 
     def closeEvent(self, event):
+        """
+        Handles the close event of the dialog.
+
+        Ensures the worker thread is terminated before closing.
+
+        Args:
+            event: The close event.
+        """
         if self.worker and self.worker.isRunning():
             self.worker.terminate()
         super().closeEvent(event)
 
 
 class DetectChannelsButton(QWidget):
+    """A button widget that opens the channel detection dialog."""
     def __init__(self, app, parent=None):
+        """
+        Initializes the DetectChannelsButton.
+
+        Args:
+            app: The main application instance.
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.app = app
         container = QVBoxLayout()
@@ -395,16 +489,18 @@ class DetectChannelsButton(QWidget):
         GUIStyles.set_stop_btn_style(self.detect_button)
         self.detect_button.setFixedHeight(40)
         self.detect_button.clicked.connect(self.open_channels_detection_dialog)
-        self.app.widgets[CHANNELS_DETECTION_BUTTON] = self.detect_button
+        self.app.widgets[s.CHANNELS_DETECTION_BUTTON] = self.detect_button
         container.addWidget(self.detect_button, alignment=Qt.AlignmentFlag.AlignBottom)
         self.setLayout(container)
 
     def open_channels_detection_dialog(self):
+        """Creates and shows the channel detection dialog."""
         dialog = DetectChannelsDialog(self.app)
         dialog.exec()
 
 
 class ChannelsDetection:
+    """A data class to hold and parse raw channel detection results."""
     def __init__(
         self,
         sma_channels,
@@ -419,6 +515,22 @@ class ChannelsDetection:
         usb_laser_sync_in,
         usb_laser_sync_out,
     ):
+        """
+        Initializes the ChannelsDetection data object.
+
+        Args:
+            sma_channels: List of detected SMA channels.
+            usb_channels: List of detected USB channels.
+            sma_frame: Boolean indicating SMA frame detection.
+            usb_frame: Boolean indicating USB frame detection.
+            sma_line: Boolean indicating SMA line detection.
+            usb_line: Boolean indicating USB line detection.
+            sma_pixel: Boolean indicating SMA pixel detection.
+            usb_pixel: Boolean indicating USB pixel detection.
+            sma_laser_sync_in: Boolean indicating SMA Sync In detection.
+            usb_laser_sync_in: Boolean indicating USB Sync In detection.
+            usb_laser_sync_out: Boolean indicating USB Sync Out detection.
+        """
         self.sma_channels = sma_channels
         self.usb_channels = usb_channels
         self.sma_frame = sma_frame
@@ -432,6 +544,12 @@ class ChannelsDetection:
         self.usb_laser_sync_out = usb_laser_sync_out
 
     def parse_data(self):
+        """
+        Parses all raw detection data into a structured list.
+
+        Returns:
+            list: A list containing parsed data for each connection type.
+        """
         # Channels
         channels_data = self.get_channels_connection()
         # Frame
@@ -454,6 +572,12 @@ class ChannelsDetection:
         ]
 
     def get_channels_connection(self):
+        """
+        Parses the channel connection data.
+
+        Returns:
+            list: A list of tuples with channel info (name, status, type).
+        """
         results = []
         if (len(self.sma_channels) == 0 and len(self.usb_channels) == 0):
             results.append(("Channels:", None, "Not Detected"))
@@ -467,6 +591,12 @@ class ChannelsDetection:
         return results
 
     def get_frame_connection(self):
+        """
+        Parses the frame (REF 1) connection data.
+
+        Returns:
+            list: A list of tuples with frame info.
+        """
         results = []
         if self.sma_frame:
             results.append(("REF 1 (Frame):", "Detected", "SMA"))
@@ -477,6 +607,12 @@ class ChannelsDetection:
         return results
 
     def get_line_connection(self):
+        """
+        Parses the line (REF 2) connection data.
+
+        Returns:
+            list: A list of tuples with line info.
+        """
         results = []
         if self.sma_line:
             results.append(("REF 2 (Line):", "Detected", "SMA"))
@@ -487,6 +623,12 @@ class ChannelsDetection:
         return results
 
     def get_pixel_connection(self):
+        """
+        Parses the pixel (REF 3) connection data.
+
+        Returns:
+            list: A list of tuples with pixel info.
+        """
         results = []
         if self.sma_pixel:
             results.append(("REF 3 (Pixel):", "Detected", "SMA"))
@@ -497,6 +639,12 @@ class ChannelsDetection:
         return results
 
     def get_sync_in_connection(self):
+        """
+        Parses the Sync In connection data.
+
+        Returns:
+            list: A list of tuples with Sync In info.
+        """
         results = []
         if self.sma_laser_sync_in:
             results.append(("Sync In:", "Detected", "SMA"))
@@ -507,6 +655,12 @@ class ChannelsDetection:
         return results
 
     def get_sync_out_connection(self):
+        """
+        Parses the Sync Out connection data.
+
+        Returns:
+            list: A list of tuples with Sync Out info.
+        """
         results = []
         if self.usb_laser_sync_out:
             results.append(("Sync Out:", "Detected", "USB"))

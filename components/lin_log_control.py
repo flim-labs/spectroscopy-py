@@ -11,12 +11,18 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QTransform
-from components.gui_styles import GUIStyles
+from utils.gui_styles import GUIStyles
 from components.switch_control import SwitchControl
-from settings import *
+import settings.settings as s
 
 
 class LinLogControl(QWidget):
+    """A widget for switching between linear and logarithmic scales on a plot.
+
+    This control is displayed as a vertical switch with "LIN" and "LOG" labels.
+    It is designed to be placed alongside a pyqtgraph plot to control the
+    y-axis scale.
+    """
     def __init__(
         self,
         window,
@@ -25,10 +31,23 @@ class LinLogControl(QWidget):
         lin_log_modes={},
         lin_log_switches = {},
         persist_changes=True,
-        data_type=TAB_SPECTROSCOPY,
+        data_type=s.TAB_SPECTROSCOPY,
         fitting_popup = None,
         parent=None,
     ):
+        """Initializes the LinLogControl widget.
+
+        Args:
+            window: The main application window instance.
+            channel (str): The identifier for the plot channel this control is associated with.
+            time_shifts (int, optional): Time shifts for the data. Defaults to 0.
+            lin_log_modes (dict, optional): A dictionary to store the lin/log state for each channel. Defaults to {}.
+            lin_log_switches (dict, optional): A dictionary to store switch instances for each channel. Defaults to {}.
+            persist_changes (bool, optional): If True, the state is saved to settings. Defaults to True.
+            data_type (str, optional): The type of data plot being controlled (e.g., 'spectroscopy' or 'fitting'). Defaults to s.TAB_SPECTROSCOPY.
+            fitting_popup (QWidget, optional): Reference to the fitting popup window if applicable. Defaults to None.
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.app = window
         self.fitting_popup = fitting_popup
@@ -43,6 +62,13 @@ class LinLogControl(QWidget):
         self.setLayout(self.create_controls())
 
     def create_controls(self):
+        """Creates and arranges the widgets for the lin/log control.
+
+        This includes the 'LOG' and 'LIN' labels and the vertical switch.
+
+        Returns:
+            QVBoxLayout: The layout containing the control's widgets.
+        """
         v_box = QVBoxLayout()
         v_box.setContentsMargins(0, 0, 0, 0)
         v_box.addSpacing(60)
@@ -54,6 +80,11 @@ class LinLogControl(QWidget):
         return v_box
 
     def create_switch_view(self):
+        """Creates the QGraphicsView that holds the rotated switch control.
+
+        Returns:
+            QGraphicsView: The view containing the rotated switch.
+        """
         scene = QGraphicsScene()
         proxy = QGraphicsProxyWidget()
         switch_checked = self.lin_log_modes.get(self.channel, "LIN") == "LIN"
@@ -74,18 +105,29 @@ class LinLogControl(QWidget):
         return view
 
     def on_lin_log_changed(self, state):
+        """Handles the state change of the lin/log switch.
+
+        Args:
+            state (bool): The new state of the switch (True for LIN, False for LOG).
+        """
         self.lin_log_modes[self.channel] = "LIN" if state else "LOG"
         if self.persist_changes:
             self.app.settings.setValue(
-                SETTINGS_LIN_LOG_MODE, json.dumps(self.lin_log_modes)
+                s.SETTINGS_LIN_LOG_MODE, json.dumps(self.lin_log_modes)
             )
-        if self.data_type == TAB_SPECTROSCOPY:
+        if self.data_type == s.TAB_SPECTROSCOPY:
             self.on_spectroscopy_lin_log_changed(state)
-        if self.data_type == TAB_FITTING:
+        if self.data_type == s.TAB_FITTING:
             self.on_fitting_lin_log_changed(state)    
             
 
     def on_spectroscopy_lin_log_changed(self, state):
+        """Updates the spectroscopy plot to reflect the new lin/log scale.
+
+        Args:
+            state (bool): The new state of the switch (True for LIN, False for LOG).
+        """
+        from core.plots_controller import PlotsController
         time_shifts = self.app.time_shifts[self.channel] if self.channel in self.app.time_shifts else 0  
         decay_curve = self.app.decay_curves[self.app.tab_selected][self.channel]
         decay_widget = self.app.decay_widgets[self.channel]
@@ -106,10 +148,16 @@ class LinLogControl(QWidget):
         y = np.roll(y_data, time_shifts)
         decay_curve.setData(x, y)
         decay_widget.getAxis("left").setTicks([ticks])
-        self.app.set_plot_y_range(decay_widget)
+        PlotsController.set_plot_y_range(decay_widget)
 
 
     def on_fitting_lin_log_changed(self, state):
+        """Updates the fitting plot to reflect the new lin/log scale.
+
+        Args:
+            state (bool): The new state of the switch (True for LIN, False for LOG).
+        """
+        from core.plots_controller import PlotsController
         if self.fitting_popup is not None:
             plot_widget = self.fitting_popup.plot_widgets[self.channel]
             plot_widget.clear()
@@ -145,13 +193,21 @@ class LinLogControl(QWidget):
                 fitted_data,
                 pen=pg.mkPen("#f72828", width=2),
                 name="Fitted curve",
-            ) 
-            self.app.set_plot_y_range(plot_widget)                                 
-     
-      
+            )
+            PlotsController.set_plot_y_range(plot_widget)
 
     @staticmethod
     def calculate_lin_mode(y_values):
+        """Calculates ticks for linear mode and returns original y-values.
+
+        Args:
+            y_values (np.ndarray): The input y-axis data.
+
+        Returns:
+            tuple: A tuple containing:
+                - list: A list of (value, label) tuples for ticks.
+                - np.ndarray: The original y_values.
+        """
         max_value = max(y_values)
         yticks_values = LinLogControl.calculate_lin_ticks(max_value, 10)
         ticks = [(value, str(int(value))) for value in yticks_values]
@@ -159,6 +215,17 @@ class LinLogControl(QWidget):
 
     @staticmethod
     def calculate_log_mode(y_values):
+        """Calculates log-transformed values and ticks for logarithmic mode.
+
+        Args:
+            y_values (np.ndarray): The input y-axis data.
+
+        Returns:
+            tuple: A tuple containing:
+                - list: A list of (value, label) tuples for ticks.
+                - np.ndarray: The log-transformed y-values.
+                - float: The maximum exponent value.
+        """
         log_values, exponents_lin_space_int, max_value = (
             LinLogControl.set_decay_log_mode(y_values)
         )
@@ -170,6 +237,15 @@ class LinLogControl(QWidget):
 
     @staticmethod
     def calculate_lin_ticks(max_value, max_ticks):
+        """Calculates tick values for a linear scale axis.
+
+        Args:
+            max_value (float): The maximum value on the axis.
+            max_ticks (int): The maximum number of ticks desired.
+
+        Returns:
+            np.ndarray: An array of tick values.
+        """
         if max_value <= 0:
             return [0]
         step = 10 ** (np.floor(np.log10(max_value)) - 1)
@@ -181,6 +257,17 @@ class LinLogControl(QWidget):
 
     @staticmethod
     def calculate_log_ticks(data):
+        """Calculates logarithmic values and corresponding tick labels for a dataset.
+
+        Args:
+            data (np.ndarray): The input data array.
+
+        Returns:
+            tuple: A tuple containing:
+                - np.ndarray: The log-transformed data values.
+                - list: A list of (position, label) tuples for ticks.
+                - float: The maximum exponent value from the data.
+        """
         log_values, exponents_lin_space_int, max_value = (
             LinLogControl.set_decay_log_mode(data)
         )
@@ -192,6 +279,21 @@ class LinLogControl(QWidget):
 
     @staticmethod
     def set_decay_log_mode(values):
+        """
+        Converts data values to a logarithmic scale for plotting.
+
+        This method handles non-positive values by replacing them with a small
+        positive number (1e-9) before taking the base-10 logarithm.
+
+        Args:
+            values (np.ndarray): The input data array.
+
+        Returns:
+            tuple: A tuple containing:
+                - np.ndarray: The log-transformed values.
+                - np.ndarray: An array of integers for tick positions.
+                - int: The maximum integer exponent.
+        """
         values = np.array(values)
         values = np.where(values <= 0, 1e-9, values)
         log_values = np.log10(values)
@@ -204,9 +306,23 @@ class LinLogControl(QWidget):
 
     @staticmethod
     def format_power_of_ten(i):
-        return "0" if i < 0 else f"10{''.join(UNICODE_SUP[c] for c in str(i))}"
+        """Formats an integer as a power of 10 using Unicode superscript characters.
+
+        Args:
+            i (int): The integer exponent.
+
+        Returns:
+            str: The formatted string (e.g., "10²" for i=2, or "0" for i < 0).
+        """
+        return "0" if i < 0 else f"10{''.join(s.UNICODE_SUP[c] for c in str(i))}"
 
     @staticmethod
     def set_lin_log_switches_enable_mode(lin_log_switches, enabled):
+        """Enables or disables all lin/log switch controls.
+
+        Args:
+            lin_log_switches (dict): A dictionary of switch controls.
+            enabled (bool): True to enable the switches, False to disable.
+        """
         for switch in lin_log_switches.values():
             switch.setEnabled(enabled)
