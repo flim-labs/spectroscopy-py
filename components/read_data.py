@@ -383,8 +383,9 @@ class ReadData:
             harmonics (list): A list of harmonics present in the data.
         """
         from core.controls_controller import ControlsController
+        from core.phasors_controller import PhasorsController
         laser_period_ns = ReadData.get_phasors_laser_period_ns(app)
-        app.all_phasors_points = app.get_empty_phasors_points()
+        app.all_phasors_points = PhasorsController.get_empty_phasors_points()
         app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
         harmonics_length = len(harmonics) if isinstance(harmonics, list) else harmonics
         if harmonics_length > 1:
@@ -394,20 +395,22 @@ class ReadData:
             if channel in app.plots_to_show:
                 for harmonic, values in channel_data.items():
                     if harmonic == 1:
-                        app.draw_points_in_phasors(channel, harmonic, values)
+                        PhasorsController.draw_points_in_phasors(app, channel, harmonic, values)
                     app.all_phasors_points[channel][harmonic].extend(values)
         if app.quantized_phasors:
-            app.quantize_phasors(
+            PhasorsController.quantize_phasors(
+                app,
                 app.phasors_harmonic_selected,
                 bins=int(s.PHASORS_RESOLUTIONS[app.phasors_resolution]),
             )
         else:
             ControlsController.on_quantize_phasors_changed(app, False)
-        app.generate_phasors_cluster_center(app.phasors_harmonic_selected)
-        app.generate_phasors_legend(app.phasors_harmonic_selected)
+        PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
+        PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)
         frequency_mhz = ns_to_mhz(laser_period_ns)
         for i, channel_index in enumerate(app.plots_to_show):
-            app.draw_lifetime_points_in_phasors(
+            PhasorsController.draw_lifetime_points_in_phasors(
+                app,
                 channel_index,
                 app.phasors_harmonic_selected,
                 laser_period_ns,
