@@ -124,7 +124,7 @@ PDAC_HEALTHY = {
     "STRETCH": 3,
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True,
+    "REQUIRED": False,
 }
 
 WEEKS = {
