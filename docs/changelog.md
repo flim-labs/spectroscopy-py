@@ -1,5 +1,7 @@
 # Spectroscopy Changelog
 
+## Version 2.6.1
+- [LASERBLOOD] : Make PDAC/Healthy metadata field not mandatory
 
 ## Version 2.6
 - [LASERBLOOD] : add Cuvette holder and Replicate to metadata
