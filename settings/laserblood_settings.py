@@ -99,6 +99,7 @@ LASER_TYPES = [
 
 ID = {
     "LABEL": "ID",
+    "ID": "id",
     "UNIT": None,
     "VALUE": "",
     "INPUT_TYPE": "text",
@@ -115,6 +116,7 @@ ID = {
 
 PDAC_HEALTHY = {
     "LABEL": "PDAC/Healthy",
+    "ID": "pdac_healthy",
     "UNIT": None,
     "OPTIONS": ["", "PDAC", "Healthy"],
     "VALUE": 0,
@@ -131,6 +133,7 @@ PDAC_HEALTHY = {
 WEEKS = {
     "LABEL": "Weeks",
     "UNIT": None,
+    "ID": "weeks",
     "VALUE": "",
     "INPUT_TYPE": "text",
     "OPTIONS": [],
@@ -145,6 +148,7 @@ WEEKS = {
 
 SETTINGS_SAMPLE_VOL = {
     "LABEL": "Sample volume after incubation",
+    "ID": "sample_vol",
     "UNIT": "µL",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -161,6 +165,7 @@ SETTINGS_SAMPLE_VOL = {
 CUVETTE_TOTAL_VOL = {
     "LABEL": "Cuvette total volume",
     "UNIT": "µL",
+    "ID": "cuvette_total_vol",
     "VALUE": 0,
     "OPTIONS": [],
     "INPUT_TYPE": "float",
@@ -174,6 +179,7 @@ CUVETTE_TOTAL_VOL = {
 }
 SOLVENT_TYPE = {
     "LABEL": "Solvent type",
+    "ID": "solvent_type",
     "UNIT": None,
     "VALUE": "",
     "OPTIONS": [],
@@ -188,6 +194,7 @@ SOLVENT_TYPE = {
 }
 SOLVENT_VOL = {
     "LABEL": "Solvent volume",
+    "ID": "solvent_vol",
     "UNIT": "µL",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -202,6 +209,7 @@ SOLVENT_VOL = {
 }
 NANOPARTICLE_TYPE = {
     "LABEL": "Nanoparticle type",
+    "ID": "nanoparticle_type",
     "UNIT": None,
     "VALUE": "",
     "OPTIONS": [],
@@ -216,6 +224,7 @@ NANOPARTICLE_TYPE = {
 }
 NANOPARTICLE_CONCENTRATION = {
     "LABEL": "Nanoparticle concentration",
+    "ID": "nanoparticle_concentration",
     "UNIT": "µg/ µL",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -230,6 +239,7 @@ NANOPARTICLE_CONCENTRATION = {
 }
 NANOPARTICLE_VOL = {
     "LABEL": "Nanoparticle volume",
+    "ID": "nanoparticle_vol",
     "UNIT": "ml",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -245,6 +255,7 @@ NANOPARTICLE_VOL = {
 
 PROTEIN_SOURCE = {
     "LABEL": "Protein source",
+    "ID": "protein_source",
     "UNIT": None,
     "OPTIONS": ["", "Human plasma", "Murine plasma"],
     "VALUE": 0,
@@ -259,6 +270,7 @@ PROTEIN_SOURCE = {
 }
 PROTEIN_SOURCE_VOL = {
     "LABEL": "Protein source volume",
+    "ID": "protein_source_vol",
     "UNIT": "µL",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -273,6 +285,7 @@ PROTEIN_SOURCE_VOL = {
 }
 DILUITION_FACTOR = {
     "LABEL": "Dilution factor after incubation",
+    "ID": "dilution_factor",
     "UNIT": None,
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -287,6 +300,7 @@ DILUITION_FACTOR = {
 }
 PROTEIN_SOURCE_INCUBATION = {
     "LABEL": "Protein Source incubation",
+    "ID": "protein_source_incubation",
     "UNIT": "%",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -301,6 +315,7 @@ PROTEIN_SOURCE_INCUBATION = {
 }
 INCUBATION_TIME = {
     "LABEL": "Incubation time",
+    "ID": "incubation_time",
     "UNIT": "min",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -315,6 +330,7 @@ INCUBATION_TIME = {
 }
 INCUBATION_TEMPERATURE = {
     "LABEL": "Incubation temperature",
+    "ID": "incubation_temperature",
     "UNIT": "°C",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -329,6 +345,7 @@ INCUBATION_TEMPERATURE = {
 }
 INCUBATION_TYPE = {
     "LABEL": "Incubation type",
+    "ID": "incubation_type",
     "UNIT": None,
     "OPTIONS": ["", "Static", "Dynamic"],
     "VALUE": 0,
@@ -343,6 +360,7 @@ INCUBATION_TYPE = {
 }
 NANOPARTICLES_PROTEIN_RATIO = {
     "LABEL": "Ratio Nanoparticles/Protein Source",
+    "ID": "nanoparticles_protein_ratio",
     "UNIT": None,
     "VALUE": 0,
     "INPUT_TYPE": "int",
@@ -357,6 +375,7 @@ NANOPARTICLES_PROTEIN_RATIO = {
 }
 CENTRIFUGE = {
     "LABEL": "Centrifuge",
+    "ID": "centrifuge",
     "UNIT": None,
     "VALUE": False,
     "INPUT_TYPE": "boolean",
@@ -371,6 +390,7 @@ CENTRIFUGE = {
 }
 PELLET = {
     "LABEL": "Pellet",
+    "ID": "pellet",
     "UNIT": None,
     "VALUE": False,
     "INPUT_TYPE": "boolean",
@@ -385,6 +405,7 @@ PELLET = {
 }
 SURNATANT = {
     "LABEL": "Surnatant",
+    "ID": "surnatant",
     "UNIT": None,
     "VALUE": False,
     "INPUT_TYPE": "boolean",
@@ -400,6 +421,7 @@ SURNATANT = {
 WASHING = {
     "LABEL": "Washing",
     "UNIT": None,
+    "ID": "washing",
     "VALUE": 0,
     "OPTIONS": ["", "1", "2", "3", "NO"],
     "INPUT_TYPE": "select",
@@ -414,6 +436,7 @@ WASHING = {
 LASER_POWER = {
     "LABEL": "Laser power",
     "UNIT": "%",
+    "ID": "laser_power",
     "VALUE": 0,
     "INPUT_TYPE": "int",
     "OPTIONS": [],
@@ -428,6 +451,7 @@ LASER_POWER = {
 THAW_CYCLES = {
     "LABEL": "Number of thaw cycles",
     "UNIT": None,
+    "ID": "thaw_cycles",
     "VALUE": 0,
     "INPUT_TYPE": "int",
     "OPTIONS": [],
@@ -441,6 +465,7 @@ THAW_CYCLES = {
 }
 PLASMA_COLOR = {
     "LABEL": "Plasma color",
+    "ID": "plasma_color",
     "UNIT": None,
     "VALUE": 0,
     "OPTIONS": ["", "Yellow", "Red"],
@@ -456,6 +481,7 @@ PLASMA_COLOR = {
 AVERAGE_CPS = {
     "LABEL": "Average CPS",
     "UNIT": "CPS",
+    "ID": "average_cps",
     "VALUE": 0,
     "INPUT_TYPE": "float",
     "OPTIONS": [],
@@ -471,6 +497,7 @@ AVERAGE_CPS = {
 FPGA_FIRMWARE_TYPE = {
     "LABEL": "FPGA firmware type",
     "UNIT": None,
+    "ID": "fpga_firmware_type",
     "VALUE": "",
     "INPUT_TYPE": "text",
     "OPTIONS": [],
@@ -485,6 +512,7 @@ FPGA_FIRMWARE_TYPE = {
 
 SPA_DETECTOR_TYPE = {
     "LABEL": "SPAD Detector Type",
+    "ID": "spa_detector_type",
     "UNIT": None,
     "VALUE": 0,
     "OPTIONS": ["", "Blue", "Red"],
@@ -500,6 +528,7 @@ SPA_DETECTOR_TYPE = {
 
 CUVETTE_TYPE = {
     "LABEL": "Cuvette type",
+    "ID": "cuvette_type",
     "UNIT": None,
     "VALUE": 0,
     "OPTIONS": ["", "UV", "VIS", "UV-VIS"],
@@ -515,6 +544,7 @@ CUVETTE_TYPE = {
 
 CUVETTE_HOLDER = {
     "LABEL": "Cuvette holder",
+    "ID": "cuvette_holder",
     "UNIT": None,
     "VALUE": 0,
     "OPTIONS": ["", "CVH100", "OceanInsight"],
@@ -530,6 +560,7 @@ CUVETTE_HOLDER = {
 
 CUVETTE_MATERIAL = {
     "LABEL": "Cuvette material",
+    "ID": "cuvette_material",
     "UNIT": None,
     "VALUE": 0,
     "OPTIONS": ["", "Plastic", "Glass", "Quartz"],
@@ -544,6 +575,7 @@ CUVETTE_MATERIAL = {
 }
 CUVETTE_LENGTH = {
     "LABEL": "Cuvette length",
+    "ID": "cuvette_length",
     "UNIT": "mm",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -558,6 +590,7 @@ CUVETTE_LENGTH = {
 }
 CUVETTE_WIDTH = {
     "LABEL": "Cuvette width",
+    "ID": "cuvette_width",
     "UNIT": "mm",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -572,6 +605,7 @@ CUVETTE_WIDTH = {
 }
 CUVETTE_HEIGHT = {
     "LABEL": "Cuvette height",
+    "ID": "cuvette_height",
     "UNIT": "mm",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -586,6 +620,7 @@ CUVETTE_HEIGHT = {
 }
 LASER_REPETITION_RATE = {
     "LABEL": "Laser repetition rate",
+    "ID": "laser_repetition_rate",
     "UNIT": "MHz",
     "VALUE": 0,
     "INPUT_TYPE": "int",
@@ -601,6 +636,7 @@ LASER_REPETITION_RATE = {
 
 LASER_CENTRAL_WAVE_LENGTH = {
     "LABEL": "Laser wavelength",
+    "ID": "laser_central_wave_length",
     "UNIT": "nm",
     "VALUE": "",
     "INPUT_TYPE": "text",
@@ -615,6 +651,7 @@ LASER_CENTRAL_WAVE_LENGTH = {
 }
 EMISSION_FILTER = {
     "LABEL": "Emission filter wavelength",
+    "ID": "emission_filter",
     "UNIT": "nm",
     "VALUE": "",
     "INPUT_TYPE": "text",
@@ -630,6 +667,7 @@ EMISSION_FILTER = {
 
 CPS_THRESHOLD = {
     "LABEL": "Pile-up Threshold",
+    "ID": "cps_threshold",
     "UNIT": "CPS",
     "VALUE": 0,
     "INPUT_TYPE": "int",
@@ -645,6 +683,7 @@ CPS_THRESHOLD = {
 
 SBR = {
     "LABEL": "Average SBR",
+    "ID": "sbr",
     "UNIT": "㏈",
     "VALUE": 0,
     "INPUT_TYPE": "float",
@@ -660,6 +699,7 @@ SBR = {
 
 NOTES = {
     "LABEL": "Notes",
+    "ID": "notes",
     "UNIT": None,
     "VALUE": "",
     "INPUT_TYPE": "textarea",

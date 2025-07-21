@@ -201,22 +201,24 @@ class FileUtils:
         firmware_selected_name = os.path.basename(firmware_selected)
         num_replicate = app.replicates
         parsed_data = [
-            {"label": "Acquisition Files", "unit": "", "value": filenames_string},
-            {"label": "Acquisition Timestamp", "unit": "", "value": timestamp},
-            {"label": "Replicate", "unit": "", "value": num_replicate},
-            {"label": "Laser type", "unit": "", "value": laser_type},
-            {"label": "Emission filter type", "unit": "", "value": parsed_filter_type},
-            {"label": "Firmware selected", "unit": "", "value": firmware_selected_name},
-            {"label": "Connection type", "unit": "", "value": connection_type},
-            {"label": "Frequency", "unit": "Mhz", "value": frequency_mhz},
+            {"label": "Acquisition Files", "unit": "", "id": "acquisition_files", "value": filenames_string},
+            {"label": "Acquisition Timestamp", "unit": "", "id": "acquisition_timestamp", "value": timestamp},
+            {"label": "Replicate", "unit": "", "id": "replicate", "value": num_replicate},
+            {"label": "Laser type", "unit": "", "id": "laser_type", "value": laser_type},
+            {"label": "Emission filter type", "unit": "", "id": "emission_filter_type", "value": parsed_filter_type},
+            {"label": "Firmware selected", "unit": "", "id": "firmware_selected", "value": firmware_selected_name},
+            {"label": "Connection type", "unit": "", "id": "connection_type", "value": connection_type},
+            {"label": "Frequency", "unit": "Mhz", "id": "frequency", "value": frequency_mhz},
             {
                 "label": "Enabled channels",
                 "unit": "",
+                "id": "enabled_channels",
                 "value": [ch + 1 for ch in app.selected_channels],
             },
             {
                 "label": "Acquisition time",
                 "unit": "s",
+                "id": "acquisition_time",
                 "value": round(
                     (app.cps_counts[app.selected_channels[0]]["last_time_ns"])
                     / 1_000_000_000,
@@ -226,17 +228,17 @@ class FileUtils:
             {
                 "label": "Bin width",
                 "unit": "µs",
+                "id": "bin_width",
                 "value": int(app.settings.value(SETTINGS_BIN_WIDTH, DEFAULT_BIN_WIDTH)),
             },
             {
                 "label": "Tau",
                 "unit": "ns",
+                "id": "tau_ns",
                 "value": app.settings.value(SETTINGS_TAU_NS, "0"),
             },
-            {"label": "Harmonics", "unit": "", "value": app.harmonic_selector_value},
+            {"label": "Harmonics", "unit": "", "id": "harmonics", "value": app.harmonic_selector_value},
         ]
-        
-        pdac_healthy = [obj["VALUE"] for obj in metadata_settings if obj["LABEL"] == "PDAC/Healthy"]
         
         def map_values(data):
             new_data = data.copy()
@@ -267,6 +269,7 @@ class FileUtils:
                         "label": d["LABEL"],
                         "unit": d["UNIT"] if d["UNIT"] is not None else "",
                         "value": value,
+                        "id": d.get("ID", ""),
                     }
                 )
 

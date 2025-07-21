@@ -19,7 +19,7 @@ from PyQt6.QtGui import QColor, QIcon
 from components.fancy_checkbox import FancyButton
 from components.input_number_control import InputFloatControl, InputNumberControl
 from components.input_text_control import InputTextControl, InputTextareaControl
-from utils.layout_utilities import draw_layout_separator, clear_layout_tree
+from utils.layout_utilities import draw_layout_separator, clear_layout_tree, hide_layout
 from utils.logo_utilities import TitlebarIcon
 from utils.resource_path import resource_path
 from utils.gui_styles import GUIStyles
@@ -336,6 +336,7 @@ class LaserbloodMetadataPopup(QWidget):
         is_numeric_input = self.new_input_type == "number"
         new_input = {
             "LABEL": self.new_input_label,
+            "ID": self.new_input_label.lower().replace(" ", "_"),
             "UNIT": self.new_input_unit if is_numeric_input else None,
             "VALUE": 0 if is_numeric_input else "",
             "OPTIONS": [],
@@ -371,7 +372,7 @@ class LaserbloodMetadataPopup(QWidget):
         def on_inp_type_change(value):
             self.new_input_type = "number" if value == 0 else "text"
             if "inp_unit_control" in self.layouts:
-                self.app.show_layout(self.layouts["inp_unit_control"]) if value == 0 else self.app.hide_layout(self.layouts["inp_unit_control"])
+                self.app.show_layout(self.layouts["inp_unit_control"]) if value == 0 else hide_layout(self.layouts["inp_unit_control"])
             if value == 1:
                 self.new_input_unit = ""
                 if "inp_unit" in self.app.laserblood_widgets:

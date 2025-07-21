@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.6.2
+- [LASERBLOOD] : Add unique "id" field to Laserblood metadata
+
 ## Version 2.6.1
 - [LASERBLOOD] : Make PDAC/Healthy metadata field not mandatory
 
