@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.7
+- [LASERBLOOD] : Add Emission Filters (BROAD BANDPASS) to selectable metadata
+
 ## Version 2.6.2
 - [LASERBLOOD] : Add unique "id" field to Laserblood metadata
 

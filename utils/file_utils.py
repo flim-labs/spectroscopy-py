@@ -294,8 +294,19 @@ class FileUtils:
             (d["KEY"] for d in LASER_TYPES if d["LABEL"].strip() == laser_type.strip()),
             "",
         )
-        filter_key = filter_type.strip().replace(" ", "").replace("/", "_")
-        laser_key = laser_key.strip().replace(" ", "").replace("/", "_")
+        # Extract only the numeric part (with /) from filter_type, e.g. '450/50 Bandpass' -> '450/50', then slugify
+        import re
+        match = re.match(r"(\d+\/\d+)", filter_type.strip())
+        if match:
+            filter_key = match.group(1).replace("/", "_") + "_nm"
+        else:
+            # fallback: extract all numbers separated by _
+            nums = re.findall(r"\d+", filter_type)
+            if nums:
+                filter_key = "_".join(nums) + "_nm"
+            else:
+                filter_key = filter_type.strip().replace(" ", "_").replace("/", "_")
+        laser_key = laser_key.strip().replace(" ", "_").replace("/", "_")
         return laser_key, filter_key
 
     @staticmethod

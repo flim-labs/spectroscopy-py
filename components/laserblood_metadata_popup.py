@@ -9,7 +9,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QGridLayout,
     QLabel,
-    QApplication,
     QScrollArea,
     QSpacerItem, QSizePolicy
  
@@ -25,7 +24,7 @@ from utils.resource_path import resource_path
 from utils.gui_styles import GUIStyles
 from components.select_control import SelectControl
 from components.switch_control import SwitchControl
-from settings.laserblood_settings import FILTERS_TYPES, FILTERS_TYPES_NO_BANDPASS, LASER_TYPES, LASERBLOOD_METADATA_POPUP, METADATA_LASERBLOOD_KEY, NEW_ADDED_LASERBLOOD_INPUTS_KEY, SETTINGS_FILTER_TYPE, SETTINGS_LASER_TYPE
+from settings.laserblood_settings import FILTERS_TYPES_NO_BANDPASS, LASER_TYPES, LASERBLOOD_METADATA_POPUP, METADATA_LASERBLOOD_KEY, NEW_ADDED_LASERBLOOD_INPUTS_KEY, SETTINGS_FILTER_TYPE, SETTINGS_LASER_TYPE
 import settings.settings as s
 
 
@@ -55,9 +54,11 @@ class LaserbloodMetadataPopup(QWidget):
         TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self, bg=QColor(20, 20, 20))
         self.filters_grid = QGridLayout()
+        self.filters_broad_grid = QGridLayout()
         self.filters_no_bandpass_grid = QGridLayout()
         self.laser_buttons = []
         self.filter_buttons = []
+        self.filter_broad_buttons = []
         self.selected_laser = self.app.laserblood_laser_type
         self.selected_filter = self.app.laserblood_filter_type
         self.new_input_type = "number"
@@ -122,14 +123,17 @@ class LaserbloodMetadataPopup(QWidget):
         main_container = QVBoxLayout()
         lasers_v_box = self.create_laser_layout(title="LASER WAVELENGTH (BANDPASS)", bandpass=True)
         lasers_no_bandpass_v_box = self.create_laser_layout(title="LASER WAVELENGTH (NO BANDPASS)", bandpass=False)
-        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (BANDPASS)", bandpass=True, container=self.filters_grid)
-        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NO BANDPASS)", bandpass=False, container=self.filters_no_bandpass_grid)
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NARROW BANDPASS)", filter_type="narrow", container=self.filters_grid)
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (BROAD BANDPASS)", filter_type="broad", container=self.filters_broad_grid)
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NO BANDPASS)", filter_type="no_bandpass", container=self.filters_no_bandpass_grid)
         add_inputs_layout = self.create_add_new_input_layout()
         main_container.addLayout(lasers_v_box)
         main_container.addSpacing(20)
         main_container.addLayout(lasers_no_bandpass_v_box)
         main_container.addSpacing(20)
         main_container.addLayout(self.filters_grid)
+        main_container.addSpacing(20)
+        main_container.addLayout(self.filters_broad_grid)
         main_container.addSpacing(20)
         main_container.addLayout(self.filters_no_bandpass_grid)
         main_container.addStretch(1)
@@ -150,17 +154,19 @@ class LaserbloodMetadataPopup(QWidget):
             QVBoxLayout: The layout containing the laser selection buttons.
         """
         laser_types = [l for l in LASER_TYPES if l["BANDPASS"] == bandpass]
-        title = QLabel(title)
+        title_label = QLabel(title)
         lasers_v_box = QVBoxLayout()
-        lasers_v_box.addWidget(title)
+        lasers_v_box.addWidget(title_label)
         grid_layout = QGridLayout()
         row, col = 0, 0
+        # 3 per row for NO BANDPASS, 2 per row for BANDPASS
+        max_per_row = 3 if (not bandpass) else 2
         for laser in laser_types:
             laser_button = FancyButton(laser["LABEL"])
             grid_layout.addWidget(laser_button, row, col)
             self.laser_buttons.append((laser_button, laser["LABEL"]))
             col += 1
-            if col == 2:  
+            if col == max_per_row:
                 col = 0
                 row += 1
         for button, name in self.laser_buttons:
@@ -171,49 +177,67 @@ class LaserbloodMetadataPopup(QWidget):
                     self.on_laser_selected(toggled_name)
             button.clicked.connect(lambda _, n=name: on_toggle(n))
             button.set_selected(self.selected_laser == name)
-        lasers_v_box.addLayout(grid_layout)    
+        lasers_v_box.addLayout(grid_layout)
         return lasers_v_box
-        
-    
-    def create_filters_layout(self, title, bandpass, container):
+
+    def create_filters_layout(self, title, filter_type, container):
         """
         Creates the layout with buttons for selecting the filter type.
 
         Args:
             title (str): The title for this section.
-            bandpass (bool): True to show filters compatible with bandpass lasers.
+            filter_type (str): The type of filter ("narrow", "broad", or "no_bandpass").
             container (QGridLayout): The grid layout to add the filter buttons to.
         """
         laser_selected = next((laser for laser in LASER_TYPES if laser["LABEL"] == self.selected_laser), None)
-        if bandpass:
-            filter_types = laser_selected["FILTERS"] if laser_selected is not None else []
-        else:
-            filter_types = FILTERS_TYPES_NO_BANDPASS  if self.selected_laser else []  
-        title = QLabel(title)
+        if filter_type == "narrow":
+            filter_types = laser_selected["FILTERS_NARROW"] if laser_selected is not None else []
+            button_list = self.filter_buttons
+            max_per_row = 6  # 5 per row for NARROW BANDPASS
+        elif filter_type == "broad":
+            filter_types = laser_selected["FILTERS_BROAD"] if laser_selected is not None else []
+            button_list = self.filter_broad_buttons
+            max_per_row = 3 # 3 per row for BROAD BANDPASS
+        else:  # no_bandpass
+            filter_types = FILTERS_TYPES_NO_BANDPASS if self.selected_laser else []
+            button_list = self.filter_buttons  # Reuse filter_buttons for no_bandpass
+            max_per_row = 4
+        title_label = QLabel(title)
         if laser_selected is not None:
-            container.addWidget(title, 0, 0, 1, 4)
+            container.addWidget(title_label, 0, 0, 1, max_per_row)
         row, col = 1, 0
-        for filter in filter_types:
+        for filter_name in filter_types:
             filter_button = FancyButton(
-                filter,
+                filter_name,
                 selected_color="#DA1212",
                 hover_color="#E23B3B",
                 pressed_color="#B01010"
             )
             container.addWidget(filter_button, row, col)
-            self.filter_buttons.append((filter_button, filter))
+            button_list.append((filter_button, filter_name, filter_type))
             col += 1
-            if col == 4:
+            if col == max_per_row:
                 col = 0
                 row += 1
-        for button, name in self.filter_buttons:
+        for button, name, f_type in button_list:
             button.set_selected(name == self.selected_filter)
-            def on_toggle(toggled_name):
-                for b, n in self.filter_buttons:
-                    b.set_selected(n == toggled_name)
+            def on_toggle(toggled_name, toggled_type):
+                self.deselect_all_filters()
+                for b, n, t in button_list:
+                    if n == toggled_name and t == toggled_type:
+                        b.set_selected(True)
                 self.on_filter_selected(toggled_name)
-            button.clicked.connect(lambda _, n=name: on_toggle(n))
-            button.set_selected(self.selected_filter == name)    
+            button.clicked.connect(lambda _, n=name, t=f_type: on_toggle(n, t))
+            button.set_selected(self.selected_filter == name)
+            
+    def deselect_all_filters(self):
+        """Deselects all filter buttons across all filter sections."""
+        # Deselect narrow bandpass filters
+        for button, _, _ in self.filter_buttons:
+            button.set_selected(False)
+        # Deselect broad bandpass filters  
+        for button, _, _ in self.filter_broad_buttons:
+            button.set_selected(False)
                 
             
     def create_no_bandpass_filter_input(self):
@@ -279,11 +303,18 @@ class LaserbloodMetadataPopup(QWidget):
         self.selected_filter = None
         self.app.laserblood_filter_type = None
         self.app.settings.remove(SETTINGS_FILTER_TYPE)
+        
+        # Clear all filter layouts and button lists
         clear_layout_tree(self.filters_grid)
+        clear_layout_tree(self.filters_broad_grid)
         clear_layout_tree(self.filters_no_bandpass_grid)
         self.filter_buttons.clear()
-        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (BANDPASS)", bandpass=True, container=self.filters_grid)
-        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NO BANDPASS)", bandpass=False, container=self.filters_no_bandpass_grid)
+        self.filter_broad_buttons.clear()
+        
+        # Recreate all filter layouts
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NARROW BANDPASS)", filter_type="narrow", container=self.filters_grid)
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (BROAD BANDPASS)", filter_type="broad", container=self.filters_broad_grid)
+        self.create_filters_layout(title="EMISSION FILTER WAVELENGTH (NO BANDPASS)", filter_type="no_bandpass", container=self.filters_no_bandpass_grid)
         self.no_bandpass_input = self.create_no_bandpass_filter_input()
         self.filters_no_bandpass_grid.addLayout(self.no_bandpass_input, 1, 3)
         self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))
@@ -297,14 +328,15 @@ class LaserbloodMetadataPopup(QWidget):
         """
         self.selected_filter = filter
         if filter not in ['SP', 'LP']:
-            filter_selected = next(f for f in FILTERS_TYPES if f == filter)
+            # Handle narrow and broad bandpass filters
             filter_wavelength_input = next(input for input in self.app.laserblood_settings if input["LABEL"] == "Emission filter wavelength")
             self.app.laserblood_filter_type = filter
             self.app.settings.setValue(SETTINGS_FILTER_TYPE, filter)  
-            self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(filter_selected)
+            self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(filter)
             self.app.laserblood_widgets["Wavelength"].setVisible(False)
             self.app.laserblood_widgets["no_bandpass_filter_label"].setVisible(False)
         else:
+            # Handle no bandpass filters (SP, LP)
             self.app.laserblood_widgets["Wavelength"].setVisible(True)
             self.app.laserblood_widgets["no_bandpass_filter_label"].setVisible(True)
             self.selected_filter = filter   
@@ -1028,6 +1060,3 @@ class LaserbloodMetadataPopup(QWidget):
         
     def center_window(self):   
         """Centers the popup window on the primary screen."""
-
-
-

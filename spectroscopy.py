@@ -269,9 +269,9 @@ def main():
 
     def custom_message_handler(msg_type, context, message):
         """
-        Custom handler for Qt messages to suppress specific warnings.
+        Custom handler for Qt messages
         """
-        if msg_type == QtMsgType.QtWarningMsg and "QWindowsWindow::setGeometry" in message:
+        if msg_type == QtMsgType.QtWarningMsg:
             return
         print(f"Qt Message: {message} (Type: {msg_type})")
 
