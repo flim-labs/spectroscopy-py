@@ -6,7 +6,6 @@ SETTINGS_FILTER_TYPE = "filter_type"
 DEFAULT_FILTER_TYPE = None
 
 
-
 FILTERS_TYPES_NARROW = [
     "400/16 nm",
     "420/16 nm",
@@ -48,70 +47,96 @@ LASER_TYPES = [
         "LABEL": "Laser Clean-up Filter ZET 375/10",
         "BANDPASS": True,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW,
-        "FILTERS_BROAD": FILTERS_TYPES_BROAD,
+        "FILTERS_BROAD": FILTERS_TYPES_BROAD[1:],
     },
     {
         "KEY": "405/10 nm",
         "LABEL": "405/10 ET Bandpass",
         "BANDPASS": True,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW[2:],
-        "FILTERS_BROAD": FILTERS_TYPES_BROAD,
+        "FILTERS_BROAD": [
+            FILTERS_TYPES_BROAD[0],
+            FILTERS_TYPES_BROAD[2],
+            FILTERS_TYPES_BROAD[3],
+            FILTERS_TYPES_BROAD[4],
+        ],
     },
     {
         "KEY": "445/10 nm",
         "LABEL": "Laser Clean-up Filter ZET 445/10",
         "BANDPASS": True,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW[4:],
-        "FILTERS_BROAD": FILTERS_TYPES_BROAD,
+        "FILTERS_BROAD": [
+            FILTERS_TYPES_BROAD[2],
+            FILTERS_TYPES_BROAD[3],
+            FILTERS_TYPES_BROAD[4],
+        ],
     },
     {
         "KEY": "488/10 nm",
         "LABEL": " Laser Clean-up Filter ZET 488/10",
         "BANDPASS": True,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW[6:],
-            "FILTERS_BROAD": FILTERS_TYPES_BROAD[2:],
+        "FILTERS_BROAD": [
+            FILTERS_TYPES_BROAD[2],
+            FILTERS_TYPES_BROAD[3],
+            FILTERS_TYPES_BROAD[4],
+        ],
     },
     {
         "KEY": "520/10 nm",
         "LABEL": " 520/10 ET Bandpass",
         "BANDPASS": True,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW[8:],
-        "FILTERS_BROAD": FILTERS_TYPES_BROAD[2:],
+        "FILTERS_BROAD": FILTERS_TYPES_BROAD[3:],
     },
     {
         "KEY": "375 nm",
         "LABEL": "375 nm",
         "BANDPASS": False,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW,
-        "FILTERS_BROAD": FILTERS_TYPES_BROAD,
+        "FILTERS_BROAD": FILTERS_TYPES_BROAD[1:],
     },
     {
         "KEY": "405 nm",
         "LABEL": "405 nm",
         "BANDPASS": False,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW[2:],
-        "FILTERS_BROAD": FILTERS_TYPES_BROAD,
+        "FILTERS_BROAD": [
+            FILTERS_TYPES_BROAD[0],
+            FILTERS_TYPES_BROAD[2],
+            FILTERS_TYPES_BROAD[3],
+            FILTERS_TYPES_BROAD[4],
+        ],
     },
     {
         "KEY": "445 nm",
         "LABEL": "445 nm",
         "BANDPASS": False,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW[4:],
-        "FILTERS_BROAD": FILTERS_TYPES_BROAD,
+        "FILTERS_BROAD": [
+            FILTERS_TYPES_BROAD[2],
+            FILTERS_TYPES_BROAD[3],
+            FILTERS_TYPES_BROAD[4],
+        ],
     },
     {
         "KEY": "488 nm",
         "LABEL": "488 nm",
         "BANDPASS": False,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW[6:],
-        "FILTERS_BROAD": FILTERS_TYPES_BROAD[2:],
+        "FILTERS_BROAD": [
+            FILTERS_TYPES_BROAD[2],
+            FILTERS_TYPES_BROAD[3],
+            FILTERS_TYPES_BROAD[4],
+        ],
     },
     {
         "KEY": "520 nm",
         "LABEL": " 520 nm",
         "BANDPASS": False,
         "FILTERS_NARROW": FILTERS_TYPES_NARROW[8:],
-        "FILTERS_BROAD": FILTERS_TYPES_BROAD[2:],
+        "FILTERS_BROAD": FILTERS_TYPES_BROAD[3:],
     },
 ]
 

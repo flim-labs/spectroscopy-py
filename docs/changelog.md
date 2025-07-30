@@ -1,5 +1,9 @@
 # Spectroscopy Changelog
 
+
+## Version 2.7.1
+- [LASERBLOOD] : Update Laser Wavelenght -> Emission Filters (BROAD BANDPASS) map
+
 ## Version 2.7
 - [LASERBLOOD] : Add Emission Filters (BROAD BANDPASS) to selectable metadata
 
