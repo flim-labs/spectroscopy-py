@@ -35,7 +35,7 @@ FILTERS_TYPES_BROAD = [
     "451/106 BrightLine HC",
     "550/100 ET Bandpass",
     "650/100 ET Bandpass",
-    "745/90 ET Bandpass",
+    "775/140 BrightLine HC",
 ]
 
 FILTERS_TYPES_NO_BANDPASS = ["SP", "LP"]

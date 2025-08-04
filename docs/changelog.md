@@ -1,6 +1,9 @@
 # Spectroscopy Changelog
 
 
+## Version 2.7.2
+- [LASERBLOOD] : Replace '745/90 ET Bandpass' Emission Filter with '775/140 BrightLine HC'
+
 ## Version 2.7.1
 - [LASERBLOOD] : Update Laser Wavelenght -> Emission Filters (BROAD BANDPASS) map
 
