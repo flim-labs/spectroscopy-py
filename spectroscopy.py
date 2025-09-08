@@ -117,6 +117,7 @@ class SpectroscopyWindow(QWidget):
         self.phasors_lifetime_texts = {}
         self.phasors_colorbars = {}
         self.phasors_legends = {}
+        self.phasors_legend_labels = {} 
         self.phasors_clusters_center = {}
         self.phasors_crosshairs = {}
         self.quantization_images = {}

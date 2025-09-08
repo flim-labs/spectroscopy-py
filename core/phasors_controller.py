@@ -287,44 +287,64 @@ class PhasorsController:
         """
         from core.controls_controller import ControlsController
         for i, channel_index in enumerate(app.plots_to_show):
-            if channel_index in app.phasors_widgets:
-                legend_in_list = channel_index in app.phasors_legends
-                if legend_in_list:
-                    app.phasors_widgets[channel_index].removeItem(
-                        app.phasors_legends[channel_index]
-                    )
+            # Use the fixed legend label if available, otherwise fall back to plot-based legend
+            if hasattr(app, 'phasors_legend_labels') and channel_index in app.phasors_legend_labels:
+                legend_label = app.phasors_legend_labels[channel_index]
+                
                 mean_g, mean_s = PhasorsController.calculate_phasors_points_mean(
                     app, channel_index, harmonic
                 )
                 if mean_g is None or mean_s is None:
+                    legend_label.setVisible(False)
                     continue
+                    
                 freq_mhz = ControlsController.get_frequency_mhz(app)
-                tau_phi, tau_m = PhasorsController.calculate_tau(mean_g, mean_s, freq_mhz, harmonic)
+                tau_phi, tau_m, tau_n = PhasorsController.calculate_tau(mean_g, mean_s, freq_mhz, harmonic)
                 if tau_phi is None:
-                    return
+                    legend_label.setVisible(False)
+                    continue
+                    
                 if tau_m is None:
                     legend_text = (
-                        '<div style="background-color: rgba(0, 0, 0, 0.1); padding: 20px; border-radius: 4px;'
-                        ' color: #FF3131; font-size: 18px; border: 1px solid white; text-align: left;">'
-                        f"G (mean)={round(mean_g, 2)}; "
-                        f"S (mean)={round(mean_s, 2)}; "
-                        f"𝜏ϕ={round(tau_phi, 2)} ns"
-                        "</div>"
+                        f"G (mean)={round(mean_g, 3)}; "
+                        f"S (mean)={round(mean_s, 3)}; "
+                        f"𝜏ϕ={round(tau_phi, 2)} ns; "
+                        f"𝜏n={round(tau_n, 2)} ns"
                     )
                 else:
                     legend_text = (
-                        '<div style="background-color: rgba(0, 0, 0, 0.1);  padding: 20px; border-radius: 4px;'
-                        ' color: #FF3131; font-size: 18px;  border: 1px solid white; text-align: left;">'
-                        f"G (mean)={round(mean_g, 2)}; "
-                        f"S (mean)={round(mean_s, 2)}; "
+                        f"G (mean)={round(mean_g, 3)}; "
+                        f"S (mean)={round(mean_s, 3)}; "
                         f"𝜏ϕ={round(tau_phi, 2)} ns; "
+                        f"𝜏n={round(tau_n, 2)} ns; "
                         f"𝜏m={round(tau_m, 2)} ns"
-                        "</div>"
                     )
-                legend_item = pg.TextItem(html=legend_text)
-                legend_item.setPos(0.1, 0)
-                app.phasors_widgets[channel_index].addItem(legend_item)
-                app.phasors_legends[channel_index] = legend_item        
+                
+                legend_label.setText(legend_text)
+                legend_label.setVisible(True)
+   
+                
+    
+    @staticmethod
+    def hide_phasors_legends(app):
+        """
+        Hides all phasor legends (both fixed labels and plot-based legends).
+
+        Args:
+            app: The main application instance.
+        """
+        # Hide fixed legend labels
+        if hasattr(app, 'phasors_legend_labels'):
+            for channel_index, legend_label in app.phasors_legend_labels.items():
+                legend_label.setVisible(False)
+        
+        # Hide plot-based legends
+        for channel_index in app.phasors_legends:
+            if channel_index in app.phasors_widgets:
+                app.phasors_widgets[channel_index].removeItem(
+                    app.phasors_legends[channel_index]
+                )
+        app.phasors_legends.clear()        
          
          
     @staticmethod       
@@ -379,39 +399,81 @@ class PhasorsController:
             app.phasors_coords[channel_index] = coord_text
         else:
             app.phasors_coords[channel_index] = coord_text
-        coord_text.setZValue(3)
-        crosshair.setZValue(3)
+        coord_text.setZValue(10)
+        crosshair.setZValue(6)
         app.phasors_widgets[channel_index].addItem(coord_text, ignoreBounds=True)
-        app.phasors_widgets[channel_index].addItem(crosshair, ignoreBounds=True)   
+        app.phasors_widgets[channel_index].addItem(crosshair, ignoreBounds=True)
         
     
     @staticmethod
     def calculate_tau(g, s, freq_mhz, harmonic):
         """
-        Calculates phase (𝜏ϕ) and modulation (𝜏m) lifetimes from G/S coordinates.
+        Calculates phase (𝜏ϕ), modulation (𝜏m) and 𝜏n lifetimes from G/S coordinates.
 
         Args:
-            app: The main application instance.
             g (float): The G coordinate.
             s (float): The S coordinate.
             freq_mhz (float): The laser frequency in MHz.
             harmonic (int): The harmonic number.
 
         Returns:
-            tuple[float | None, float | None]: A tuple containing (tau_phi, tau_m).
-                                               Returns (None, None) if calculation
+            tuple[float | None, float | None, float | None]: A tuple containing (tau_phi, tau_m, tau_n).
+                                               Returns (None, None, None) if calculation
                                                is not possible.
         """
         if freq_mhz == 0.0:
-            return None, None 
+            return None, None, None
         tau_phi = (1 / (2 * np.pi * freq_mhz * harmonic)) * (s / g) * 1e3
         tau_m_component = (1 / (s**2 + g**2)) - 1
         if tau_m_component < 0:
             tau_m = None
         else:
             tau_m = (1 / (2 * np.pi * freq_mhz * harmonic)) * np.sqrt(tau_m_component) * 1e3
-        return tau_phi, tau_m 
-        
+        tau_n = PhasorsController.calculate_tau_n(complex(g, s), freq_mhz * harmonic) * 1e3  # Convert to ns
+        return tau_phi, tau_m, tau_n
+    
+    
+    
+    @staticmethod
+    def calculate_tau_n(r, freq):
+        """
+        Compute fluorescence lifetime from phasor projection.
+
+        The function projects the phasor point(s) normally onto the
+        universal semicircle (the "single-lifetime semicircle"),
+        yielding the corresponding fluorescence lifetime.
+
+        Parameters
+        ----------
+        r : array-like (complex or ndarray of complex)
+            Phasor values, where the real part corresponds to the
+            cosine component and the imaginary part to the sine component
+            of the Fourier transform at the given modulation frequency.
+            - r can be a single complex number, a 1D array, or an nD array.
+        freq : float, optional
+            Modulation frequency (same frequency at which r was calculated).
+            Units do not matter (Hz, MHz, etc.), as the lifetime will
+            simply be expressed in the inverse unit (s, ns, etc.).
+
+        Returns
+        -------
+        tau : ndarray of floats
+            Estimated fluorescence lifetime(s), with the same shape as `r`.
+
+        Notes
+        -----
+        - r is dimensionless, but it must have been obtained by Fourier
+        transform at the same `freq` you provide here.
+        - The projection formula comes from phasor FLIM theory, where
+        a single-exponential decay maps onto a semicircle in phasor space.
+        - The method ensures that the estimated lifetime corresponds to
+        the perpendicular projection from the phasor point to the semicircle.
+        """
+        shifted = r - 0.5
+        phi = np.angle(shifted)
+        tau = np.tan(phi / 2) / (2 * np.pi * freq)
+        return tau
+    
             
         
     @staticmethod
@@ -446,21 +508,21 @@ class PhasorsController:
         harmonic = int(app.control_inputs[s.HARMONIC_SELECTOR].currentText())
         g = mouse_point.x()
         s_coord = mouse_point.y()
-        tau_phi, tau_m = PhasorsController.calculate_tau(g, s_coord, freq_mhz, harmonic)
+        tau_phi, tau_m, tau_n = PhasorsController.calculate_tau(g, s_coord, freq_mhz, harmonic)
         if tau_phi is None:
             return
         if tau_m is None:
-            text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns")
+            text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏n={round(tau_n, 2)} ns")
             text.setHtml(
                 '<div style="background-color: rgba(0, 0, 0, 0.5);">{}</div>'.format(
-                    f"𝜏ϕ={round(tau_phi, 2)} ns"
+                    f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏n={round(tau_n, 2)} ns"
                 )
             )
         else:
-            text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏m={round(tau_m, 2)} ns")
+            text.setText(f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏m={round(tau_m, 2)} ns; 𝜏n={round(tau_n, 2)} ns")
             text.setHtml(
                 '<div style="background-color: rgba(0, 0, 0, 0.5);">{}</div>'.format(
-                    f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏m={round(tau_m, 2)} ns"
+                    f"𝜏ϕ={round(tau_phi, 2)} ns; 𝜏n={round(tau_n, 2)} ns; 𝜏m={round(tau_m, 2)} ns"
                 )
             )
                      

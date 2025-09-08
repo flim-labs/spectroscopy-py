@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.5
+- Phasors analysis: add tau_n calculation and display 
+- Improve phasor centroid information display layout
 
 ## Version 2.4
 - Fix phasors harmonics visualization when in free running mode

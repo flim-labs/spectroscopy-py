@@ -335,6 +335,17 @@ class PlotsController:
         app.phasors_widgets[channel] = phasors_widget
         v_layout.addWidget(phasors_widget, 3)
         
+        # --- Legend Section (Fixed bottom area) ---
+        legend_label = QLabel("")
+        legend_label.setStyleSheet(GUIStyles.phasors_legend_label())
+        legend_label.setVisible(False)  # Hidden by default
+        legend_label.setAlignment(Qt.AlignmentFlag.AlignHCenter) 
+        # Initialize the legend widgets dictionary if it doesn't exist
+        if not hasattr(app, 'phasors_legend_labels'):
+            app.phasors_legend_labels = {}
+        app.phasors_legend_labels[channel] = legend_label
+        v_layout.addWidget(legend_label)
+        
         if app.acquire_read_mode == "read":
             phasors_widget.setCursor(Qt.CursorShape.BlankCursor)
             PhasorsController.generate_coords(app, channel)
@@ -528,6 +539,7 @@ class PlotsController:
         app.phasors_colorbars.clear()
         app.phasors_clusters_center.clear()
         app.phasors_legends.clear()
+        app.phasors_legend_labels.clear()  # Clear fixed legend labels
         app.phasors_lifetime_points.clear()
         app.phasors_lifetime_texts.clear()
         app.intensities_widgets.clear()
