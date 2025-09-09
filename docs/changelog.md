@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.8
+- Phasors analysis: add tau_n calculation and display
+- Improve phasor centroid information display layout
 
 ## Version 2.7.2
 - [LASERBLOOD] : Replace '745/90 ET Bandpass' Emission Filter with '775/140 BrightLine HC'

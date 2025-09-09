@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 <div align="center">
-  <h1>Spectroscopy - Export Data </h1>
+  <h1>Spectroscopy Laserblood - Export Data </h1>
 </div>
 <div align="center">
   <a href="https://www.flimlabs.com/">
@@ -19,6 +19,7 @@
     </li>
     <li><a href="#spectroscopy-file-format">Spectroscopy File Format</a></li>
      <li><a href="#phasors-file-format">Phasors File Format</a></li>
+     <li><a href="#laserblood-metadata-file-format">Laserblood Metadata File Format</a></li>
     <li><a href="#data-visualization">Data Visualization</a>
     </li>
     </ul>
@@ -32,10 +33,10 @@
 ## Introduction
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-exported-data.png" alt="Spectroscopy GUI" width="100%">
+    <img src="../assets/images/spectroscopy-exported-data.png" alt="Spectroscopy Laserblood GUI" width="100%">
 </div>
 
-The [Spectroscopy](https://github.com/flim-labs/spectroscopy-py) software allows seamless export of **decay curves** and **phasors** data to binary files, with convenient plotting and visualization capabilities. This guide provides an in-depth exploration of the **binary files structure**, offering a comprehensive understanding of how exported data is formatted and can be leveraged.
+The [Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py/tree/laserblood) software allows seamless export of **decay curves** and **phasors** data to binary files, along with comprehensive **Laserblood metadata** for biomedical research applications. This guide provides an in-depth exploration of the **binary files structure** and **metadata format**, offering a comprehensive understanding of how exported data is formatted and can be leveraged for advanced analysis and clinical research within the [Laserblood EU project](https://www.laserblood.eu/) framework.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -99,6 +100,61 @@ After the metadata, the script enters a loop to read and process phasor data. Ea
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Laserblood Metadata File Format
+
+For acquisitions performed within the [Laserblood EU project](https://www.laserblood.eu/) framework, the software automatically exports comprehensive metadata files containing detailed experimental parameters essential for biomedical research and PDAC (Pancreatic Ductal Adenocarcinoma) detection studies.
+
+##### Laserblood Metadata JSON Structure:
+
+The metadata is exported as a **JSON file** with a structured format that includes:
+
+##### File Naming Convention:
+
+Laserblood metadata files follow a standardized naming pattern:
+```
+{timestamp}_{laser_type}_{filter_type}_{user_filename}_laserblood_metadata.json
+```
+
+Example: `20240906_143022_405nm_650-100_sample01_laserblood_metadata.json`
+
+##### JSON Structure Overview:
+
+The JSON file contains the following main sections:
+
+- **Acquisition Information**: Timestamp, acquisition mode, bin width, acquisition time, and hardware configuration
+- **Laser and Filter Configuration**: Wavelength specifications, laser power, repetition rate
+- **Sample Identification**: Sample ID, PDAC/Healthy classification, experimental conditions
+- **Nanoparticle Properties**: Type, concentration, volume specifications
+- **Protein Corona Analysis**: Protein source details, incubation parameters, dilution factors
+- **Measurement Setup**: Cuvette specifications, detector configuration, processing steps
+- **Quality Metrics**: Average CPS, SBR values, pile-up thresholds
+- **Custom Parameters**: User-defined experimental fields
+
+##### Key Metadata Fields:
+
+The metadata includes critical parameters such as:
+
+- **Sample Classification**: `PDAC/Healthy` for medical research categorization
+- **Nanoparticle Details**: Type, concentration (µg/µL), volume (ml)
+- **Protein Source**: Human/murine plasma with volume and incubation percentage
+- **Incubation Conditions**: Time (min), temperature (°C), type (static/dynamic)
+- **Processing Steps**: Centrifuge, pellet, supernatant, washing cycles
+- **Hardware Configuration**: FPGA firmware, detector type, laser specifications
+- **Measurement Parameters**: Cuvette material, dimensions, laser power percentage
+
+##### Data Validation and Quality Control:
+
+The metadata system includes built-in validation to ensure:
+
+- All required fields are properly completed before acquisition
+- Consistent data formatting across experiments
+- Traceability for clinical research requirements
+- Integration with exported binary data files
+
+This comprehensive metadata system supports the reproducibility requirements of the Laserblood consortium and facilitates advanced data analysis workflows for pancreatic cancer detection research.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Data Visualization
 
 The script files are automatically downloaded along with the acquisition .bin file once the acquisition is complete and a file name has been chosen. Follow one of the guides below if you wish to use the Python or Matlab script:
@@ -137,9 +193,9 @@ The script files are automatically downloaded along with the acquisition .bin fi
 
 For more details about the project follow these links:
 
-- [Spectroscopy introduction](../index.md)
-- [Spectroscopy GUI guide](../v2.4/index.md)
-- [Spectroscopy Console guide ](./spectroscopy-console.md)
+- [Spectroscopy Laserblood introduction](../index.md)
+- [Spectroscopy Laserblood GUI guide](../v2.8/index.md)
+- [Spectroscopy Laserblood Console guide ](./spectroscopy-console.md)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -155,6 +211,6 @@ Distributed under the MIT License.
 
 FLIM LABS: info@flimlabs.com
 
-Project Link: [FLIM LABS - Spectroscopy](https://github.com/flim-labs/spectroscopy-py)
+Project Link: [FLIM LABS - Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py/tree/laserblood)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

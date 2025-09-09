@@ -566,4 +566,20 @@ class GUIStyles:
                 font-weight: 800;
                 font-size: 14px;
             }}                
-        """                                       
+        """   
+        
+    @staticmethod
+    def phasors_legend_label():
+        return f"""
+            QLabel {{
+                background-color: rgba(0, 0, 0, 0.9);
+                color: #FF3131;
+                font-size: 14px;
+                font-family: "Montserrat";
+                font-weight: bold;
+                padding: 5px;
+                margin: 2px;
+                text-align: center;
+            }}                
+        """
+                                           

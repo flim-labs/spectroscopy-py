@@ -57,7 +57,7 @@ class UIController:
                                          widget and the main grid layout for plots.
         """
         app.setWindowTitle(
-            "FlimLabs - SPECTROSCOPY v" + s.VERSION + " - API v" + flim_labs.get_version()
+            "FlimLabs - SPECTROSCOPY LASERBLOOD v" + s.VERSION + " - API v" + flim_labs.get_version()
         )
         TitlebarIcon.setup(app)
         GUIStyles.customize_theme(app)

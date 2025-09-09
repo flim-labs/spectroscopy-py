@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 <div align="center">
-  <h1>Spectroscopy v2.4</h1>
+  <h1>Spectroscopy Laserblood v2.8</h1>
 </div>
 <div align="center">
   <a href="https://www.flimlabs.com/">
@@ -44,6 +44,7 @@
             <li><a href="#card-connection-detection">Card Connection Detection</a></li>
            <li><a href="#channels-connections-detection">Channels Connections Detection</a></li>  
     </ul></li>
+    <li><a href="#laserblood-metadata">Laserblood Metadata</a>
      <li><a href="#reader-mode">Reader Mode</a></li>
      <li><a href="#export-data">Export Data</a></li>
     <li><a href="#license">License</a></li>
@@ -55,8 +56,8 @@
 
 ## Introduction
 
-Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py) _v2.4_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
-For a general introduction to the aims and technical requirements of the project, read the [Spectroscopy Homepage](../index.md) link.
+Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py) _v2.8_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
+For a general introduction to the aims and technical requirements of the project, read the [Spectroscopy Laserblood Homepage](../index.md) link.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -65,7 +66,7 @@ For a general introduction to the aims and technical requirements of the project
 ## Application Usage
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-gui-v2.4.png" alt="Spectroscopy GUI" width="100%">
+    <img src="../assets/images/spectroscopy-laserblood-gui-v2.8.png" alt="Spectroscopy Laserblood GUI" width="100%">
 </div>
 
 _Spectroscopy_ software provides users with **three distinct analysis modes** to suit various experimental and analytical needs:
@@ -79,7 +80,7 @@ _Spectroscopy_ software provides users with **three distinct analysis modes** to
 #### Spectroscopy Mode
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-gui-v2.4.png" alt="Spectroscopy GUI" width="100%">
+    <img src="../assets/images/spectroscopy-laserblood-gui-v2.8.png" alt="Spectroscopy Laserblood GUI" width="100%">
 </div>
 
 **Spectroscopy Mode** allows users to perform in-depth analyses of the **photon intensity decay profile** as a function of time.
@@ -109,7 +110,7 @@ Key features of _Spectroscopy Mode_ include:
 #### Phasors Mode
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-phasors-gui-v2.4.png" alt="Spectroscopy Phasors GUI" width="100%">
+    <img src="../assets/images/spectroscopy-laserblood-phasors-gui-v2.8.png" alt="Spectroscopy Laserblood Phasors GUI" width="100%">
 </div>
 
 **Phasors Mode** enables users to conduct advanced analyses of the **lifetime distribution** using **phasor plots**.
@@ -137,7 +138,7 @@ Key features of _Phasors Mode_ include:
 #### Fitting Mode
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-fitting-gui-v2.4.png" alt="Spectroscopy Fitting GUI" width="100%">
+    <img src="../assets/images/spectroscopy-fitting-gui-v2.4.png" alt="Spectroscopy Laserblood Fitting GUI" width="100%">
 </div>
 
 **Fitting Mode** allows users to identify and estimate the parameters of the **mathematical decay model** that best describes the acquired data.
@@ -163,7 +164,7 @@ Key features of _Fitting Mode_ include:
 #### Settings
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-settings-v2.4.png" alt="Spectroscopy Settings bar" width="100%">
+    <img src="../assets/images/spectroscopy-laserblood-settings-gui-v2.8.png" alt="Spectroscopy Laserblood Settings bar" width="100%">
 </div>
 
 _Spectroscopy_ includes a comprehensive **settings** package that allows users to configure their acquisition parameters and hardware connections with ease.
@@ -298,7 +299,7 @@ In _Phasors Mode_, users can configure the following three additional parameters
 Users can choose to **export acquired data** in _.bin_ file format for further analysis.
 Refers to this section for more details:
 
-- [Spectroscopy Data Export guide ](../python-flim-labs/spectroscopy-file-format.md)
+- [Spectroscopy Laserblood Data Export guide ](../python-flim-labs/spectroscopy-file-format.md)
 
 <hr>
 
@@ -308,31 +309,86 @@ If the user chooses to export the acquired data, they can also opt to enable or 
 
 <hr>
 
+#### Laserblood Metadata
+
+<div align="center">
+    <img src="../assets/images/spectroscopy-laserblood-metadata-gui-v2.8.png" alt="Spectroscopy Laserblood Metadata GUI" width="100%">
+</div>
+
+_Spectroscopy Laserblood_ software includes a comprehensive **Laserblood Metadata** system designed specifically for the [Laserblood EU project](https://www.laserblood.eu/), which focuses on the detection of pancreatic ductal adenocarcinoma (PDAC) through innovative photonic technologies.
+
+The **Laserblood Metadata** popup provides a specialized interface for recording detailed experimental parameters essential for biomedical research and clinical applications in cancer detection. This metadata system ensures complete traceability and reproducibility of experiments conducted within the Laserblood project framework.
+
+Key features of the _Laserblood Metadata_ system include:
+
+- **Sample Information Management**:
+  Complete tracking of sample characteristics including ID, PDAC/Healthy classification, and plasma properties.
+
+- **Experimental Setup Documentation**:
+  Detailed recording of laser parameters, detector specifications, and optical filter configurations.
+
+- **Nanoparticle and Protein Corona Analysis**:
+  Comprehensive metadata for nanoparticle-protein interactions, including concentrations, volumes, and incubation conditions.
+
+- **Cuvette and Measurement Parameters**:
+  Full specification of measurement vessel properties and experimental conditions.
+
+- **Hardware Configuration Tracking**:
+  Documentation of FPGA firmware, detector types, and acquisition parameters.
+
+- **Customizable Fields**:
+  Ability to add custom metadata fields to accommodate evolving experimental requirements.
+
+- **Validation and Quality Control**:
+  Built-in validation ensures all required fields are properly completed before data acquisition.
+
+The metadata is automatically embedded in exported data files, providing a complete experimental record that supports the reproducibility requirements of clinical research and facilitates data analysis workflows in the Laserblood consortium.
+
+##### Laser and Filter Configuration
+
+The system provides precise configuration options for:
+
+- **Laser Wavelength Selection**: Both bandpass and non-bandpass laser options (375nm, 405nm, 445nm, 488nm, 520nm)
+- **Emission Filter Management**: Narrow bandpass, broad bandpass, and non-bandpass filter options
+- **Automatic Filter Matching**: Dynamic filter options based on selected laser wavelength
+
+##### Sample and Experimental Parameters
+
+Key configurable parameters include:
+
+- **Sample Identification**: Unique ID and classification (PDAC/Healthy)
+- **Nanoparticle Properties**: Type, concentration, and volume specifications
+- **Protein Source Details**: Human or murine plasma with volume and incubation parameters
+- **Incubation Conditions**: Temperature, time, type (static/dynamic), and protein ratios
+- **Processing Steps**: Centrifuge, pellet, supernatant, and washing procedures
+- **Measurement Conditions**: Cuvette specifications, laser power, and detector settings
+
+<hr>
+
 #### Parameters table summary
 
 Here a table summary of the configurable parameters:
 
-| Parameter          | Data Type   | Config                                                                                                        | Default   | Explanation                                                                                                                                                              |
-| ------------------ | ----------- | ------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `enabled_channels` | number[]    | Set a list of enabled acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7]                             | []        | The list of enabled channels for photons data acquisition.                                                                                                               |
-| `connection_type`  | number      | Set the selected connection type for acquisition (USB or SMA).                                                | 0 ("USB") | If USB (0) is selected, USB firmware is automatically used. If SMA (1) is selected, SMA firmware is automatically used.                                                  |
-| `bin_width`        | number      | Set the numerical value in microseconds. Range: _1-1000000µs_.                                                | 1000 (µs) | The time duration to wait for photons count accumulation.                                                                                                                |
-| `free_running`     | boolean     | Set the acquisition time mode (_True_ or _False_).                                                            | True      | If set to True, the _acquisition_time_ is indeterminate. If set to False, the `acquisition_time` parameter is needed (acquisition duration).                              |
-| `time_span`        | number      | Time interval, in seconds, for the visible data range on the duration x-axis. Range: _1-300s_.                | 5         | For instance, if `time_span` is set to _5s_, the intensity tracing plot _x-axis_ will scroll to continuously display the latest 5 seconds of real-time data on the chart. |
-| `acquisition_time` | number/None | Set the data acquisition duration. Range: _1-1800s_.                                                          | None      | The acquisition duration is indeterminate (None) if _free_running_ is set to True.                                                                                       |
-| `cps_threshold`    | number      | Set the CPS threshold.                                                                                        | 0         | If set to a value greater than 0, the user will see the CPS for each channel highlighted when they exceed the set threshold.                                              |
-| `show_sbr`         | boolean     | Defines whether to visualize the Signal-to-Noise Ratio value for each channel or not.                         | False     | Enables or disables the SBR visualization.                                                                                                                              |
-| `sync`             | string      | Set the laser sync type (in/out) and optionally its frequency.                                                | _sync_in_ | Configures synchronization for laser input or output.                                                                                                                    |
-| `calibration`      | number      | Defines whether to calculate reference parameters for phasors analysis or not.                                | 0 (None)  | If set to _Phasors Ref (1)_, a reference file for phasors analysis will be downloaded.                                                                                   |
-| `tau_ns`           | number/None | Set the tau (ns) value for Phasors Ref calculation.                                                           | None      | Defines the decay time in nanoseconds for Phasors Ref calculations.                                                                                                      |
-| `harmonics`        | number      | Set the number of harmonics (1 to 4) for Phasors Ref calculation.                                             | 1         | Configures the number of harmonics for Phasors Ref calculations.                                                                                                         |
-| `quantize_phasors` | boolean     | Defines whether to quantize phasors points or not.                                                            | False     | If set to True, phasor points will be grouped into bins.                                                                                                                 |
-| `plots_to_show`    | number[]    | Defines the number of plots to visualize (max 4).                                                             | []        | Specifies the plots to display during acquisition.                                                                                                                       |
-| `time_shifts`      | dict        | Defines the key (channel index) / value (time shift) pair for decay curves time shifts.                       | {}        | Configures time shifts for decay curve visualization by channel.                                                                                                         |
-| `lin_log_mode`     | dict        | Defines the key (channel index) / value (LIN/LOG) pair for decay curves linear/logarithmic plot visualization. | {}        | Configures the visualization mode (linear or logarithmic) for decay curves by channel.                                                                                   |
-| `write_data`       | boolean     | Set export data option to True/False.                                                                         | False     | If set to _True_, the acquired raw data will be exported locally to the computer along with script files (Python/Matlab).                                                |
-| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                             | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).                                     |
-
+| Parameter          | Data Type   | Config                                                                                                         | Default   | Explanation                                                                                                                                                               |
+| ------------------ | ----------- | -------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled_channels` | number[]    | Set a list of enabled acquisition data channels (up to 8). e.g. [0,1,2,3,4,5,6,7]                              | []        | The list of enabled channels for photons data acquisition.                                                                                                                |
+| `connection_type`  | number      | Set the selected connection type for acquisition (USB or SMA).                                                 | 0 ("USB") | If USB (0) is selected, USB firmware is automatically used. If SMA (1) is selected, SMA firmware is automatically used.                                                   |
+| `bin_width`        | number      | Set the numerical value in microseconds. Range: _1-1000000µs_.                                                 | 1000 (µs) | The time duration to wait for photons count accumulation.                                                                                                                 |
+| `free_running`     | boolean     | Set the acquisition time mode (_True_ or _False_).                                                             | True      | If set to True, the _acquisition_time_ is indeterminate. If set to False, the `acquisition_time` parameter is needed (acquisition duration).                              |
+| `time_span`        | number      | Time interval, in seconds, for the visible data range on the duration x-axis. Range: _1-300s_.                 | 5         | For instance, if `time_span` is set to _5s_, the intensity tracing plot _x-axis_ will scroll to continuously display the latest 5 seconds of real-time data on the chart. |
+| `acquisition_time` | number/None | Set the data acquisition duration. Range: _1-1800s_.                                                           | None      | The acquisition duration is indeterminate (None) if _free_running_ is set to True.                                                                                        |
+| `cps_threshold`    | number      | Set the CPS threshold.                                                                                         | 0         | If set to a value greater than 0, the user will see the CPS for each channel highlighted when they exceed the set threshold.                                              |
+| `show_sbr`         | boolean     | Defines whether to visualize the Signal-to-Noise Ratio value for each channel or not.                          | False     | Enables or disables the SBR visualization.                                                                                                                                |
+| `sync`             | string      | Set the laser sync type (in/out) and optionally its frequency.                                                 | _sync_in_ | Configures synchronization for laser input or output.                                                                                                                     |
+| `calibration`      | number      | Defines whether to calculate reference parameters for phasors analysis or not.                                 | 0 (None)  | If set to _Phasors Ref (1)_, a reference file for phasors analysis will be downloaded.                                                                                    |
+| `tau_ns`           | number/None | Set the tau (ns) value for Phasors Ref calculation.                                                            | None      | Defines the decay time in nanoseconds for Phasors Ref calculations.                                                                                                       |
+| `harmonics`        | number      | Set the number of harmonics (1 to 4) for Phasors Ref calculation.                                              | 1         | Configures the number of harmonics for Phasors Ref calculations.                                                                                                          |
+| `quantize_phasors` | boolean     | Defines whether to quantize phasors points or not.                                                             | False     | If set to True, phasor points will be grouped into bins.                                                                                                                  |
+| `plots_to_show`    | number[]    | Defines the number of plots to visualize (max 4).                                                              | []        | Specifies the plots to display during acquisition.                                                                                                                        |
+| `time_shifts`      | dict        | Defines the key (channel index) / value (time shift) pair for decay curves time shifts.                        | {}        | Configures time shifts for decay curve visualization by channel.                                                                                                          |
+| `lin_log_mode`     | dict        | Defines the key (channel index) / value (LIN/LOG) pair for decay curves linear/logarithmic plot visualization. | {}        | Configures the visualization mode (linear or logarithmic) for decay curves by channel.                                                                                    |
+| `write_data`       | boolean     | Set export data option to True/False.                                                                          | False     | If set to _True_, the acquired raw data will be exported locally to the computer along with script files (Python/Matlab).                                                 |
+| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                              | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).                                     |
 
 <br/>
 
@@ -348,7 +404,7 @@ Here an example of the `settings.ini` structure:
 
 ```json
 [General]
-app_version=2.4
+app_version=2.8
 free_running=false
 tau_ns=1
 calibration=1
@@ -393,6 +449,15 @@ If connections are found, the system allows the user to update the configuration
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
+## Laserblood Metadata
+
+<div align="center">
+    <img src="../assets/images/spectroscopy-laserblood-metadata-gui-v2.8.png" alt="GUI" width="100%">
+</div>
+
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Reader Mode
 
 <div align="center">
@@ -411,7 +476,7 @@ Note: a requirements.txt file — indicating the dependencies needed to run the 
 
 Refer to this section for more details:
 
-- [Spectroscopy Data Export guide ](../python-flim-labs/spectroscopy-file-format.md)
+- [Spectroscopy Laserblood Data Export guide ](../python-flim-labs/spectroscopy-file-format.md)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -427,6 +492,6 @@ Distributed under the MIT License.
 
 FLIM LABS: info@flimlabs.com
 
-Project Link: [FLIM Imager](https://github.com/flim-labs/flim-imaging)
+Project Link: [FLIM LABS - Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py/tree/laserblood)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

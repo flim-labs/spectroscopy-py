@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 <div align="center">
-  <h1>Spectroscopy</h1>
+  <h1>Spectroscopy Laserblood</h1>
 </div>
 <div align="center">
   <a href="https://www.flimlabs.com/">
@@ -9,8 +9,6 @@
   </a>
 </div>
 <br>
-
-
 
 <!-- TABLE OF CONTENTS -->
 <details>
@@ -41,25 +39,21 @@
     <img src="./docs/assets/images/spectroscopy-gui-v2.4.png" alt="Spectroscopy GUI" width="100%">
 </div>
 
-
-Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py), a Python application designed to **analyze the fluorescence intensity decay as a function of time**. Facilitated by an underlying data processor developed in Rust, responsible for data retrieval from the hardware component, this application enables real-time data analysis and visualization. Whether your focus is on rigorous data analysis or dynamic visualizations, Spectroscopy serves as a flexible tool for the precise measurement and exploration of fluorescence intensity decay profile and lifetimes distributions.
+Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py/tree/laserblood), a Python application designed to **analyze the fluorescence intensity decay as a function of time**. Facilitated by an underlying data processor developed in Rust, responsible for data retrieval from the hardware component, this application enables real-time data analysis and visualization. Whether your focus is on rigorous data analysis or dynamic visualizations, Spectroscopy serves as a flexible tool for the precise measurement and exploration of fluorescence intensity decay profile and lifetimes distributions.
 
 ### Built With
 
-* [Python](https://www.python.org/)
-* [PyQt6](https://pypi.org/project/PyQt6/)
-* [pyqtgraph](https://www.pyqtgraph.org/)
-* [matplotlib](https://pypi.org/project/matplotlib/)
-* [numpy](https://numpy.org/)
-* [scipy](https://scipy.org/)
-* [flim-labs](https://pypi.org/project/flim-labs/)
-
+- [Python](https://www.python.org/)
+- [PyQt6](https://pypi.org/project/PyQt6/)
+- [pyqtgraph](https://www.pyqtgraph.org/)
+- [matplotlib](https://pypi.org/project/matplotlib/)
+- [numpy](https://numpy.org/)
+- [scipy](https://scipy.org/)
+- [flim-labs](https://pypi.org/project/flim-labs/)
 
 <!-- GETTING STARTED -->
 
 ## Getting Started
-
-To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this [link](https://github.com/flim-labs/spectroscopy-py/releases/tag/v2.4) (_Note: you still need to have the FLIM LABS acquisition card_).
 
 To get a local copy up and running follow these steps.
 
@@ -77,22 +71,30 @@ To be able to run this project locally on your machine you need to satisfy these
 ### Installation
 
 1. Clone the repo
+
    ```sh
    git clone https://github.com/flim-labs/spectroscopy-py
    ```
-2. Set the virtual environment in the root folder
+
+2. Switch to the correct branch
+
+   ```sh
+   git checkout laserblood
+   ```
+
+3. Set the virtual environment in the root folder
    ```sh
    python -m venv venv
    ```
-3. Activate the virtual environment:
+4. Activate the virtual environment:
    ```sh
    venv\Scripts\activate
    ```
-4. Install the dependencies
+5. Install the dependencies
    ```sh
    pip install -r requirements.txt
    ```
-5. Run the project with GUI mode
+6. Run the project with GUI mode
    ```sh
    python spectroscopy.py
    ```
@@ -101,14 +103,14 @@ To be able to run this project locally on your machine you need to satisfy these
 
 Navigate to the following links to view detailed application usage guides:
 
-- [Spectroscopy GUI guide](./docs/v2.4/index.md)
-- [Spectroscopy Data Export guide ](./docs/python-flim-labs/spectroscopy-file-format.md)
-- [Spectroscopy Console guide](./docs/python-flim-labs/spectroscopy-console.md)
+- [Spectroscopy Laserblood GUI guide](./docs/v2.8/index.md)
+- [Spectroscopy Laserblood Data Export guide ](./docs/python-flim-labs/spectroscopy-file-format.md)
+- [Spectroscopy Laserblood Console guide](./docs/python-flim-labs/spectroscopy-console.md)
 
 ## Contact
 
 FLIM LABS: info@flimlabs.com
 
-Project Link: [FLIM LABS - Spectroscopy](https://github.com/flim-labs/spectroscopy-py)
+Project Link: [FLIM LABS - Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py/tree/laserblood)
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p> 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
