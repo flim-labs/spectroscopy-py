@@ -74,7 +74,7 @@ To run the process the console should be opened inside the project directory `/S
 For more details about the project follow these links:
 
 - [Spectroscopy introduction](../index.md)
-- [Spectroscopy GUI guide](../v2.4/index.md)
+- [Spectroscopy GUI guide](../v2.5/index.md)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

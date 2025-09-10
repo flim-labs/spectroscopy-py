@@ -7,14 +7,14 @@ class GUIStyles:
     @staticmethod
     def set_default_theme(theme):
         QApplication.setStyle(QStyleFactory.create(theme))
-        
-    @staticmethod        
-    def customize_theme(window, bg = QColor(28, 28, 28, 128), fg = QColor(255, 255, 255)):
+
+    @staticmethod
+    def customize_theme(window, bg=QColor(28, 28, 28, 128), fg=QColor(255, 255, 255)):
         palette = QPalette()
         background_color = bg
         palette.setColor(QPalette.ColorRole.Window, background_color)
         palette.setColor(QPalette.ColorRole.WindowText, fg)
-        window.setPalette(palette)  
+        window.setPalette(palette)
         window.setStyleSheet(
             """
         QLabel {
@@ -22,7 +22,7 @@ class GUIStyles:
             font-family: "Montserrat";
         }
         """
-        )  
+        )
 
     @staticmethod
     def set_fonts(font_name="Montserrat", font_size=10):
@@ -164,8 +164,8 @@ class GUIStyles:
             button.styleSheet()
             + "QPushButton {border-radius: 0px; border-bottom: 1px solid #D01B1B; padding-left: 10px; padding-right: 10px;}  QPushButton:checked {background-color: #D01B1B; border: 1px solid transparent;}"
         )
-        
-    @staticmethod            
+
+    @staticmethod
     def checkbox_wrapper_style():
         return """
             QWidget#ch_checkbox_wrapper, QWidget#simple_checkbox_wrapper {
@@ -182,7 +182,7 @@ class GUIStyles:
                 font-size: 12px;
                 padding: 0;
             }        
-        """ 
+        """
 
     @staticmethod
     def set_checkbox_style():
@@ -213,7 +213,7 @@ class GUIStyles:
         """
 
     @staticmethod
-    def set_input_number_style(min_width = "60px"):
+    def set_input_number_style(min_width="60px"):
         return f"""
             QDoubleSpinBox, QSpinBox {{
                 color: #f8f8f8;
@@ -231,8 +231,8 @@ class GUIStyles:
             border-color: #3c3c3c;
             }}        
         """
-    
-    @staticmethod    
+
+    @staticmethod
     def set_input_text_style():
         return """
            QLineEdit  {
@@ -250,8 +250,7 @@ class GUIStyles:
             color: #404040;  
             border-color: #3c3c3c;
             }        
-        """    
-        
+        """
 
     @staticmethod
     def set_input_select_style():
@@ -321,8 +320,8 @@ class GUIStyles:
                 font-size: 26px;
             }
         """
-        
-    @staticmethod            
+
+    @staticmethod
     def toggle_collapse_button():
         return """
             QPushButton{
@@ -331,10 +330,9 @@ class GUIStyles:
                 qproperty-iconSize: 15px;
                 border: 1px solid #808080;
             } 
-        """   
-        
-   
-    @staticmethod               
+        """
+
+    @staticmethod
     def chart_wrapper_style():
         return """
             QWidget#chart_wrapper {
@@ -342,9 +340,9 @@ class GUIStyles:
                 background-color: #141414;
                 padding: 0;
             }       
-        """      
-        
-    @staticmethod       
+        """
+
+    @staticmethod
     def plots_config_popup_style():
         return """
             QWidget {
@@ -357,9 +355,9 @@ class GUIStyles:
                 color: white;
                 font-size: 18px;
             } 
-        """    
-            
-    @staticmethod            
+        """
+
+    @staticmethod
     def set_simple_checkbox_style(color):
         return f"""
             QCheckBox {{
@@ -383,9 +381,9 @@ class GUIStyles:
             QCheckBox::indicator:checked {{
                 background-color: {color};
             }}
-        """ 
-        
-    @staticmethod    
+        """
+
+    @staticmethod
     def set_context_menu_style(base, selected, pressed):
         return f"""
         QWidget {{
@@ -416,8 +414,8 @@ class GUIStyles:
         QMenu::item:pressed {{
             background-color: {pressed};  
          }}
-        """ 
-        
+        """
+
     @staticmethod
     def set_lin_log_widget_style():
         return """
@@ -430,12 +428,12 @@ class GUIStyles:
                 font-size: 14px;
             }
         """
-        
+
     @staticmethod
     def set_slider_style():
         return """
-            """        
-            
+            """
+
     @staticmethod
     def acquire_read_btn_style():
         return f"""
@@ -456,8 +454,8 @@ class GUIStyles:
                 border-bottom-right-radius: 3px;
                 
             }}
-        """   
-        
+        """
+
     @staticmethod
     def acquisition_time_countdown_style():
         return """
@@ -466,8 +464,7 @@ class GUIStyles:
                 font-size: 18px;
                 padding: 0 8px 8px 16px;
             }
-        """                     
-                        
+        """
 
     @staticmethod
     def progress_bar_style(color: str):
@@ -489,7 +486,7 @@ class GUIStyles:
                 color: transparent;
             }}               
         """
-        
+
     @staticmethod
     def time_tagger_style():
         return f"""
@@ -527,8 +524,8 @@ class GUIStyles:
             QCheckBox::indicator:checked {{
                 background-color: #1fd400;
             }}                   
-        """        
-        
+        """
+
     @staticmethod
     def SBR_label(font_size="22px", background_color="#0a0a0a", color="#f72828"):
         return f"""
@@ -541,8 +538,8 @@ class GUIStyles:
                 padding: 2px;
             }} 
                      
-        """     
-        
+        """
+
     @staticmethod
     def check_card_message(color):
         return f"""
@@ -556,4 +553,19 @@ class GUIStyles:
                 font-weight: 800;
                 font-size: 14px;
             }}                
-        """                  
+        """
+
+    @staticmethod
+    def phasors_legend_label():
+        return f"""
+            QLabel {{
+                background-color: rgba(0, 0, 0, 0.9);
+                color: #FF3131;
+                font-size: 14px;
+                font-family: "Montserrat";
+                font-weight: bold;
+                padding: 5px;
+                margin: 2px;
+                text-align: center;
+            }}                
+        """
