@@ -88,6 +88,7 @@ class LaserbloodMetadataPopup(QWidget):
         
         self.init_inputs_grid()
         self.init_new_input_added_layout()
+        
         self.q_v_box_inputs_container.addLayout(self.inputs_grid)
         self.q_v_box_inputs_container.addLayout(self.new_added_inputs_grid)
         self.q_v_box_inputs_container.addSpacing(20)
@@ -283,6 +284,30 @@ class LaserbloodMetadataPopup(QWidget):
         text = str(value) + " nm"    
         self.app.laserblood_widgets[filter_wavelength_input["LABEL"]].setText(text) 
         self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app)) 
+    
+    
+    def update_sacrifice_field_state(self, protein_source_value):
+        """
+        Updates the SACRIFICE field enabled state and value based on PROTEIN_SOURCE selection.
+        
+        Args:
+            protein_source_value (int): The selected index for PROTEIN_SOURCE (0=empty, 1=Human plasma, 2=Murine plasma)
+        """
+        sacrifice_widget = self.app.laserblood_widgets.get("Sacrifice")
+        sacrifice_input = next((input for input in self.app.laserblood_settings if input["LABEL"] == "Sacrifice"), None)
+        
+        if sacrifice_widget and sacrifice_input:
+            # Enable when empty (0) or Murine plasma (2), disable when Human plasma (1)
+            should_enable = protein_source_value != 1
+            
+            # If switching to Human plasma, set SACRIFICE to False BEFORE disabling
+            if protein_source_value == 1:
+                sacrifice_widget.start_animation(False) 
+                sacrifice_input["VALUE"] = False
+                self.update_settings(False, sacrifice_input)
+            
+            sacrifice_widget.setEnabled(should_enable)
+            sacrifice_input["ENABLED"] = should_enable
                   
         
     def on_laser_selected(self, laser):
@@ -773,6 +798,8 @@ class LaserbloodMetadataPopup(QWidget):
                     weeks_input["REQUIRED"],
                     "Weeks"
                 )
+            # Update SACRIFICE field state based on PROTEIN_SOURCE selection
+            self.update_sacrifice_field_state(value)
     
     def on_input_state_change(self, state, input, new_input):
         """

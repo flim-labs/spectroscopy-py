@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.8.1
+- [LASERBLOOD] : Add "sacrifice" to selectable metadata
+
 ## Version 2.8
 - Phasors analysis: add tau_n calculation and display
 - Improve phasor centroid information display layout

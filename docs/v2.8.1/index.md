@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 <div align="center">
-  <h1>Spectroscopy Laserblood v2.8</h1>
+  <h1>Spectroscopy Laserblood v2.8.1</h1>
 </div>
 <div align="center">
   <a href="https://www.flimlabs.com/">
@@ -56,7 +56,7 @@
 
 ## Introduction
 
-Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py) _v2.8_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
+Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py) _v2.8.1_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
 For a general introduction to the aims and technical requirements of the project, read the [Spectroscopy Laserblood Homepage](../index.md) link.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -312,7 +312,7 @@ If the user chooses to export the acquired data, they can also opt to enable or 
 #### Laserblood Metadata
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-laserblood-metadata-gui-v2.8.png" alt="Spectroscopy Laserblood Metadata GUI" width="100%">
+    <img src="../assets/images/spectroscopy-laserblood-metadata-gui-v2.8.1.png" alt="Spectroscopy Laserblood Metadata GUI" width="100%">
 </div>
 
 _Spectroscopy Laserblood_ software includes a comprehensive **Laserblood Metadata** system designed specifically for the [Laserblood EU project](https://www.laserblood.eu/), which focuses on the detection of pancreatic ductal adenocarcinoma (PDAC) through innovative photonic technologies.
@@ -404,7 +404,7 @@ Here an example of the `settings.ini` structure:
 
 ```json
 [General]
-app_version=2.8
+app_version=2.8.1
 free_running=false
 tau_ns=1
 calibration=1
@@ -447,6 +447,7 @@ If connections are found, the system allows the user to update the configuration
 
 <hr>
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 
 
 ## Reader Mode
