@@ -1,4 +1,8 @@
-# Spectroscopy Changelog
+# Spectroscopy Laserblood Changelog
+
+
+## Version 2.8.2
+- [LASERBLOOD] : Add button in Metadata panel to autofill fields with default Coumarine reference values
 
 ## Version 2.8.1
 - [LASERBLOOD] : Add "sacrifice" to selectable metadata

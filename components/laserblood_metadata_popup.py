@@ -53,6 +53,7 @@ class LaserbloodMetadataPopup(QWidget):
         self.setWindowTitle("Spectroscopy - Laserblood Metadata")
         TitlebarIcon.setup(self)
         GUIStyles.customize_theme(self, bg=QColor(20, 20, 20))
+        self.layouts = {}
         self.filters_grid = QGridLayout()
         self.filters_broad_grid = QGridLayout()
         self.filters_no_bandpass_grid = QGridLayout()
@@ -61,18 +62,18 @@ class LaserbloodMetadataPopup(QWidget):
         self.filter_broad_buttons = []
         self.selected_laser = self.app.laserblood_laser_type
         self.selected_filter = self.app.laserblood_filter_type
-        self.new_input_type = "number"
-        self.new_input_label = ""
-        self.new_input_unit = ""
-        self.widgets = {}
-        self.layouts = {}
-        self.laser_settings_container = QVBoxLayout()
-        self.laser_settings_container.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.laser_settings_container.addSpacing(20)
         self.q_v_box_inputs_container = QVBoxLayout()
         self.inputs_grid = QGridLayout()
         self.new_added_inputs_grid = QGridLayout()
-        
+
+        self.init_inputs_grid()
+        self.init_new_input_added_layout()
+        # Add header as the first item inside the input box container (sticky within scroll area)
+        self.q_v_box_inputs_container.addLayout(self.create_header_layout())
+        self.q_v_box_inputs_container.addLayout(self.inputs_grid)
+        self.q_v_box_inputs_container.addLayout(self.new_added_inputs_grid)
+        self.q_v_box_inputs_container.addSpacing(20)
+        # --- SAVE BUTTON ROW ---
         start_btn_row = QHBoxLayout()
         start_btn_row.setContentsMargins(0,0,10,0)
         start_btn_row.addStretch(1)
@@ -85,15 +86,12 @@ class LaserbloodMetadataPopup(QWidget):
         self.start_btn.setEnabled(LaserbloodMetadataPopup.laserblood_metadata_valid(self.app))
         self.start_btn.clicked.connect(self.on_save_btn_click)
         start_btn_row.addWidget(self.start_btn)
-        
-        self.init_inputs_grid()
-        self.init_new_input_added_layout()
-        
-        self.q_v_box_inputs_container.addLayout(self.inputs_grid)
-        self.q_v_box_inputs_container.addLayout(self.new_added_inputs_grid)
-        self.q_v_box_inputs_container.addSpacing(20)
         self.q_v_box_inputs_container.addLayout(start_btn_row)
-        
+
+        self.laser_settings_container = QVBoxLayout()
+        self.laser_settings_container.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.laser_settings_container.addSpacing(20)
+
         self.init_laser_filter_settings_layout()
         self.no_bandpass_input = self.create_no_bandpass_filter_input()
         self.filters_no_bandpass_grid.addLayout(self.no_bandpass_input, 1, 3)
@@ -117,7 +115,21 @@ class LaserbloodMetadataPopup(QWidget):
         self.setObjectName("laserblood_popup")
         self.setStyleSheet(GUIStyles.set_laserblood_popup_style())
         self.showMaximized()
-    
+
+    def create_header_layout(self):
+        """
+        Returns a QHBoxLayout with the COUMARINE AUTOFILL button aligned right.
+        """
+        header_row = QHBoxLayout()
+        header_row.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.coumarine_autofill_btn = QPushButton("REFERENCE AUTOFILL")
+        self.coumarine_autofill_btn.setFixedHeight(40)
+        self.coumarine_autofill_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.coumarine_autofill_btn.setStyleSheet(GUIStyles.coumarine_btn())
+        self.coumarine_autofill_btn.clicked.connect(self.on_coumarine_autofill_clicked)
+        header_row.addWidget(self.coumarine_autofill_btn)
+        return header_row
+        
     
     def init_laser_filter_settings_layout(self):
         """Initializes the layout for laser and filter selection settings."""
@@ -1083,6 +1095,43 @@ class LaserbloodMetadataPopup(QWidget):
         next((setting.update({"VALUE": cps_threshold}) for setting in app.laserblood_settings if setting.get("LABEL") == "Pile-up Threshold"), 0)
         app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(app.laserblood_settings))   
         
+        
+     
+    def on_coumarine_autofill_clicked(self):    
+        """
+        Autofill all laserblood_settings fields with values from coumarine_reference (join by id).
+        """
+        coum_ref = getattr(self.app, "coumarine_reference", None)
+        if not coum_ref:
+            return
+        # Updates settings and widgets
+        for setting in self.app.laserblood_settings:
+            sid = setting.get("ID")
+            if sid and sid in coum_ref:
+                setting["VALUE"] = coum_ref[sid]
+                # Updates widget if it exists
+                widget = self.app.laserblood_widgets.get(setting["LABEL"])
+                if widget is not None:
+                    # select
+                    if setting["INPUT_TYPE"] == "select":
+                        widget.setCurrentIndex(setting["VALUE"])
+                    # int/float
+                    elif setting["INPUT_TYPE"] in ("int", "float"):
+                        widget.setValue(setting["VALUE"])
+                    # text
+                    elif setting["INPUT_TYPE"] == "text":
+                        widget.setText(str(setting["VALUE"]))
+                    # boolean
+                    elif setting["INPUT_TYPE"] == "boolean":
+                        try:
+                            widget.start_animation(bool(setting["VALUE"]))
+                        except Exception:
+                            widget.setChecked(bool(setting["VALUE"]))
+                    # textarea
+                    elif setting["INPUT_TYPE"] == "textarea":
+                        widget.setPlainText(str(setting["VALUE"]))
+        # Updates settings file
+        self.app.settings.setValue(METADATA_LASERBLOOD_KEY, json.dumps(self.app.laserblood_settings))    
           
         
     def center_window(self):   

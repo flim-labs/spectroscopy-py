@@ -582,4 +582,21 @@ class GUIStyles:
                 text-align: center;
             }}                
         """
-                                           
+        
+    @staticmethod
+    def coumarine_btn(color="#11468F"):
+        return f"""
+            QPushButton {{
+                font-family: Montserrat;
+                font-weight: bold;
+                font-size: 12px;
+                color: white;
+                background-color: {color};
+                border-radius: 6px;
+                padding: 0 24px;
+            }}
+            QPushButton:hover {{
+                background-color: #1565c0;
+            }}              
+        """
+

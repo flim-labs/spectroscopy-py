@@ -342,7 +342,10 @@ Key features of the _Laserblood Metadata_ system include:
 - **Validation and Quality Control**:
   Built-in validation ensures all required fields are properly completed before data acquisition.
 
+
 The metadata is automatically embedded in exported data files, providing a complete experimental record that supports the reproducibility requirements of clinical research and facilitates data analysis workflows in the Laserblood consortium.
+
+
 
 ##### Laser and Filter Configuration
 
@@ -362,6 +365,29 @@ Key configurable parameters include:
 - **Incubation Conditions**: Temperature, time, type (static/dynamic), and protein ratios
 - **Processing Steps**: Centrifuge, pellet, supernatant, and washing procedures
 - **Measurement Conditions**: Cuvette specifications, laser power, and detector settings
+
+
+> **New in v2.8.2:**
+>
+> A **"REFERENCE AUTOFILL"** button has been added, allowing you to prefill the metadata fields with default values from the coumarine reference, so you don't have to enter them manually every time.
+>
+> **Default values (coumarine reference):**
+>
+> - **ID:** coumarine
+> - **PDAC/healthy:** none
+> - **Weeks:** none
+> - **Cuvette total volume:** 1000
+> - **Solvent type:** methanol
+> - **Nanoparticle type/concentration/volume:** none
+> - **Protein source/protein source volume/protein source incubation:** none
+> - **Incubation time/temperature/type:** 0
+> - **Ratio Nanoparticle/protein source:** 0
+> - **Washing:** no
+> - **Laser power:** 100
+> - **Number of thaw cycles:** 0
+ <div align="center">
+    <img src="../assets/images/coumarine-reference.png" alt="Spectroscopy Laserblood Metadata (Coumarine Reference values) GUI" width="100%">
+</div>
 
 <hr>
 
@@ -404,7 +430,7 @@ Here an example of the `settings.ini` structure:
 
 ```json
 [General]
-app_version=2.8.1
+app_version=2.8.2
 free_running=false
 tau_ns=1
 calibration=1

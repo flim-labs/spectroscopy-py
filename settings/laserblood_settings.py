@@ -264,7 +264,7 @@ NANOPARTICLE_TYPE = {
     "STRETCH": 3,
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True,
+    "REQUIRED": False,
 }
 NANOPARTICLE_CONCENTRATION = {
     "LABEL": "Nanoparticle concentration",
@@ -418,7 +418,7 @@ INCUBATION_TYPE = {
     "STRETCH": 3,
     "ENABLED": True,
     "REMOVABLE": False,
-    "REQUIRED": True,
+    "REQUIRED": False,
 }
 NANOPARTICLES_PROTEIN_RATIO = {
     "LABEL": "Ratio Nanoparticles/Protein Source",
@@ -644,7 +644,7 @@ CUVETTE_LENGTH = {
     "OPTIONS": [],
     "MIN": 0,
     "MAX": None,
-    "POSITION":  (8, 0, 1, 1),
+    "POSITION": (8, 0, 1, 1),
     "STRETCH": 1,
     "ENABLED": True,
     "REMOVABLE": False,
@@ -760,7 +760,6 @@ SBR = {
 }
 
 
-
 NOTES = {
     "LABEL": "Notes",
     "ID": "notes",
@@ -822,11 +821,36 @@ LASERBLOOD_METADATA = [
     NOTES,
 ]
 
+COUMARINE_REFERENCE_VALUES = {
+    "id": "coumarine",
+    "pdac_healthy": 0,
+    "weeks": "",
+    "cuvette_total_vol": 1000,
+    "solvent_type": "methanol",
+    "nanoparticle_type": "",
+    "nanoparticle_concentration": 0,
+    "nanoparticle_vol": 0,
+    "protein_source": 0,
+    "protein_source_vol": 0,
+    "protein_source_incubation": 0,
+    "incubation_time": 0,
+    "incubation_temperature": 0,
+    "incubation_type": 0,
+    "nanoparticles_protein_ratio": 0,
+    "washing": 4,
+    "laser_power": 100,
+    "thaw_cycles": 0,
+}
+
+
 METADATA_LASERBLOOD_KEY = "laserblood_settings"
 
 NEW_ADDED_LASERBLOOD_INPUTS_KEY = "laserblood_new_added_inputs"
 NEW_ADDED_LASERBLOOD_INPUTS_JSON = json.dumps([], indent=4)
 
 LASERBLOOD_METADATA_JSON = json.dumps(LASERBLOOD_METADATA, indent=4)
+
+COUMARINE_REFERENCE_KEY = "coumarine_reference"
+COUMARINE_REFERENCE_JSON = json.dumps(COUMARINE_REFERENCE_VALUES, indent=4)
 
 LASERBLOOD_METADATA_POPUP = "laserblood_metadata_popup"
