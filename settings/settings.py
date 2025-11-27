@@ -121,7 +121,6 @@ CHECK_CARD_MESSAGE = "check_card_message"
 
 CHANNELS_DETECTION_BUTTON = "channels_detection_button"
 
-
 READER_DATA = {
     "spectroscopy": {
         "files": {"spectroscopy": ""},
@@ -130,11 +129,11 @@ READER_DATA = {
         "data": {},
     },
     "phasors": {
-        "files": {"spectroscopy": "", "phasors": ""},
-        "spectroscopy_metadata": {},
-        "phasors_metadata": {},
+        "files": {"spectroscopy": [], "phasors": []},
+        "spectroscopy_metadata": [],
+        "phasors_metadata": [],
         "plots": [],
-        "metadata": {},
+        "metadata": [],
         "data": {"phasors_data": {}, "spectroscopy_data": {}},
     },
     "fitting": {
