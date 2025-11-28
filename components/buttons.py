@@ -247,6 +247,8 @@ class ReadAcquireModeButton(QWidget):
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
+        if self.app.tab_selected == s.TAB_PHASORS:
+            ControlsController._handle_phasors_tab_selection(self.app)
 
     def on_read_btn_pressed(self, checked):
         """
@@ -270,6 +272,8 @@ class ReadAcquireModeButton(QWidget):
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
+        if self.app.tab_selected == s.TAB_PHASORS:
+            ControlsController._handle_phasors_tab_selection(self.app)
 
 
 class ExportPlotImageButton(QWidget):

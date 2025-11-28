@@ -388,7 +388,7 @@ class UIController:
         quantize_phasors_switch_control.addSpacing(8)
         quantize_phasors_switch_control.addWidget(inp_quantize)
         app.control_inputs["quantize_phasors_container"] = quantize_phasors_switch_control
-        (show_layout(quantize_phasors_switch_control) if app.tab_selected == s.TAB_PHASORS else hide_layout(quantize_phasors_switch_control))
+        (show_layout(quantize_phasors_switch_control) if app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode != "read" else hide_layout(quantize_phasors_switch_control))
         layout.addLayout(quantize_phasors_switch_control)
         layout.addSpacing(20)
 
@@ -397,7 +397,7 @@ class UIController:
             partial(ControlsController.on_phasors_resolution_changed, app), width=70,
         )
         inp.setStyleSheet(GUIStyles.set_input_select_style())
-        (show_layout(phasors_resolution_container) if (app.tab_selected == s.TAB_PHASORS and app.quantized_phasors) else hide_layout(phasors_resolution_container))
+        (show_layout(phasors_resolution_container) if (app.tab_selected == s.TAB_PHASORS and app.quantized_phasors and app.acquire_read_mode != "read") else hide_layout(phasors_resolution_container))
         app.control_inputs[s.SETTINGS_PHASORS_RESOLUTION] = inp
         app.control_inputs["phasors_resolution_container"] = phasors_resolution_container
 

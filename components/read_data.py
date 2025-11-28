@@ -24,7 +24,7 @@ from components.box_message import BoxMessage
 from components.input_text_control import InputTextControl
 from utils.gui_styles import GUIStyles
 from utils.helpers import extract_channel_from_label, ns_to_mhz
-from utils.layout_utilities import clear_layout
+from utils.layout_utilities import clear_layout, hide_layout, show_layout
 from utils.messages_utilities import MessagesUtilities
 from utils.resource_path import resource_path
 from utils.fitting_utilities import convert_json_serializable_item_into_np_fitting_result
@@ -918,6 +918,16 @@ class ReadDataControls:
         app.control_inputs[s.SETTINGS_HARMONIC].setEnabled(not read_mode)
         if app.tab_selected == s.TAB_PHASORS:
             app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode)
+            if read_mode : 
+                app.control_inputs[s.LOAD_REF_BTN].hide()
+                hide_layout(app.control_inputs["phasors_resolution_container"])
+                hide_layout(app.control_inputs["quantize_phasors_container"])
+                ControlsController.on_quantize_phasors_changed(app, False)
+                app.settings.setValue(s.SETTINGS_QUANTIZE_PHASORS, False)
+            else : 
+                show_layout(app.control_inputs["quantize_phasors_container"])
+                if app.quantized_phasors :
+                    show_layout(app.control_inputs["phasors_resolution_container"])  
 
     @staticmethod
     def handle_plots_config(app, file_type):
