@@ -530,6 +530,7 @@ class ReadData:
         from core.controls_controller import ControlsController
         from core.phasors_controller import PhasorsController
         laser_period_ns = ReadData.get_phasors_laser_period_ns(app)
+        frequency_mhz = ns_to_mhz(laser_period_ns)
         app.all_phasors_points = PhasorsController.get_empty_phasors_points()
         app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
         harmonics_length = len(harmonics) if isinstance(harmonics, list) else harmonics
@@ -541,18 +542,9 @@ class ReadData:
                 for harmonic, values in channel_data.items():
                     if harmonic == 1:
                         PhasorsController.draw_points_in_phasors(app, channel, harmonic, values)
-                    app.all_phasors_points[channel][harmonic].extend(values)
-        if app.quantized_phasors:
-            PhasorsController.quantize_phasors(
-                app,
-                app.phasors_harmonic_selected,
-                bins=int(s.PHASORS_RESOLUTIONS[app.phasors_resolution]),
-            )
-        else:
-            ControlsController.on_quantize_phasors_changed(app, False)
+                    app.all_phasors_points[channel][harmonic].extend(values)       
         PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
-        PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)
-        frequency_mhz = ns_to_mhz(laser_period_ns)
+        PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)       
         for i, channel_index in enumerate(app.plots_to_show):
             PhasorsController.draw_lifetime_points_in_phasors(
                 app,
@@ -713,6 +705,7 @@ class ReadData:
                 phasors_data.setdefault(channel_name, {}).setdefault(
                     harmonic_name, []
                 ).append((g, s))
+                app.reader_data["phasors"]["data"]["phasors_data"].setdefault(channel_name, {}).setdefault(harmonic_name, []).append((g, s, file_name))           
             return file_name, "phasors", phasors_data, metadata
         except Exception:
             ReadData.show_warning_message(
@@ -1440,7 +1433,7 @@ class ReaderPopup(QWidget):
                                     for h, points in harmonics.items():
                                         if h not in self.app.reader_data[self.data_type]["data"]["phasors_data"][ch]:
                                             self.app.reader_data[self.data_type]["data"]["phasors_data"][ch][h] = []
-                                            self.app.reader_data[self.data_type]["data"]["phasors_data"][ch][h].extend(points)
+                                            self.app.reader_data[self.data_type]["data"]["phasors_data"][ch][h].extend([(p[0], p[1], file_path) for p in points])
             except Exception as e:
                 ReadData.show_warning_message("Error reading file", f"Error reading {file_path}: {str(e)}")
     
