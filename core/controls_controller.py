@@ -190,6 +190,17 @@ class ControlsController:
         app.control_inputs[s.EXPORT_PLOT_IMG_BUTTON].setVisible(
             bin_metadata_btn_visible and app.tab_selected != s.TAB_FITTING
         )
+        if tab_name != s.TAB_PHASORS or (tab_name == s.TAB_PHASORS and app.acquire_read_mode == "acquire"):
+            channels = app.selected_channels or []
+            app.plots_to_show = channels[:4]
+            app.settings.setValue(
+                s.SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show)
+            )
+        else : 
+            app.plots_to_show = [0]
+            app.settings.setValue(
+            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show)
+        )    
         
         if app.acquire_read_mode == "acquire":
             PlotsController.clear_plots(app, deep_clear=False)
