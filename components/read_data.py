@@ -437,6 +437,28 @@ class ReadData:
                     laser_period_ns,
                     channels,
                 )
+                
+                
+        if data_type == "phasors":
+            phasors_metadata = app.reader_data["phasors"]["phasors_metadata"]
+            
+            laser_period_ns = phasors_metadata[0]["laser_period_ns"]
+            
+            spectroscopy_metadata = app.reader_data["phasors"]["spectroscopy_metadata"]
+            all_metadata = spectroscopy_metadata + phasors_metadata
+            harmonics_values = []
+            for meta in all_metadata:
+                h = meta.get('harmonics')
+                if isinstance(h, int):
+                    harmonics_values.append(h)
+                elif isinstance(h, list) and h:
+                    harmonics_values.append(max(h))
+            max_harmonic = max(harmonics_values)
+            
+            phasors_data = app.reader_data["phasors"]["data"]["phasors_data"]
+            grouped_data = ReadData.group_phasors_data_without_channels(phasors_data)
+            #ReadData.plot_phasors_data(app, grouped_data, max_harmonic)
+    
             #if data_type == "phasors":
                 #phasors_data = app.reader_data[data_type]["data"]["phasors_data"]
                 #if not (metadata == {}):
@@ -472,6 +494,23 @@ class ReadData:
                 PlotsController.update_plots(
                     app, metadata_channels[channel], x_values, y_values, reader_mode=True
                 )
+
+    @staticmethod
+    def group_phasors_data_without_channels(data):
+        """Return {harmonic: [(g, s, file_name), ...]} without channel separation."""
+        grouped_data = {}
+        for channel_data in data.values():
+            if not isinstance(channel_data, dict):
+                continue
+            for harmonic, points in channel_data.items():
+                harmonic_bucket = grouped_data.setdefault(harmonic, [])
+                for point in points:
+                    g, s = point[0], point[1]
+                    file_name = point[2] if len(point) >= 3 else ""
+                    if file_name is None:
+                        file_name = ""
+                    harmonic_bucket.append((g, s, str(file_name)))
+        return grouped_data
 
     @staticmethod
     def get_spectroscopy_data_to_fit(app):
