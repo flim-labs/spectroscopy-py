@@ -438,10 +438,8 @@ class ReadData:
                     channels,
                 )
                 
-                
-        if data_type == "phasors":
-            phasors_metadata = app.reader_data["phasors"]["phasors_metadata"]
-            
+        phasors_metadata = app.reader_data["phasors"]["phasors_metadata"]        
+        if data_type == "phasors" and len(phasors_metadata) > 0 :                      
             laser_period_ns = phasors_metadata[0]["laser_period_ns"]
             
             spectroscopy_metadata = app.reader_data["phasors"]["spectroscopy_metadata"]
@@ -457,12 +455,7 @@ class ReadData:
             
             phasors_data = app.reader_data["phasors"]["data"]["phasors_data"]
             grouped_data = ReadData.group_phasors_data_without_channels(phasors_data)
-            #ReadData.plot_phasors_data(app, grouped_data, max_harmonic)
-    
-            #if data_type == "phasors":
-                #phasors_data = app.reader_data[data_type]["data"]["phasors_data"]
-                #if not (metadata == {}):
-                    #ReadData.plot_phasors_data(app, phasors_data, metadata["harmonics"])
+            ReadData.plot_phasors_data(app, grouped_data, max_harmonic, laser_period_ns)
 
     @staticmethod
     def plot_spectroscopy_data(
@@ -554,7 +547,7 @@ class ReadData:
         return data        
 
     @staticmethod
-    def plot_phasors_data(app, data, harmonics):
+    def plot_phasors_data(app, data, harmonics, laser_period_ns):
         """
         Plot phasors data with harmonic analysis.
         
@@ -568,30 +561,28 @@ class ReadData:
         """
         from core.controls_controller import ControlsController
         from core.phasors_controller import PhasorsController
-        laser_period_ns = ReadData.get_phasors_laser_period_ns(app)
+
         frequency_mhz = ns_to_mhz(laser_period_ns)
         app.all_phasors_points = PhasorsController.get_empty_phasors_points()
         app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
-        harmonics_length = len(harmonics) if isinstance(harmonics, list) else harmonics
-        if harmonics_length > 1:
+        if harmonics > 1:
             app.harmonic_selector_shown = True
             ControlsController.show_harmonic_selector(app, harmonics)
-        for channel, channel_data in data.items():
-            if channel in app.plots_to_show:
-                for harmonic, values in channel_data.items():
-                    if harmonic == 1:
-                        PhasorsController.draw_points_in_phasors(app, channel, harmonic, values)
-                    app.all_phasors_points[channel][harmonic].extend(values)       
-        PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
-        PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)       
-        for i, channel_index in enumerate(app.plots_to_show):
-            PhasorsController.draw_lifetime_points_in_phasors(
-                app,
-                channel_index,
-                app.phasors_harmonic_selected,
-                laser_period_ns,
-                frequency_mhz,
-            )
+        for harmonic, values in data.items():
+            print("harmonic", harmonic)
+            if harmonic == 1:
+                PhasorsController.draw_points_in_phasors(app, 0, harmonic, values)
+            app.all_phasors_points[0][harmonic].extend(values)       
+        #PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
+        #PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)       
+        #for i, channel_index in enumerate(app.plots_to_show):
+            #PhasorsController.draw_lifetime_points_in_phasors(
+                #app,
+                #channel_index,
+                #app.phasors_harmonic_selected,
+                #laser_period_ns,
+                #frequency_mhz,
+            #)
 
     @staticmethod
     def show_warning_message(title, message):
