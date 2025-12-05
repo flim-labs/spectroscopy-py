@@ -330,8 +330,10 @@ class PhasorsController:
             if ch in app.phasors_widgets:
                 item = feature[ch]
                 if isinstance(item, list):
+                    for single_item in item:
                         app.phasors_widgets[ch].removeItem(single_item)
                 else:
+                    app.phasors_widgets[ch].removeItem(item)            
                 
 
     @staticmethod
