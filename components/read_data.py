@@ -563,7 +563,7 @@ class ReadData:
         from core.phasors_controller import PhasorsController
 
         frequency_mhz = ns_to_mhz(laser_period_ns)
-        app.all_phasors_points = PhasorsController.get_empty_phasors_points()
+        app.all_phasors_points = PhasorsController.get_empty_phasors_points()       
         app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
         if harmonics > 1:
             app.harmonic_selector_shown = True
@@ -1415,17 +1415,18 @@ class ReaderPopup(QWidget):
         if not valid_files:
             return
     
-        # Assicurati che files[file_type] sia una lista per PHASORS
-        if not isinstance(self.app.reader_data[self.data_type]["files"][file_type], list):
-            # Converte stringa esistente in lista (se non vuota) o crea lista vuota
-            existing_file = self.app.reader_data[self.data_type]["files"][file_type]
-            if existing_file and existing_file.strip():
-                self.app.reader_data[self.data_type]["files"][file_type] = [existing_file]
-            else:
-                self.app.reader_data[self.data_type]["files"][file_type] = []
-                
-        # Accumula i path dei file
-        self.app.reader_data[self.data_type]["files"][file_type].extend(valid_files)
+        # Clear previous data when loading new files
+        # This ensures that each new file selection replaces the previous one
+        self.app.reader_data[self.data_type]["files"][file_type] = []
+        if file_type == "phasors":
+            self.app.reader_data[self.data_type]["phasors_metadata"] = []
+            self.app.reader_data[self.data_type]["data"]["phasors_data"] = {}
+        elif file_type == "spectroscopy":
+            self.app.reader_data[self.data_type]["spectroscopy_metadata"] = []
+            self.app.reader_data[self.data_type]["data"]["spectroscopy_data"] = {}
+        
+        # Set the files list
+        self.app.reader_data[self.data_type]["files"][file_type] = valid_files
     
         # Leggi e accumula dati da ciascun file valido
         magic_bytes = b"SP01" if file_type == "spectroscopy" else b"SPF1"

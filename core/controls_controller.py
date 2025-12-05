@@ -510,7 +510,14 @@ class ControlsController:
                 if channel_index in app.phasors_colorbars:
                     widget.removeItem(app.phasors_colorbars[channel_index])
                     del app.phasors_colorbars[channel_index]
-            if len(app.plots_to_show) <= len(app.all_phasors_points):
+            
+            # In phasors read mode, points are ONLY drawn by plot_phasors_data
+            import settings.settings as settings
+            is_phasors_read_mode = (app.tab_selected == settings.TAB_PHASORS and 
+                                   app.acquire_read_mode == "read")
+            
+            # Only redraw in acquisition mode - never in phasors read mode
+            if not is_phasors_read_mode and len(app.plots_to_show) <= len(app.all_phasors_points):
                 for channel_index in app.plots_to_show:
                     points = app.all_phasors_points[channel_index][harmonic_value]
                     PhasorsController.draw_points_in_phasors(app, channel_index, harmonic_value, points)
@@ -600,6 +607,17 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
+        # In phasors read mode, file-specific scatters/legends are managed by plot_phasors_data
+        # Do not clear them here, as they won't be redrawn by this function
+        import settings.settings as settings
+        is_phasors_read_mode = (app.tab_selected == settings.TAB_PHASORS and 
+                               app.acquire_read_mode == "read")
+        
+        if app.acquire_read_mode == "read" and not is_phasors_read_mode:
+            # Only clear for non-phasors read modes (e.g., fitting/spectroscopy read)
+            PhasorsController.clear_phasors_file_scatters(app)
+            PhasorsController.clear_phasors_files_legend(app)
+        
         frequency_mhz = ControlsController.get_current_frequency_mhz(app)
         laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
         
@@ -611,16 +629,21 @@ class ControlsController:
             )
         
         if not app.quantized_phasors:
-            for i, channel_index in enumerate(app.plots_to_show):
-                if len(app.plots_to_show) <= len(app.all_phasors_points) and channel_index in app.all_phasors_points:
-                    PhasorsController.draw_points_in_phasors(
-                        app,
-                        channel_index,
-                        app.harmonic_selector_value,
-                        app.all_phasors_points[channel_index][
-                            app.harmonic_selector_value
-                        ],
-                    )
+            # In phasors read mode, points are ONLY drawn by plot_phasors_data
+            # which has access to the file-specific data and colors
+            
+            # Only redraw in acquisition mode - never in phasors read mode
+            if not is_phasors_read_mode:
+                for i, channel_index in enumerate(app.plots_to_show):
+                    if len(app.plots_to_show) <= len(app.all_phasors_points) and channel_index in app.all_phasors_points:
+                        PhasorsController.draw_points_in_phasors(
+                            app,
+                            channel_index,
+                            app.harmonic_selector_value,
+                            app.all_phasors_points[channel_index][
+                                app.harmonic_selector_value
+                            ],
+                        )
         
         PhasorsController.generate_phasors_cluster_center(app, app.harmonic_selector_value)
         PhasorsController.generate_phasors_legend(app, app.harmonic_selector_value)

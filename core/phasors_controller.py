@@ -35,6 +35,88 @@ class PhasorsController:
         return empty
     
     @staticmethod
+    def get_color_for_file_index(index):
+        """
+        Returns a color based on the file index (0, 1, 2, 3...).
+        Uses 4 distinct colors cycling through them: red, bright green, orange, yellow.
+        
+        Args:
+            index (int): The index of the file (0-based).
+            
+        Returns:
+            str: Hex color code for the file.
+        """
+        colors = [
+            "#FF0000",  # Red (rosso)
+            "#00FF00",  # Bright green (verde brillante)
+            "#FF8C00",  # Orange (arancione)
+            "#FFFF00",  # Yellow (giallo)
+        ]
+        
+        return colors[index % len(colors)]
+    
+    @staticmethod
+    def create_phasors_files_legend(app, channel, file_order):
+        """
+        Creates a legend showing the loaded files with their colors.
+        
+        Args:
+            app: The main application instance.
+            channel (int): The channel index.
+            file_order (list): List of file names in order.
+        """
+        import os
+        
+        print("LEGEND")
+        # Remove previous legend if exists
+        if hasattr(app, 'phasors_files_legend') and channel in app.phasors_files_legend:
+            print(f"[LEGEND] Removing existing legend for channel {channel}")
+            try:
+                app.phasors_widgets[channel].removeItem(app.phasors_files_legend[channel])
+                print(f"[LEGEND] Legend removed successfully")
+            except Exception as e:
+                print(f"[LEGEND] Error removing legend: {e}")
+        else:
+            print(f"[LEGEND] No existing legend found for channel {channel}")
+        
+        # Check if plot widget already has a legend
+        if hasattr(app.phasors_widgets[channel], 'legend') and app.phasors_widgets[channel].legend is not None:
+            print(f"[LEGEND] WARNING: Plot widget already has a legend object!")
+        
+        if not file_order:
+            return
+        
+        # Create legend items
+        legend_items = []
+        for idx, file_path in enumerate(file_order):
+            # Extract just the filename from the full path
+            file_name = os.path.basename(file_path) if file_path else "Unknown"
+            color = PhasorsController.get_color_for_file_index(idx)
+            
+            # Create a small scatter for the legend symbol
+            symbol_scatter = pg.ScatterPlotItem(
+                x=[0], y=[0], size=10,
+                pen=None, brush=pg.mkBrush(color), symbol="o"
+            )
+            legend_items.append((symbol_scatter, file_name))
+        
+        # Create and position the legend
+        legend = app.phasors_widgets[channel].addLegend(
+            offset=(10, 10),
+            brush=pg.mkBrush(0, 0, 0, 180),
+            labelTextColor='w'
+        )
+        
+        # Add items to legend
+        for symbol, name in legend_items:
+            legend.addItem(symbol, name)
+        
+        # Store reference for cleanup
+        if not hasattr(app, 'phasors_files_legend'):
+            app.phasors_files_legend = {}
+        app.phasors_files_legend[channel] = legend
+    
+    @staticmethod
     def draw_semi_circle(widget):
         """
         Draws the universal semi-circle on a given phasor plot widget.
@@ -52,24 +134,73 @@ class PhasorsController:
     def draw_points_in_phasors(app, channel, harmonic, phasors):
         """
         Draws a set of phasor points on the specified channel's plot.
+        Points are colored based on their source file when in phasors read mode.
 
         Args:
             app: The main application instance.
             channel (int): The channel index to draw the points on.
             harmonic (int): The harmonic number of the phasor points.
-            phasors (list[tuple[float, float]]): A list of (g, s) coordinates to plot.
+            phasors (list[tuple]): A list of (g, s) or (g, s, file_name) tuples to plot.
         """
+        print("draw_points_in_phasors")
         if channel in app.plots_to_show:
-            x, y = app.phasors_charts[channel].getData()
-            if x is None:
-                x = np.array([])
-                y = np.array([])
-            new_x = [p[0] for p in phasors]
-            new_y = [p[1] for p in phasors]
-            x = np.concatenate((x, new_x))
-            y = np.concatenate((y, new_y))
-            app.phasors_charts[channel].setData(x, y)
-            pass  
+            # Check if we are in phasors read mode
+            import settings.settings as settings
+            is_phasors_read_mode = (app.tab_selected == settings.TAB_PHASORS and 
+                                   app.acquire_read_mode == "read")
+            
+            if is_phasors_read_mode:
+                # New behavior for phasors read mode: Group points by file name and use different colors
+                points_by_file = {}
+                file_order = []  # Keep track of file order
+                for point in phasors:
+                    g, s = point[0], point[1]
+                    file_name = point[2] if len(point) >= 3 else ""
+                    if file_name not in points_by_file:
+                        points_by_file[file_name] = {"x": [], "y": []}
+                        file_order.append(file_name)  # Add to order list
+                    points_by_file[file_name]["x"].append(g)
+                    points_by_file[file_name]["y"].append(s)
+                
+                # Draw each file's points with its own color based on order
+                for idx, file_name in enumerate(file_order):
+                    coords = points_by_file[file_name]
+                    color = PhasorsController.get_color_for_file_index(idx)
+                    x_array = np.array(coords["x"])
+                    y_array = np.array(coords["y"])
+                    
+                    # Create a scatter plot item with the file-specific color
+                    scatter = pg.ScatterPlotItem(
+                        x=x_array,
+                        y=y_array,
+                        size=5,
+                        pen=None,
+                        brush=pg.mkBrush(color),
+                        symbol="o"
+                    )
+                    scatter.setZValue(1)
+                    app.phasors_widgets[channel].addItem(scatter)
+                    
+                    # Store reference for potential cleanup
+                    if not hasattr(app, 'phasors_file_scatters'):
+                        app.phasors_file_scatters = {}
+                    if channel not in app.phasors_file_scatters:
+                        app.phasors_file_scatters[channel] = []
+                    app.phasors_file_scatters[channel].append(scatter)
+                
+                # Create legend with file names and colors
+                PhasorsController.create_phasors_files_legend(app, channel, file_order)
+            else:
+                # Original behavior for acquisition mode or other tabs
+                x, y = app.phasors_charts[channel].getData()
+                if x is None:
+                    x = np.array([])
+                    y = np.array([])
+                new_x = [p[0] for p in phasors]
+                new_y = [p[1] for p in phasors]
+                x = np.concatenate((x, new_x))
+                y = np.concatenate((y, new_y))
+                app.phasors_charts[channel].setData(x, y)  
         
         
     @staticmethod
@@ -206,6 +337,32 @@ class PhasorsController:
             if ch in app.phasors_widgets:
                 app.phasors_widgets[ch].removeItem(feature[ch])            
                 
+
+    @staticmethod
+    def clear_phasors_file_scatters(app):
+        """Removes scatter items associated with file-specific phasor points."""
+        if hasattr(app, "phasors_file_scatters"):
+            for channel, scatter_list in list(app.phasors_file_scatters.items()):
+                if channel in app.phasors_widgets:
+                    for scatter in scatter_list:
+                        app.phasors_widgets[channel].removeItem(scatter)
+            app.phasors_file_scatters.clear()
+
+
+    @staticmethod
+    def clear_phasors_files_legend(app):
+        """Removes legends that display file information for phasor plots."""
+        if hasattr(app, "phasors_files_legend"):
+            for channel, legend in list(app.phasors_files_legend.items()):
+                if legend is None:
+                    continue
+                if channel in app.phasors_widgets:
+                    try:
+                        app.phasors_widgets[channel].removeItem(legend)
+                    except Exception:
+                        pass
+            app.phasors_files_legend.clear()
+        
     
     @staticmethod
     def calculate_phasors_points_mean(app, channel_index, harmonic):

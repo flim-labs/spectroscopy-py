@@ -541,6 +541,8 @@ class PlotsController:
         PhasorsController.clear_phasors_features(app, app.phasors_clusters_center)
         PhasorsController.clear_phasors_features(app, app.phasors_legends)
         PhasorsController.clear_phasors_features(app, app.phasors_lifetime_points)
+        PhasorsController.clear_phasors_file_scatters(app)
+        PhasorsController.clear_phasors_files_legend(app)
         for ch in app.phasors_lifetime_texts:
             for _, item in enumerate(app.phasors_lifetime_texts[ch]):
                 app.phasors_widgets[ch].removeItem(item)
