@@ -328,7 +328,10 @@ class PhasorsController:
         """
         for ch in feature:
             if ch in app.phasors_widgets:
-                app.phasors_widgets[ch].removeItem(feature[ch])            
+                item = feature[ch]
+                if isinstance(item, list):
+                        app.phasors_widgets[ch].removeItem(single_item)
+                else:
                 
 
     @staticmethod
@@ -409,13 +412,67 @@ class PhasorsController:
             app: The main application instance.
             harmonic (int): The harmonic number to use for the calculation.
         """
+        import settings.settings as settings
+        is_phasors_read_mode = (app.tab_selected == settings.TAB_PHASORS and 
+                               app.acquire_read_mode == "read")
+        
         for i, channel_index in enumerate(app.plots_to_show):
-            if channel_index in app.phasors_widgets:
-                cluster_center_in_list = channel_index in app.phasors_clusters_center
-                if cluster_center_in_list:
-                    app.phasors_widgets[channel_index].removeItem(
-                        app.phasors_clusters_center[channel_index]
+            if channel_index not in app.phasors_widgets:
+                continue
+                
+            # Remove old cluster centers
+            if channel_index in app.phasors_clusters_center:
+                old_centers = app.phasors_clusters_center[channel_index]
+                if isinstance(old_centers, list):
+                    # Multiple centers (new behavior)
+                    for scatter in old_centers:
+                        app.phasors_widgets[channel_index].removeItem(scatter)
+                else:
+                    # Single center (old behavior)
+                    app.phasors_widgets[channel_index].removeItem(old_centers)
+            
+            if is_phasors_read_mode:
+                # New behavior: Create one center (blue cross) per file
+                points_by_file = {}
+                for point in app.all_phasors_points[channel_index][harmonic]:
+                    g, s = point[0], point[1]
+                    file_name = point[2] if len(point) >= 3 else ""
+                    if file_name not in points_by_file:
+                        points_by_file[file_name] = {"g": [], "s": []}
+                    points_by_file[file_name]["g"].append(g)
+                    points_by_file[file_name]["s"].append(s)
+                
+                # Create a blue cross for each file's mean
+                cluster_centers = []
+                for file_name, coords in points_by_file.items():
+                    g_values = np.array(coords["g"])
+                    s_values = np.array(coords["s"])
+                    
+                    if g_values.size == 0 or s_values.size == 0:
+                        continue
+                    if np.all(np.isnan(g_values)) or np.all(np.isnan(s_values)):
+                        continue
+                    
+                    mean_g = np.nanmean(g_values)
+                    mean_s = np.nanmean(s_values)
+                    
+                    scatter = pg.ScatterPlotItem(
+                        [mean_g],
+                        [mean_s],
+                        size=20,
+                        pen={
+                            "color": "#0066CC",
+                            "width": 4,
+                        },
+                        symbol="x",
                     )
+                    scatter.setZValue(3)
+                    app.phasors_widgets[channel_index].addItem(scatter)
+                    cluster_centers.append(scatter)
+                
+                app.phasors_clusters_center[channel_index] = cluster_centers
+                
+            else:
                 mean_g, mean_s = PhasorsController.calculate_phasors_points_mean(
                     app, channel_index, harmonic
                 )
