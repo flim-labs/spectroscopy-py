@@ -248,6 +248,20 @@ class ReadAcquireModeButton(QWidget):
             )
         self.set_buttons_styles()
         self.app.reader_data = deepcopy(s.DEFAULT_READER_DATA)
+        
+        # Clear phasors read mode data completely when switching to acquire
+        if self.app.tab_selected == s.TAB_PHASORS:
+            PhasorsController.clear_phasors_file_scatters(self.app)
+            PhasorsController.clear_phasors_files_legend(self.app)
+            # Reset all phasors data
+            self.app.all_phasors_points = PhasorsController.get_empty_phasors_points()
+            # Clear loaded harmonics count so selector resets
+            if hasattr(self.app, 'loaded_phasors_harmonics'):
+                delattr(self.app, 'loaded_phasors_harmonics')
+            # Hide harmonic selector
+            ControlsController.hide_harmonic_selector(self.app)
+            self.app.harmonic_selector_shown = False
+        
         PlotsController.clear_plots(self.app)
         PlotsController.generate_plots(self.app)
         PhasorsController.initialize_phasor_feature(self.app)
