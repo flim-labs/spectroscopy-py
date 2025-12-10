@@ -795,7 +795,7 @@ class ControlsController:
             bool: True if pico mode can be used, False otherwise.
         """
         freq = frequency_mhz if frequency_mhz is not None else ControlsController.get_current_frequency_mhz(app)
-        channels_ok = len(app.selected_channels) <= 2
+        channels_ok = len(app.selected_channels) <= 2 and len(app.selected_channels) > 0
         freq_ok = is_frequency_near_supported_pico_modes(freq)
         return channels_ok and freq_ok
 
