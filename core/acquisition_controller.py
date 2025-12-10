@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QTimer
 
+
 class AcquisitionController:
     """
     Manages the data acquisition lifecycle for spectroscopy experiments.
@@ -41,18 +42,38 @@ class AcquisitionController:
             bool: True if validation passes, False otherwise.
         """
         if len(app.selected_channels) == 0:
-            BoxMessage.setup("Error", "No channels selected", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
-            return False
-        
-        bin_width_micros = int(app.settings.value(s.SETTINGS_BIN_WIDTH, s.DEFAULT_BIN_WIDTH))
-        if bin_width_micros < 1000:
-            BoxMessage.setup("Error", "Bin width value cannot be less than 1000μs", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+            BoxMessage.setup(
+                "Error",
+                "No channels selected",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
             return False
 
-        if app.write_data_gui and not LaserbloodMetadataPopup.laserblood_metadata_valid(app):
-            BoxMessage.setup("Error", "All required Laserblood metadata must be filled before starting the acquisition.", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+        bin_width_micros = int(
+            app.settings.value(s.SETTINGS_BIN_WIDTH, s.DEFAULT_BIN_WIDTH)
+        )
+        if bin_width_micros < 1000:
+            BoxMessage.setup(
+                "Error",
+                "Bin width value cannot be less than 1000μs",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
             return False
-            
+
+        if (
+            app.write_data_gui
+            and not LaserbloodMetadataPopup.laserblood_metadata_valid(app)
+        ):
+            BoxMessage.setup(
+                "Error",
+                "All required Laserblood metadata must be filled before starting the acquisition.",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
+            return False
+
         return True
 
     @staticmethod
@@ -76,36 +97,75 @@ class AcquisitionController:
             return True
 
         if not app.reference_file:
-            BoxMessage.setup("Error", "No reference file selected", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+            BoxMessage.setup(
+                "Error",
+                "No reference file selected",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
             return False
 
         try:
             with open(app.reference_file, "r") as f:
                 ref_data = json.load(f)
-            
-            required_keys = ["channels", "laser_period_ns", "harmonics", "curves", "tau_ns"]
+
+            required_keys = [
+                "channels",
+                "laser_period_ns",
+                "harmonics",
+                "curves",
+                "tau_ns",
+            ]
             for key in required_keys:
                 if key not in ref_data:
-                    BoxMessage.setup("Error", f"Invalid reference file (missing {key})", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+                    BoxMessage.setup(
+                        "Error",
+                        f"Invalid reference file (missing {key})",
+                        QMessageBox.Icon.Warning,
+                        GUIStyles.set_msg_box_style(),
+                    )
                     return False
 
             if len(ref_data["channels"]) != len(app.selected_channels):
-                BoxMessage.setup("Error", "Invalid reference file (channels mismatch)", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
-                return False
-            
-            if ns_to_mhz(ref_data["laser_period_ns"]) != frequency_mhz:
-                BoxMessage.setup("Error", "Invalid reference file (laser period mismatch)", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+                BoxMessage.setup(
+                    "Error",
+                    "Invalid reference file (channels mismatch)",
+                    QMessageBox.Icon.Warning,
+                    GUIStyles.set_msg_box_style(),
+                )
                 return False
 
-            if not all(plot in ref_data["channels"] for plot in app.plots_to_show) or len(app.plots_to_show) == 0:
-                popup = PlotsConfigPopup(app, start_acquisition=True, is_reference_loaded=True, reference_channels=ref_data["channels"])
+            if ns_to_mhz(ref_data["laser_period_ns"]) != frequency_mhz:
+                BoxMessage.setup(
+                    "Error",
+                    "Invalid reference file (laser period mismatch)",
+                    QMessageBox.Icon.Warning,
+                    GUIStyles.set_msg_box_style(),
+                )
+                return False
+
+            if (
+                not all(plot in ref_data["channels"] for plot in app.plots_to_show)
+                or len(app.plots_to_show) == 0
+            ):
+                popup = PlotsConfigPopup(
+                    app,
+                    start_acquisition=True,
+                    is_reference_loaded=True,
+                    reference_channels=ref_data["channels"],
+                )
                 popup.show()
-                return "popup" # Special return to indicate popup was shown
+                return "popup"  # Special return to indicate popup was shown
 
         except (IOError, json.JSONDecodeError) as e:
-            BoxMessage.setup("Error", f"Error reading reference file: {e}", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+            BoxMessage.setup(
+                "Error",
+                f"Error reading reference file: {e}",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
             return False
-            
+
         return True
 
     @staticmethod
@@ -121,11 +181,18 @@ class AcquisitionController:
             dict: A dictionary of parameters for the FLIM-Labs library.
         """
         from core.controls_controller import ControlsController
-        acquisition_time = ControlsController.get_acquisition_time(app)
-        firmware_selected, _ = ControlsController.get_firmware_selected(app, frequency_mhz)
 
-        tau_ns = float(app.settings.value(s.SETTINGS_TAU_NS, "0")) if ControlsController.is_reference_phasors(app) else None
-        
+        acquisition_time = ControlsController.get_acquisition_time(app)
+        firmware_selected, _ = ControlsController.get_firmware_selected(
+            app, frequency_mhz
+        )
+
+        tau_ns = (
+            float(app.settings.value(s.SETTINGS_TAU_NS, "0"))
+            if ControlsController.is_reference_phasors(app)
+            else None
+        )
+
         reference_file = None
         if app.tab_selected == s.TAB_PHASORS:
             reference_file = app.reference_file
@@ -133,19 +200,28 @@ class AcquisitionController:
                 reference_data = json.load(f)
                 app.harmonic_selector_value = int(reference_data["harmonics"])
         else:
-             app.harmonic_selector_value = app.control_inputs[s.SETTINGS_HARMONIC].value()
+            app.harmonic_selector_value = app.control_inputs[
+                s.SETTINGS_HARMONIC
+            ].value()
 
         params = {
             "enabled_channels": app.selected_channels,
-            "bin_width_micros": int(app.settings.value(s.SETTINGS_BIN_WIDTH, s.DEFAULT_BIN_WIDTH)),
+            "bin_width_micros": int(
+                app.settings.value(s.SETTINGS_BIN_WIDTH, s.DEFAULT_BIN_WIDTH)
+            ),
             "frequency_mhz": frequency_mhz,
             "firmware_file": firmware_selected,
-            "acquisition_time_millis": acquisition_time * 1000 if acquisition_time else None,
+            "acquisition_time_millis": (
+                acquisition_time * 1000 if acquisition_time else None
+            ),
             "tau_ns": tau_ns,
             "reference_file": reference_file,
             "harmonics": int(app.harmonic_selector_value),
             "write_bin": False,
-            "time_tagger": app.time_tagger and app.write_data_gui and app.tab_selected != s.TAB_PHASORS
+            "time_tagger": app.time_tagger
+            and app.write_data_gui
+            and app.tab_selected != s.TAB_PHASORS,
+            "pico_mode": app.pico_mode,
         }
         return params
 
@@ -168,7 +244,12 @@ class AcquisitionController:
             return True
         except Exception as e:
             AcquisitionController.check_card_connection(app)
-            BoxMessage.setup("Error", f"Error starting spectroscopy: {e}", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+            BoxMessage.setup(
+                "Error",
+                f"Error starting spectroscopy: {e}",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
             return False
 
     @staticmethod
@@ -184,6 +265,7 @@ class AcquisitionController:
         """
         from core.ui_controller import UIController
         from core.controls_controller import ControlsController
+
         app.mode = s.MODE_RUNNING
         UIController.style_start_button(app)
         QApplication.processEvents()
@@ -195,6 +277,7 @@ class AcquisitionController:
     @staticmethod
     def begin_spectroscopy_experiment(app):
         from core.plots_controller import PlotsController
+
         """
         Coordinates the process of starting a spectroscopy experiment.
 
@@ -205,43 +288,62 @@ class AcquisitionController:
             app: The main application instance.
         """
         from core.controls_controller import ControlsController
+
         try:
             AcquisitionController.check_card_connection(app, start_experiment=True)
         except Exception as e:
-            BoxMessage.setup("Error", f"Error starting spectroscopy: {e}", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+            BoxMessage.setup(
+                "Error",
+                f"Error starting spectroscopy: {e}",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
             return
 
         frequency_mhz = ControlsController.get_frequency_mhz(app)
         if frequency_mhz == 0.0:
-            BoxMessage.setup("Error", "Frequency not detected", QMessageBox.Icon.Warning, GUIStyles.set_msg_box_style())
+            BoxMessage.setup(
+                "Error",
+                "Frequency not detected",
+                QMessageBox.Icon.Warning,
+                GUIStyles.set_msg_box_style(),
+            )
             return
 
         if not AcquisitionController._validate_parameters(app):
             return
 
-        if (app.tab_selected == s.TAB_SPECTROSCOPY or app.tab_selected == s.TAB_FITTING) and len(app.selected_channels) > 4 and not app.plots_to_show_already_appear:
+        if (
+            (
+                app.tab_selected == s.TAB_SPECTROSCOPY
+                or app.tab_selected == s.TAB_FITTING
+            )
+            and len(app.selected_channels) > 4
+            and not app.plots_to_show_already_appear
+        ):
             popup = PlotsConfigPopup(app, start_acquisition=True)
             popup.show()
             app.plots_to_show_already_appear = True
             return
-            
+
         ref_valid = AcquisitionController._validate_reference_file(app, frequency_mhz)
         if not ref_valid:
             return
-        if ref_valid == "popup": # A popup was shown, so we wait for user action
+        if ref_valid == "popup":  # A popup was shown, so we wait for user action
             return
 
         PlotsController.clear_plots(app)
         PlotsController.generate_plots(app, frequency_mhz)
 
-        params = AcquisitionController._prepare_spectroscopy_parameters(app, frequency_mhz)
-        
+        params = AcquisitionController._prepare_spectroscopy_parameters(
+            app, frequency_mhz
+        )
+
         if not AcquisitionController._start_acquisition_process(app, params):
             return
 
         AcquisitionController._update_ui_post_start(app)
-        
-        
+
     @staticmethod
     def _stop_hardware_and_update_state(app):
         """
@@ -252,6 +354,7 @@ class AcquisitionController:
         """
         print("Stopping spectroscopy")
         from core.ui_controller import UIController
+
         try:
             flim_labs.request_stop()
         except Exception as e:
@@ -269,6 +372,7 @@ class AcquisitionController:
             app: The main application instance.
         """
         from core.controls_controller import ControlsController
+
         LinLogControl.set_lin_log_switches_enable_mode(app.lin_log_switches, True)
         ControlsController.top_bar_set_enabled(app, True)
 
@@ -283,11 +387,12 @@ class AcquisitionController:
         QTimer.singleShot(400, clear_cps_and_countdown_widgets)
         if app.tab_selected == s.TAB_FITTING:
             ControlsController.fit_button_show(app)
-        
-        harmonic_selected = int(app.settings.value(s.SETTINGS_HARMONIC, s.SETTINGS_HARMONIC_DEFAULT))
+
+        harmonic_selected = int(
+            app.settings.value(s.SETTINGS_HARMONIC, s.SETTINGS_HARMONIC_DEFAULT)
+        )
         if harmonic_selected > 1:
             app.harmonic_selector_shown = True
-
 
     @staticmethod
     def _handle_reference_file_after_stop(app):
@@ -298,6 +403,7 @@ class AcquisitionController:
             app: The main application instance.
         """
         from core.controls_controller import ControlsController
+
         if ControlsController.is_reference_phasors(app):
             try:
                 with open(".pid", "r") as f:
@@ -321,24 +427,25 @@ class AcquisitionController:
             app: The main application instance.
         """
         from core.controls_controller import ControlsController
+
         if not ControlsController.is_phasors(app):
             return
 
         frequency_mhz = ControlsController.get_current_frequency_mhz(app)
         laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
-        
+
         for _, channel_index in enumerate(app.plots_to_show):
             PhasorsController.generate_coords(app, channel_index)
             PhasorsController.draw_lifetime_points_in_phasors(
                 app, channel_index, 1, laser_period_ns, frequency_mhz
             )
-        
+
         if app.quantized_phasors:
             PhasorsController.quantize_phasors(
                 app, 1, bins=int(s.PHASORS_RESOLUTIONS[app.phasors_resolution])
             )
-            
-        PhasorsController.generate_phasors_cluster_center(app, 1)                       
+
+        PhasorsController.generate_phasors_cluster_center(app, 1)
         PhasorsController.generate_phasors_legend(app, 1)
 
     @staticmethod
@@ -352,11 +459,13 @@ class AcquisitionController:
         if app.write_data_gui:
             QTimer.singleShot(
                 300,
-                lambda: ExportData.save_acquisition_data(app, active_tab=app.tab_selected)
+                lambda: ExportData.save_acquisition_data(
+                    app, active_tab=app.tab_selected
+                ),
             )
-        
-        LaserbloodMetadataPopup.set_FPGA_firmware(app)            
-        LaserbloodMetadataPopup.set_average_CPS(app.all_cps_counts, app) 
+
+        LaserbloodMetadataPopup.set_FPGA_firmware(app)
+        LaserbloodMetadataPopup.set_average_CPS(app.all_cps_counts, app)
         LaserbloodMetadataPopup.set_average_SBR(app.all_SBR_counts, app)
 
     @staticmethod
@@ -375,8 +484,7 @@ class AcquisitionController:
         AcquisitionController._handle_reference_file_after_stop(app)
         AcquisitionController._process_phasor_results(app)
         AcquisitionController._handle_post_acquisition_tasks(app)
-        
-        
+
     @staticmethod
     def pull_from_queue(app):
         """
@@ -391,6 +499,7 @@ class AcquisitionController:
         """
         from core.plots_controller import PlotsController
         from core.ui_controller import UIController
+
         val = flim_labs.pull_from_queue()
         if len(val) > 0:
             for v in val:
@@ -411,7 +520,9 @@ class AcquisitionController:
                     )
                     if harmonic == 1:
                         if channel_index is not None:
-                            PhasorsController.draw_points_in_phasors(app, channel, harmonic, phasors)
+                            PhasorsController.draw_points_in_phasors(
+                                app, channel, harmonic, phasors
+                            )
                     if channel_index is not None:
                         app.all_phasors_points[channel_index][harmonic].extend(phasors)
                     continue
@@ -424,13 +535,15 @@ class AcquisitionController:
                     (item for item in app.plots_to_show if item == channel), None
                 )
                 if channel_index is not None:
-                    PlotsController.update_plots(app, channel_index, time_ns, intensities)
+                    PlotsController.update_plots(
+                        app, channel_index, time_ns, intensities
+                    )
                     AcquisitionController.update_acquisition_countdowns(app, time_ns)
-                    AcquisitionController.update_cps(app, channel_index, time_ns, intensities)
+                    AcquisitionController.update_cps(
+                        app, channel_index, time_ns, intensities
+                    )
                 QApplication.processEvents()
-                
-         
-    
+
     @staticmethod
     def update_acquisition_countdowns(app, time_ns):
         """
@@ -445,7 +558,9 @@ class AcquisitionController:
             app: The main application instance.
             time_ns (int): The elapsed time of the acquisition in nanoseconds.
         """
-        free_running = app.settings.value(s.SETTINGS_FREE_RUNNING, s.DEFAULT_FREE_RUNNING)
+        free_running = app.settings.value(
+            s.SETTINGS_FREE_RUNNING, s.DEFAULT_FREE_RUNNING
+        )
         acquisition_time = app.control_inputs[s.SETTINGS_ACQUISITION_TIME].value()
         if free_running is True or free_running == "true":
             return
@@ -460,10 +575,9 @@ class AcquisitionController:
                     countdown_widget.setVisible(True)
                 countdown_widget.setText(
                     f"Remaining time: {seconds:02}:{milliseconds:02} (s)"
-                )   
-                
-                
-    @staticmethod           
+                )
+
+    @staticmethod
     def update_SBR(app, channel_index, curve):
         """
         Calculates and updates the Signal-to-Background Ratio (SBR) for a channel.
@@ -475,10 +589,8 @@ class AcquisitionController:
         """
         if channel_index in app.SBR_items:
             SBR_value = calc_SBR(np.array(curve))
-            app.SBR_items[channel_index].setText(f"SBR: {SBR_value:.2f} ㏈")    
-            
-                           
-    
+            app.SBR_items[channel_index].setText(f"SBR: {SBR_value:.2f} ㏈")
+
     @staticmethod
     def update_cps(app, channel_index, time_ns, curve):
         """
@@ -513,7 +625,7 @@ class AcquisitionController:
             cps_value = (cps["current_count"] - cps["last_count"]) / (
                 time_elapsed / 1_000_000_000
             )
-            app.all_cps_counts.append(cps_value)            
+            app.all_cps_counts.append(cps_value)
             humanized_number = humanize_number(cps_value)
             app.cps_widgets[channel_index].setText(f"{humanized_number} CPS")
             cps_threshold = app.control_inputs[s.SETTINGS_CPS_THRESHOLD].value()
@@ -522,14 +634,12 @@ class AcquisitionController:
                     app.cps_widgets_animation[channel_index].start()
                 else:
                     app.cps_widgets_animation[channel_index].stop()
-            #SBR
+            # SBR
             if app.show_SBR:
                 AcquisitionController.update_SBR(app, channel_index, curve)
             cps["last_time_ns"] = time_ns
-            cps["last_count"] = cps["current_count"]   
-            
-            
-            
+            cps["last_count"] = cps["current_count"]
+
     @staticmethod
     def acquired_spectroscopy_data_to_fit(app, read):
         """
@@ -552,9 +662,7 @@ class AcquisitionController:
         """
         data = []
         channels_shown = [
-            channel
-            for channel in app.plots_to_show
-            if channel in app.selected_channels
+            channel for channel in app.plots_to_show if channel in app.selected_channels
         ]
         for channel, channel_index in enumerate(channels_shown):
             time_shift = (
@@ -573,11 +681,10 @@ class AcquisitionController:
                     "time_shift": time_shift,
                 }
             )
-        return data, time_shift        
-                     
-                
+        return data, time_shift
+
     @staticmethod
-    def check_card_connection(app, start_experiment = False):
+    def check_card_connection(app, start_experiment=False):
         """
         Checks for a connection to the FLIM-LABS hardware card.
 
@@ -587,7 +694,7 @@ class AcquisitionController:
             app: The main application instance.
             start_experiment (bool, optional): If True, re-raises exceptions
                 to halt the start of an experiment. Defaults to False.
-        
+
         Raises:
             Exception: Re-raises the exception from `flim_labs.check_card()`
                        if `start_experiment` is True and a card is not found.
@@ -602,6 +709,3 @@ class AcquisitionController:
                 CheckCard.update_check_message(app, str(e), error=True)
             if start_experiment:
                 raise
-
-
-

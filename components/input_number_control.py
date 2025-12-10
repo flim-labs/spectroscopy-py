@@ -74,7 +74,7 @@ class InputNumberControl:
         if max_val is not None:
             input_widget.setMaximum(max_val)
         if value is not None:
-            input_widget.setValue(value)
+            input_widget.setValue(int(value))
         input_widget.valueChanged.connect(event_callback)
         control.addWidget(q_label)
         control.addWidget(input_widget)

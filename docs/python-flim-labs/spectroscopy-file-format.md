@@ -194,7 +194,7 @@ The script files are automatically downloaded along with the acquisition .bin fi
 For more details about the project follow these links:
 
 - [Spectroscopy Laserblood introduction](../index.md)
-- [Spectroscopy Laserblood GUI guide](../v2.8.2/index.md)
+- [Spectroscopy Laserblood GUI guide](../v2.9/index.md)
 - [Spectroscopy Laserblood Console guide ](./spectroscopy-console.md)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

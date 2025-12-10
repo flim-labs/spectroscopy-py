@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 <div align="center">
-  <h1>Spectroscopy Laserblood v2.8.2</h1>
+  <h1>Spectroscopy Laserblood v2.9</h1>
 </div>
 <div align="center">
   <a href="https://www.flimlabs.com/">
@@ -27,6 +27,7 @@
      <li><a href="#acquisition-channels">Acquisition Channels</a></li>
      <li><a href="#connection-type">Connection Type</a></li>
       <li><a href="#sync-in-and-sync-out">Sync in and sync out</a></li>
+      <li><a href="#100ps">100ps</a></li>
       <li><a href="#bin-width">Bin width</a></li>
       <li><a href="#time-span">Time span</a></li>
       <li><a href="#acquisition-mode">Acquisition mode</a></li>
@@ -56,7 +57,7 @@
 
 ## Introduction
 
-Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py) _v2.8.2_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
+Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py) _v2.9_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
 For a general introduction to the aims and technical requirements of the project, read the [Spectroscopy Laserblood Homepage](../index.md) link.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -164,7 +165,7 @@ Key features of _Fitting Mode_ include:
 #### Settings
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-laserblood-settings-gui-v2.8.png" alt="Spectroscopy Laserblood Settings bar" width="100%">
+    <img src="../assets/images/spectroscopy-laserblood-settings-gui-v2.9.png" alt="Spectroscopy Laserblood Settings bar" width="100%">
 </div>
 
 _Spectroscopy_ includes a comprehensive **settings** package that allows users to configure their acquisition parameters and hardware connections with ease.
@@ -216,6 +217,14 @@ Each decay curve is represented by **256 points**, maintaining this constancy de
 Selecting a `Sync out` of 80MHz, we obtain a laser period of 12.5 ns and a temporal resolution of about 48.828 ps; thus, each point represents an interval of approximately 48.828 ps across the cumulative decay curves.
 
 Conversely, at 20MHz, the laser period extends to 50 ns with a temporal resolution of about 195.312 ps, indicating that each point on the curve corresponds to an interval of approximately 195.312 ps across the cumulative decay curves of each chunk.
+
+<hr>
+
+#### 100ps
+
+The **100ps** toggle allows the user to enable or disable the 100 ps mode so that the corresponding firmware can be used.
+
+The pico mode can only be selected when there are at most _2 active channels_ and the laser frequency (either _sync-in_ or _sync-out_) is equal to, or very close to, _40 MHz_ or _80 MHz_.
 
 <hr>
 
@@ -342,10 +351,7 @@ Key features of the _Laserblood Metadata_ system include:
 - **Validation and Quality Control**:
   Built-in validation ensures all required fields are properly completed before data acquisition.
 
-
 The metadata is automatically embedded in exported data files, providing a complete experimental record that supports the reproducibility requirements of clinical research and facilitates data analysis workflows in the Laserblood consortium.
-
-
 
 ##### Laser and Filter Configuration
 
@@ -366,7 +372,6 @@ Key configurable parameters include:
 - **Processing Steps**: Centrifuge, pellet, supernatant, and washing procedures
 - **Measurement Conditions**: Cuvette specifications, laser power, and detector settings
 
-
 > **New in v2.8.2:**
 >
 > A **"REFERENCE AUTOFILL"** button has been added, allowing you to prefill the metadata fields with default values from the coumarine reference, so you don't have to enter them manually every time.
@@ -385,6 +390,7 @@ Key configurable parameters include:
 > - **Washing:** no
 > - **Laser power:** 100
 > - **Number of thaw cycles:** 0
+
  <div align="center">
     <img src="../assets/images/coumarine-reference.png" alt="Spectroscopy Laserblood Metadata (Coumarine Reference values) GUI" width="100%">
 </div>
@@ -415,6 +421,7 @@ Here a table summary of the configurable parameters:
 | `lin_log_mode`     | dict        | Defines the key (channel index) / value (LIN/LOG) pair for decay curves linear/logarithmic plot visualization. | {}        | Configures the visualization mode (linear or logarithmic) for decay curves by channel.                                                                                    |
 | `write_data`       | boolean     | Set export data option to True/False.                                                                          | False     | If set to _True_, the acquired raw data will be exported locally to the computer along with script files (Python/Matlab).                                                 |
 | `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                              | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).                                     |
+| `pico_mode`        | boolean     | Set firmware pico-mode (100ps) option to True/False.                                                           | False     | If set to _True_, the acquisition will use a 100ps firmware                                                                                                               |
 
 <br/>
 
@@ -474,8 +481,6 @@ If connections are found, the system allows the user to update the configuration
 
 <hr>
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 ## Reader Mode
 

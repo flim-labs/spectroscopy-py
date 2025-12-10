@@ -3,7 +3,7 @@ import re
 import numpy as np
 from datetime import datetime
 
-from settings.settings import HETERODYNE_FACTOR
+from settings.settings import AVAILABLE_FREQUENCIES_MHZ, HETERODYNE_FACTOR
 
 
 def format_size(size_in_bytes):
@@ -100,6 +100,7 @@ def convert_py_num_to_np_num(output_data):
         )
     return output_data
 
+
 def calc_micro_time_ns(bin, frequency_mhz):
     """Calculates the micro-time in nanoseconds from a bin number and frequency.
 
@@ -111,7 +112,8 @@ def calc_micro_time_ns(bin, frequency_mhz):
         float: The calculated micro-time in nanoseconds.
     """
     laser_period_ns = 0.0 if frequency_mhz == 0.0 else mhz_to_ns(frequency_mhz)
-    return ((bin * laser_period_ns)/256) * HETERODYNE_FACTOR
+    return ((bin * laser_period_ns) / 256) * HETERODYNE_FACTOR
+
 
 def calc_bin_from_micro_time_ns(micro_time_ns, frequency_mhz):
     """Calculates the bin number from a micro-time in nanoseconds and frequency.
@@ -125,8 +127,9 @@ def calc_bin_from_micro_time_ns(micro_time_ns, frequency_mhz):
     """
     laser_period_ns = 0.0 if frequency_mhz == 0.0 else mhz_to_ns(frequency_mhz)
     if laser_period_ns == 0.0:
-        return 0  
+        return 0
     return (micro_time_ns * 256) / (HETERODYNE_FACTOR * laser_period_ns)
+
 
 def calc_SBR(y):
     """Calculates the Signal-to-Background Ratio (SBR) in decibels.
@@ -141,6 +144,7 @@ def calc_SBR(y):
     noise = np.min(y) + 1
     return 10 * np.log10(signal_peak / noise)
 
+
 def calc_timestamp():
     """Gets the current Unix timestamp as an integer.
 
@@ -148,7 +152,7 @@ def calc_timestamp():
         int: The current timestamp.
     """
     return int(datetime.now().timestamp())
-   
+
 
 def get_realtime_adjustment_value(enabled_channels, is_phasors):
     """Determines an adjustment value based on the number of active channels and acquisition type.
@@ -172,7 +176,7 @@ def get_realtime_adjustment_value(enabled_channels, is_phasors):
         elif len(enabled_channels) >= 4:
             return 1000 * 1000
         else:
-            return 0       
+            return 0
     else:
         if len(enabled_channels) == 1:
             return 50 * 1000
@@ -184,7 +188,7 @@ def get_realtime_adjustment_value(enabled_channels, is_phasors):
             return 200 * 1000
         else:
             return 0
-        
+
 
 def extract_channel_from_label(text):
     """Extracts a zero-based channel index from a label string (e.g., "Channel 1" -> 0).
@@ -198,7 +202,7 @@ def extract_channel_from_label(text):
     ch = re.search(r"\d+", text).group()
     ch_num = int(ch)
     ch_num_index = ch_num - 1
-    return ch_num_index       
+    return ch_num_index
 
 
 def humanize_number(number):
@@ -216,4 +220,31 @@ def humanize_number(number):
     k = 1000.0
     magnitude = int(floor(log(number, k)))
     scaled_number = number / k**magnitude
-    return f"{int(scaled_number)}.{str(scaled_number).split('.')[1][:2]}{units[magnitude]}"
+    return (
+        f"{int(scaled_number)}.{str(scaled_number).split('.')[1][:2]}{units[magnitude]}"
+    )
+
+
+def get_nearest_frequency_mhz(
+    target_freq_mhz, available_freqs_mhz=AVAILABLE_FREQUENCIES_MHZ
+):
+    """Finds the nearest frequency to target_freq_mhz from the available options.
+
+    Args:
+        target_freq_mhz (float): The reference frequency in MHz.
+        available_freqs_mhz (list[float]): List of available frequencies in MHz.
+
+    Returns:
+        float: The nearest frequency from the options.
+    """
+    if not available_freqs_mhz:
+        raise ValueError("The list of available frequencies is empty.")
+    sorted_options = sorted(available_freqs_mhz)
+    best = sorted_options[0]
+    best_diff = abs(target_freq_mhz - best)
+    for option in sorted_options:
+        diff = abs(target_freq_mhz - option)
+        if diff < best_diff:
+            best = option
+            best_diff = diff
+    return best

@@ -18,6 +18,7 @@ from PyQt6.QtGui import QColor, QIcon
 from components.fancy_checkbox import FancyButton
 from components.input_number_control import InputFloatControl, InputNumberControl
 from components.input_text_control import InputTextControl, InputTextareaControl
+from utils.helpers import get_nearest_frequency_mhz
 from utils.layout_utilities import draw_layout_separator, clear_layout_tree, hide_layout
 from utils.logo_utilities import TitlebarIcon
 from utils.resource_path import resource_path
@@ -1072,7 +1073,7 @@ class LaserbloodMetadataPopup(QWidget):
             app: The main application instance.
         """
         from core.controls_controller import ControlsController
-        frequency_mhz = ControlsController.get_frequency_mhz(app)
+        frequency_mhz = get_nearest_frequency_mhz(ControlsController.get_frequency_mhz(app))
         firmware_selected, _ = ControlsController.get_firmware_selected(app, frequency_mhz)
         fpga = ""
         if firmware_selected is not None and "100ps" in firmware_selected:

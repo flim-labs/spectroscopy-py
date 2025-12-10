@@ -74,7 +74,7 @@ To run the process the console should be opened inside the project directory `/S
 For more details about the project follow these links:
 
 - [Spectroscopy Laserblood introduction](../index.md)
-- [Spectroscopy Laserblood GUI guide](../v2.8.2/index.md)
+- [Spectroscopy Laserblood GUI guide](../v2.9/index.md)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

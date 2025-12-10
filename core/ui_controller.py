@@ -717,6 +717,7 @@ class UIController:
         check_card_widget = CheckCard(app)
         buttons_layout.addWidget(check_card_widget)   
         buttons_layout.addSpacing(20)        
+        # SYNC BUTTONS (FREQUENCY)
         sync_in_button = FancyButton("Sync In")
         buttons_layout.addWidget(sync_in_button)
         app.sync_buttons.append((sync_in_button, "sync_in"))
@@ -741,5 +742,33 @@ class UIController:
             button.clicked.connect(lambda _, n=name: on_toggle(n))
             button.set_selected(app.selected_sync == name) 
         app.widgets["sync_buttons_layout"] = buttons_layout
-        return buttons_layout
+        
+        # PICO MODE (100PS)
+        frequency_mhz = ControlsController.get_frequency_mhz(app)
+        selected_channels = ControlsController.get_selected_channels_from_settings(app)
+        pico_mode_visible = ControlsController.is_pico_mode_active(
+            app, selected_channels, frequency_mhz
+        )
+        buttons_layout.addSpacing(20)
+        pico_mode_widget = QWidget()
+        pico_mode_widget.setFixedWidth(100)
+        switch_control_layout = QHBoxLayout()
+        switch_control_layout.setContentsMargins(0, 0, 0, 0)
+        switch_control_layout.setSpacing(0)
+        inp = SwitchControl(
+            active_color="#11468F",
+            checked=app.settings.value(s.SETTINGS_PICO_MODE, s.DEFAULT_PICO_MODE)
+            == "true",
+        )
+        inp.toggled.connect(partial(ControlsController.on_pico_mode_changed, app))
+        label_100ps = QLabel("100ps:")
+        switch_control_layout.addWidget(label_100ps)
+        switch_control_layout.addWidget(inp)
+        pico_mode_widget.setLayout(switch_control_layout)
+        app.control_inputs[s.SETTINGS_PICO_MODE] = inp
+        app.widgets["pico_mode_switch_control"] = pico_mode_widget
+        pico_mode_widget.setVisible(pico_mode_visible)      
+        buttons_layout.addWidget(pico_mode_widget)
+        LaserbloodMetadataPopup.set_FPGA_firmware(app)
+        return buttons_layout      
 

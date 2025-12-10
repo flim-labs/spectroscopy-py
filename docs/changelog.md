@@ -1,5 +1,7 @@
 # Spectroscopy Laserblood Changelog
 
+## Version 2.9
+- Add 100ps firmware toggle
 
 ## Version 2.8.2
 - [LASERBLOOD] : Add button in Metadata panel to autofill fields with default Coumarine reference values
