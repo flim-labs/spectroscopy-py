@@ -505,42 +505,131 @@ class PhasorsController:
             harmonic (int): The harmonic number for which to calculate the values.
         """
         from core.controls_controller import ControlsController
+        import settings.settings as settings
+        import os
+        
+        is_phasors_read_mode = (app.tab_selected == settings.TAB_PHASORS and 
+                               app.acquire_read_mode == "read")
+        
         for i, channel_index in enumerate(app.plots_to_show):
-            # Use the fixed legend label if available, otherwise fall back to plot-based legend
+            # Use the fixed legend label if available
             if hasattr(app, 'phasors_legend_labels') and channel_index in app.phasors_legend_labels:
                 legend_label = app.phasors_legend_labels[channel_index]
                 
-                mean_g, mean_s = PhasorsController.calculate_phasors_points_mean(
-                    app, channel_index, harmonic
-                )
-                if mean_g is None or mean_s is None:
-                    legend_label.setVisible(False)
-                    continue
+                if is_phasors_read_mode:
+                    # Multi-file mode: Create colored legend for each file
+                    points_by_file = {}
+                    file_order = []
                     
-                freq_mhz = ControlsController.get_frequency_mhz(app)
-                tau_phi, tau_m, tau_n = PhasorsController.calculate_tau(mean_g, mean_s, freq_mhz, harmonic)
-                if tau_phi is None:
-                    legend_label.setVisible(False)
-                    continue
+                    for point in app.all_phasors_points[channel_index][harmonic]:
+                        g, s = point[0], point[1]
+                        file_name = point[2] if len(point) >= 3 else ""
+                        if file_name not in points_by_file:
+                            points_by_file[file_name] = {"g": [], "s": []}
+                            file_order.append(file_name)
+                        points_by_file[file_name]["g"].append(g)
+                        points_by_file[file_name]["s"].append(s)
                     
-                if tau_m is None:
-                    legend_text = (
-                        f"G (mean)={round(mean_g, 3)}; "
-                        f"S (mean)={round(mean_s, 3)}; "
-                        f"𝜏ϕ={round(tau_phi, 2)} ns; "
-                        f"𝜏n={round(tau_n, 2)} ns"
-                    )
+                    if not points_by_file:
+                        legend_label.setVisible(False)
+                        continue
+                    
+                    freq_mhz = ControlsController.get_frequency_mhz(app)
+                    
+                    # If frequency is 0, try to get it from metadata directly
+                    if freq_mhz == 0.0 and hasattr(app, 'reader_data'):
+                        if 'phasors' in app.reader_data and 'phasors_metadata' in app.reader_data['phasors']:
+                            metadata = app.reader_data['phasors']['phasors_metadata']
+                            # metadata is a list of dicts, get laser_period_ns from first file
+                            if isinstance(metadata, list) and len(metadata) > 0:
+                                if 'laser_period_ns' in metadata[0]:
+                                    from utils.helpers import ns_to_mhz
+                                    freq_mhz = ns_to_mhz(metadata[0]['laser_period_ns'])
+                    
+                    html_parts = []
+                    
+                    for idx, file_name in enumerate(file_order):
+                        coords = points_by_file[file_name]
+                        g_values = np.array(coords["g"])
+                        s_values = np.array(coords["s"])
+                        
+                        if g_values.size == 0 or s_values.size == 0:
+                            continue
+                        if np.all(np.isnan(g_values)) or np.all(np.isnan(s_values)):
+                            continue
+                        
+                        mean_g = np.nanmean(g_values)
+                        mean_s = np.nanmean(s_values)
+                        color = PhasorsController.get_color_for_file_index(idx)
+                        
+                        # Try to calculate tau values if frequency is available
+                        if freq_mhz != 0.0:
+                            tau_phi, tau_m, tau_n = PhasorsController.calculate_tau(mean_g, mean_s, freq_mhz, harmonic)
+                            
+                            # Always show all tau values, use 1.0 as placeholder if tau_m is None
+                            tau_m_display = round(tau_m, 2) if tau_m is not None else 1.0
+                            
+                            file_legend = (
+                                f"<span style='color: {color};'>"
+                                f"G (mean)={round(mean_g, 3)}; S (mean)={round(mean_s, 3)}; "
+                                f"τϕ={round(tau_phi, 2)} ns; τn={round(tau_n, 2)} ns; "
+                                f"τm={tau_m_display} ns</span>"
+                            )
+                        else:
+                            # Show only G and S when frequency is not set
+                            file_legend = (
+                                f"<span style='color: {color};'>"
+                                f"G (mean)={round(mean_g, 3)}; S (mean)={round(mean_s, 3)}</span>"
+                            )
+                        
+                        html_parts.append(file_legend)
+                    
+                    if html_parts:
+                        # Organize in grid: 2 items per row
+                        rows = []
+                        for j in range(0, len(html_parts), 2):
+                            row_items = html_parts[j:j+2]
+                            row_html = " &nbsp;|&nbsp; ".join(row_items)
+                            rows.append(row_html)
+                        html_text = "<br>".join(rows)
+                        legend_label.setText(html_text)
+                        legend_label.setVisible(True)
+                    else:
+                        legend_label.setVisible(False)
+                    
                 else:
-                    legend_text = (
-                        f"G (mean)={round(mean_g, 3)}; "
-                        f"S (mean)={round(mean_s, 3)}; "
-                        f"𝜏ϕ={round(tau_phi, 2)} ns; "
-                        f"𝜏n={round(tau_n, 2)} ns; "
-                        f"𝜏m={round(tau_m, 2)} ns"
+                    # Single file mode (acquire): Original behavior
+                    mean_g, mean_s = PhasorsController.calculate_phasors_points_mean(
+                        app, channel_index, harmonic
                     )
-                
-                legend_label.setText(legend_text)
-                legend_label.setVisible(True)
+                    if mean_g is None or mean_s is None:
+                        legend_label.setVisible(False)
+                        continue
+                        
+                    freq_mhz = ControlsController.get_frequency_mhz(app)
+                    tau_phi, tau_m, tau_n = PhasorsController.calculate_tau(mean_g, mean_s, freq_mhz, harmonic)
+                    if tau_phi is None:
+                        legend_label.setVisible(False)
+                        continue
+                        
+                    if tau_m is None:
+                        legend_text = (
+                            f"G (mean)={round(mean_g, 3)}; "
+                            f"S (mean)={round(mean_s, 3)}; "
+                            f"𝜏ϕ={round(tau_phi, 2)} ns; "
+                            f"𝜏n={round(tau_n, 2)} ns"
+                        )
+                    else:
+                        legend_text = (
+                            f"G (mean)={round(mean_g, 3)}; "
+                            f"S (mean)={round(mean_s, 3)}; "
+                            f"𝜏ϕ={round(tau_phi, 2)} ns; "
+                            f"𝜏n={round(tau_n, 2)} ns; "
+                            f"𝜏m={round(tau_m, 2)} ns"
+                        )
+                    
+                    legend_label.setText(legend_text)
+                    legend_label.setVisible(True)
    
                 
     
