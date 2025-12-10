@@ -116,7 +116,7 @@ class AcquisitionController:
         """
         from core.controls_controller import ControlsController
         acquisition_time = ControlsController.get_acquisition_time(app)
-        firmware_selected, _ = ControlsController.get_firmware_selected(app, frequency_mhz)
+        firmware_selected, _ = ControlsController.get_firmware_selected(app, frequency_mhz, app.pico_mode)
 
         tau_ns = float(app.settings.value(s.SETTINGS_TAU_NS, "0")) if ControlsController.is_reference_phasors(app) else None
         
@@ -139,7 +139,8 @@ class AcquisitionController:
             "reference_file": reference_file,
             "harmonics": int(app.harmonic_selector_value),
             "write_bin": False,
-            "time_tagger": app.time_tagger and app.write_data_gui and app.tab_selected != s.TAB_PHASORS
+            "time_tagger": app.time_tagger and app.write_data_gui and app.tab_selected != s.TAB_PHASORS,
+            "pico_mode": app.pico_mode,
         }
         return params
 

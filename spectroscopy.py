@@ -78,6 +78,9 @@ class SpectroscopyWindow(QWidget):
         
         write_data_gui = self.settings.value(s.SETTINGS_WRITE_DATA, s.DEFAULT_WRITE_DATA)
         self.write_data_gui = str(write_data_gui).lower() == "true"
+
+        pico_mode_value = self.settings.value(s.SETTINGS_PICO_MODE, s.DEFAULT_PICO_MODE)
+        self.pico_mode = str(pico_mode_value).lower() == "true"
         
         time_tagger = self.settings.value(s.SETTINGS_TIME_TAGGER, s.DEFAULT_TIME_TAGGER)
         self.time_tagger = str(time_tagger).lower() == "true"
@@ -162,6 +165,7 @@ class SpectroscopyWindow(QWidget):
         Initializes controllers, timers, and connects signals.
         """
         ControlsController.get_selected_channels_from_settings(self)
+        ControlsController.update_pico_mode_toggle(self)
         ControlsController.on_tab_selected(self, s.TAB_SPECTROSCOPY)
         self.all_phasors_points = PhasorsController.get_empty_phasors_points()
         

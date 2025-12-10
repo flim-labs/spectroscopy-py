@@ -1,5 +1,10 @@
 # Spectroscopy Changelog
 
+## Version 2.6
+- Add 100ps toggle for Pico mode with automatic availability checks
+- Add pico_mode propagation to firmware selection and acquisition params
+- Introduce helper to validate frequencies near 40/80 MHz for Pico mode
+
 ## Version 2.5
 - Phasors analysis: add tau_n calculation and display 
 - Improve phasor centroid information display layout

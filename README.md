@@ -59,7 +59,7 @@ Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py
 
 ## Getting Started
 
-To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this [link](https://github.com/flim-labs/spectroscopy-py/releases/tag/v2.4) (_Note: you still need to have the FLIM LABS acquisition card_).
+To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this [link](https://github.com/flim-labs/spectroscopy-py/releases/tag/v2.6) (_Note: you still need to have the FLIM LABS acquisition card_).
 
 To get a local copy up and running follow these steps.
 
@@ -101,7 +101,7 @@ To be able to run this project locally on your machine you need to satisfy these
 
 Navigate to the following links to view detailed application usage guides:
 
-- [Spectroscopy GUI guide](./docs/v2.4/index.md)
+- [Spectroscopy GUI guide](./docs/v2.6/index.md)
 - [Spectroscopy Data Export guide ](./docs/python-flim-labs/spectroscopy-file-format.md)
 - [Spectroscopy Console guide](./docs/python-flim-labs/spectroscopy-console.md)
 
