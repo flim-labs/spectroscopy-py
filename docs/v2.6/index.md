@@ -27,6 +27,7 @@
      <li><a href="#acquisition-channels">Acquisition Channels</a></li>
      <li><a href="#connection-type">Connection Type</a></li>
       <li><a href="#sync-in-and-sync-out">Sync in and sync out</a></li>
+        <li><a href="#100ps">100ps</a></li>
       <li><a href="#bin-width">Bin width</a></li>
       <li><a href="#time-span">Time span</a></li>
       <li><a href="#acquisition-mode">Acquisition mode</a></li>
@@ -163,7 +164,7 @@ Key features of _Fitting Mode_ include:
 #### Settings
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-settings-v2.4.png" alt="Spectroscopy Settings bar" width="100%">
+    <img src="../assets/images/spectroscopy-settings-v2.6.png" alt="Spectroscopy Settings bar" width="100%">
 </div>
 
 _Spectroscopy_ includes a comprehensive **settings** package that allows users to configure their acquisition parameters and hardware connections with ease.
@@ -215,6 +216,13 @@ Each decay curve is represented by **256 points**, maintaining this constancy de
 Selecting a `Sync out` of 80MHz, we obtain a laser period of 12.5 ns and a temporal resolution of about 48.828 ps; thus, each point represents an interval of approximately 48.828 ps across the cumulative decay curves.
 
 Conversely, at 20MHz, the laser period extends to 50 ns with a temporal resolution of about 195.312 ps, indicating that each point on the curve corresponds to an interval of approximately 195.312 ps across the cumulative decay curves of each chunk.
+
+<hr>
+
+#### 100ps
+The **100ps** toggle allows the user to enable or disable the 100 ps mode so that the corresponding firmware can be used.
+
+The pico mode can only be selected when there are at most _2 active channels_ and the laser frequency (either _sync-in_ or _sync-out_) is equal to, or very close to, _40 MHz_ or _80 MHz_.
 
 <hr>
 
@@ -331,7 +339,8 @@ Here a table summary of the configurable parameters:
 | `time_shifts`      | dict        | Defines the key (channel index) / value (time shift) pair for decay curves time shifts.                       | {}        | Configures time shifts for decay curve visualization by channel.                                                                                                         |
 | `lin_log_mode`     | dict        | Defines the key (channel index) / value (LIN/LOG) pair for decay curves linear/logarithmic plot visualization. | {}        | Configures the visualization mode (linear or logarithmic) for decay curves by channel.                                                                                   |
 | `write_data`       | boolean     | Set export data option to True/False.                                                                         | False     | If set to _True_, the acquired raw data will be exported locally to the computer along with script files (Python/Matlab).                                                |
-| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                             | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).                                     |
+| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                             | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).      
+| `pico_mode`      | boolean     | Set firmware pico-mode (100ps)  option to True/False.                                                             | False      | If set to _True_, the acquisition will use a 100ps firmware                               |
 
 
 <br/>
@@ -371,6 +380,7 @@ acquisition_time=10
 phasors_resolution=2
 quantize_phasors=true
 lin_log_mode="{\"2\": \"LOG\", \"3\": \"LIN\"}"
+pico_mode=false
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

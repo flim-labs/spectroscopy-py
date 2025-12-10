@@ -705,19 +705,23 @@ class UIController:
         sync_out_10_button = FancyButton("Sync Out (10MHz)")
         buttons_layout.addWidget(sync_out_10_button)
         app.sync_buttons.append((sync_out_10_button, "sync_out_10"))
+        buttons_layout.addSpacing(10)
         pico_mode_container = QWidget()
-        pico_mode_layout = QVBoxLayout()
+        pico_mode_layout = QHBoxLayout()
+        pico_mode_container.setFixedWidth(100)
         pico_mode_layout.setContentsMargins(0, 0, 0, 0)
-        pico_mode_layout.setSpacing(5)
+        pico_mode_layout.setSpacing(0)
         pico_mode_label = QLabel("100ps:")
         pico_mode_toggle = SwitchControl(
-            active_color=s.PALETTE_BLUE_1, width=70, height=30, checked=app.pico_mode
+            active_color="#11468F",
+            checked=app.settings.value(s.SETTINGS_PICO_MODE, s.DEFAULT_PICO_MODE)
+            == "true",
         )
         pico_mode_toggle.toggled.connect(partial(ControlsController.on_pico_mode_changed, app))
         pico_mode_layout.addWidget(pico_mode_label)
         pico_mode_layout.addWidget(pico_mode_toggle)
         pico_mode_container.setLayout(pico_mode_layout)
-        buttons_layout.addWidget(pico_mode_container, alignment=Qt.AlignmentFlag.AlignBottom)
+        buttons_layout.addWidget(pico_mode_container)
         app.control_inputs[s.SETTINGS_PICO_MODE] = pico_mode_toggle
         app.widgets["pico_mode_container"] = pico_mode_container
         for button, name in app.sync_buttons:
