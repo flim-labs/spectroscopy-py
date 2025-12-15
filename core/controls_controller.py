@@ -620,7 +620,11 @@ class ControlsController:
             PhasorsController.clear_phasors_file_scatters(app)
             PhasorsController.clear_phasors_files_legend(app)
 
-        frequency_mhz = ControlsController.get_current_frequency_mhz(app)
+        # Get frequency - use metadata frequency in read mode, current frequency in acquire mode
+        if app.acquire_read_mode == "read":
+            frequency_mhz = ReadData.get_frequency_mhz(app)
+        else:
+            frequency_mhz = ControlsController.get_current_frequency_mhz(app)
         laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
 
         if app.harmonic_selector_value >= 1 and app.quantized_phasors:
