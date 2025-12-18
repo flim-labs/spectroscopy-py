@@ -935,7 +935,7 @@ class ControlsController:
                     s.SETTINGS_ACQUISITION_TIME, s.DEFAULT_ACQUISITION_TIME
                 )
             )
-        )
+        ) 
 
     @staticmethod
     def channel_selector_set_enabled(app, enabled: bool):
