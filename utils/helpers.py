@@ -55,6 +55,27 @@ def mhz_to_ns(frequency_mhz):
     return period_ns
 
 
+def is_frequency_near_supported_pico_modes(frequency_mhz, tolerance_mhz=3.0):
+    """Checks if a frequency is close to the supported 40 MHz or 80 MHz pico modes.
+
+    Args:
+        frequency_mhz (float | int): The frequency to validate.
+        tolerance_mhz (float, optional): Allowed deviation from target frequencies. Defaults to 3.0.
+
+    Returns:
+        bool: True if the frequency is within tolerance of 40 MHz or 80 MHz, False otherwise.
+    """
+    try:
+        freq = float(frequency_mhz)
+    except (TypeError, ValueError):
+        return False
+
+    if freq <= 0:
+        return False
+
+    return any(abs(freq - target) <= tolerance_mhz for target in (40.0, 80.0))
+
+
 def convert_ndarray_to_list(data):
     """Converts a NumPy ndarray to a Python list if it's an ndarray.
 

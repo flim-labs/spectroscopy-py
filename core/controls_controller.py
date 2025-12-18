@@ -4,7 +4,7 @@ import flim_labs
 from components.box_message import BoxMessage
 from components.fitting_config_popup import FittingDecayConfigPopup
 from utils.gui_styles import GUIStyles
-from utils.helpers import mhz_to_ns
+from utils.helpers import is_frequency_near_supported_pico_modes, mhz_to_ns
 from utils.layout_utilities import hide_layout, show_layout
 from components.plots_config import PlotsConfigPopup
 from components.read_data import ReadData, ReadDataControls, ReaderMetadataPopup, ReaderPopup
@@ -823,16 +823,77 @@ class ControlsController:
                 frequency_mhz = app.sync_in_frequency_mhz
             else:
                 frequency_mhz = int(app.selected_sync.split("_")[-1])
-            return frequency_mhz
+            return frequency_mhz 
 
     @staticmethod
-    def get_firmware_selected(app, frequency_mhz):
+    def _is_pico_mode_available(app, frequency_mhz=None):
+        """
+        Checks whether pico mode can be enabled based on channels and frequency.
+
+        Args:
+            app: The main application instance.
+            frequency_mhz (float | None, optional): Frequency to evaluate. Defaults to current.
+
+        Returns:
+            bool: True if pico mode can be used, False otherwise.
+        """
+        freq = frequency_mhz if frequency_mhz is not None else ControlsController.get_current_frequency_mhz(app)
+        channels_ok = len(app.selected_channels) <= 2 and len(app.selected_channels) > 0
+        freq_ok = is_frequency_near_supported_pico_modes(freq)
+        return channels_ok and freq_ok
+
+    @staticmethod
+    def update_pico_mode_toggle(app, frequency_mhz=None):
+        """
+        Updates visibility and checked state of the pico mode toggle based on current conditions.
+
+        Args:
+            app: The main application instance.
+            frequency_mhz (float | None, optional): Frequency to evaluate. Defaults to current.
+        """
+        if s.SETTINGS_PICO_MODE not in app.control_inputs:
+            return
+
+        pico_toggle = app.control_inputs[s.SETTINGS_PICO_MODE]
+        pico_container = app.widgets.get("pico_mode_container", None)
+        available = ControlsController._is_pico_mode_available(app, frequency_mhz)
+
+        if available:
+            if pico_container:
+                pico_container.setVisible(True)
+            pico_toggle.setVisible(True)
+            pico_toggle.setEnabled(True)
+            pico_toggle.setChecked(app.pico_mode)
+        else:
+            pico_toggle.setChecked(False)
+            pico_toggle.setVisible(False)
+            if pico_container:
+                pico_container.setVisible(False)
+            app.pico_mode = False
+            app.settings.setValue(s.SETTINGS_PICO_MODE, s.DEFAULT_PICO_MODE)
+
+    @staticmethod
+    def on_pico_mode_changed(app, enabled: bool):
+        """
+        Handles pico mode toggle changes.
+
+        Args:
+            app: The main application instance.
+            enabled (bool): New pico mode state.
+        """
+        app.pico_mode = enabled
+        app.settings.setValue(s.SETTINGS_PICO_MODE, enabled)
+            
+               
+    @staticmethod
+    def get_firmware_selected(app, frequency_mhz, pico_mode=None):    
         """
         Determines the appropriate firmware file based on current settings.
 
         Args:
             app: The main application instance.
             frequency_mhz (float): The current laser frequency.
+            pico_mode (bool | None, optional): Pico mode selection to pass to backend. Defaults to current state.
 
         Returns:
             tuple[str, str]: A tuple containing the path to the selected
@@ -849,6 +910,7 @@ class ControlsController:
             channel=connection_type.lower(),
             channels=app.selected_channels,
             sync_connection="sma",
+            pico_mode=app.pico_mode if pico_mode is None else pico_mode,
         )
         return firmware_selected, connection_type
 
@@ -920,7 +982,9 @@ class ControlsController:
         PlotsController.clear_plots(app)
         PlotsController.generate_plots(app)
         ExportData.calc_exported_file_size(app)
+        ControlsController.update_pico_mode_toggle(app)
 
+    
     @staticmethod
     def on_sync_selected(app, sync: str):
         """
@@ -952,7 +1016,9 @@ class ControlsController:
         app.selected_sync = sync
         app.settings.setValue(s.SETTINGS_SYNC, sync)
         update_phasors_lifetimes()
-
+        ControlsController.update_pico_mode_toggle(app, ControlsController.get_current_frequency_mhz(app))
+           
+ 
     @staticmethod
     def start_sync_in_dialog(app):
         """
@@ -983,8 +1049,12 @@ class ControlsController:
             app.sync_buttons[0][0].setText("Sync In (not detected)")
         else:
             ControlsController.time_shifts_set_enabled(app, True)
-            app.sync_buttons[0][0].setText(f"Sync In ({app.sync_in_frequency_mhz} MHz)")
-
+            app.sync_buttons[0][0].setText(
+                f"Sync In ({app.sync_in_frequency_mhz} MHz)"
+            )        
+        ControlsController.update_pico_mode_toggle(app, app.sync_in_frequency_mhz)
+            
+    
     @staticmethod
     def show_harmonic_selector(app, harmonics):
         """
