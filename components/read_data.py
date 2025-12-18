@@ -523,8 +523,6 @@ class ReadData:
                             app.decay_widgets[channel].plot(x_values, y_values, pen=pen)
         else:
             # Single-file mode (original behavior)
-            num_bins = 256
-            x_values = np.linspace(0, laser_period_ns, num_bins) / 1_000
             for channel, curves in channels_curves.items():
                 if metadata_channels[channel] in app.plots_to_show:
                     y_values = np.sum(curves, axis=0)
@@ -532,6 +530,9 @@ class ReadData:
                         app.cached_decay_values[app.tab_selected][
                             metadata_channels[channel]
                         ] = y_values
+                    # Get x values from the existing plot instead of recalculating
+                    decay_curve = app.decay_curves[app.tab_selected][metadata_channels[channel]]
+                    x_values, _ = decay_curve.getData()
                     PlotsController.update_plots(
                         app, metadata_channels[channel], x_values, y_values, reader_mode=True
                     )
@@ -880,7 +881,12 @@ class ReadData:
         if isinstance(metadata, list) and len(metadata) > 0:
             metadata = metadata[0]  # Get first file's metadata
         if isinstance(metadata, dict) and "laser_period_ns" in metadata:
-            return ns_to_mhz(metadata["laser_period_ns"])
+            laser_period_ns = metadata["laser_period_ns"]
+            # If the value is > 1000, it's likely in picoseconds, convert to ns
+            if laser_period_ns > 1000:
+                laser_period_ns = laser_period_ns / 1000.0
+            freq = ns_to_mhz(laser_period_ns)
+            return freq
         return 0.0
 
     @staticmethod
@@ -1071,9 +1077,19 @@ class ReadDataControls:
         if app.acquire_read_mode == "read":
             ReadDataControls.handle_plots_config(app, file_type)
             PlotsController.clear_plots(app)
-            PlotsController.generate_plots(app, ReadData.get_frequency_mhz(app))
+            # First try to get frequency from already loaded data
+            freq = ReadData.get_frequency_mhz(app)
+            # Generate plots - if freq is 0, will use default
+            PlotsController.generate_plots(app, freq)
             ControlsController.toggle_intensities_widgets_visibility(app)
             ReadData.plot_data(app)
+            # If frequency was 0 before but now we have data, regenerate with correct frequency
+            new_freq = ReadData.get_frequency_mhz(app)
+            if freq == 0 and new_freq > 0:
+                PlotsController.clear_plots(app)
+                PlotsController.generate_plots(app, new_freq)
+                ControlsController.toggle_intensities_widgets_visibility(app)
+                ReadData.plot_data(app)
 
     @staticmethod
     def read_bin_metadata_enabled(app):
@@ -1612,6 +1628,7 @@ class ReaderPopup(QWidget):
             None: Plots data or shows error messages
         """
         from core.controls_controller import ControlsController
+        from core.plots_controller import PlotsController
         #self.app.reset_time_shifts_values()
         file_type = self.data_type
         if self.errors_in_data(file_type):
@@ -1621,6 +1638,12 @@ class ReaderPopup(QWidget):
         if fitting_data and not spectroscopy_data:
            ControlsController.on_fit_btn_click(self.app)           
         else:
+            # Regenerate plots with correct frequency from loaded files
+            freq = ReadData.get_frequency_mhz(self.app)
+            if freq > 0:
+                PlotsController.clear_plots(self.app)
+                PlotsController.generate_plots(self.app, freq)
+                ControlsController.toggle_intensities_widgets_visibility(self.app)
             ReadData.plot_data(self.app)
         self.close()
 

@@ -379,7 +379,6 @@ class PlotsController:
             return
 
         plots_to_show = app.plots_to_show
-        print("plots to show", plots_to_show)
               
         for i, channel in enumerate(plots_to_show):
             plot_widget = None
