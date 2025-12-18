@@ -611,20 +611,33 @@ class ReadData:
         from core.phasors_controller import PhasorsController
 
         frequency_mhz = ns_to_mhz(laser_period_ns)
-        app.all_phasors_points = PhasorsController.get_empty_phasors_points()       
-        app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
-        # Store the number of harmonics for later use when switching modes
-        app.loaded_phasors_harmonics = harmonics
+        
+        # Clear previous phasors data before loading new files
+        PhasorsController.clear_phasors_file_scatters(app)
+        PhasorsController.clear_phasors_files_legend(app)
+        PhasorsController.hide_phasors_legends(app)
+        
+        # Reset all_phasors_points
+        app.all_phasors_points = PhasorsController.get_empty_phasors_points()
+        
+        # Populate all_phasors_points BEFORE resetting harmonic selector
+        # to ensure _update_phasor_plots_for_harmonic has data to work with
+        for harmonic, values in data.items():
+            app.all_phasors_points[0][harmonic].extend(values)
         
         if harmonics > 1:
             app.harmonic_selector_shown = True
             ControlsController.show_harmonic_selector(app, harmonics)
-        for harmonic, values in data.items():
-            if harmonic == 1:
-                PhasorsController.draw_points_in_phasors(app, 0, harmonic, values)
-            app.all_phasors_points[0][harmonic].extend(values)       
+        
+        # Now reset harmonic selector (this will trigger _update_phasor_plots_for_harmonic)
+        # which will handle drawing points and generating legends
+        app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
+        # Store the number of harmonics for later use when switching modes
+        app.loaded_phasors_harmonics = harmonics
+        
         PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
-        PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)       
+        # Note: draw_points_in_phasors and generate_phasors_legend are called by 
+        # _update_phasor_plots_for_harmonic which is triggered when harmonic selector is reset
         for i, channel_index in enumerate(app.plots_to_show):
             PhasorsController.draw_lifetime_points_in_phasors(
                 app,
@@ -935,14 +948,27 @@ class ReadData:
             tuple: (phasors_data, laser_period, active_channels, spectroscopy_times, spectroscopy_curves) for export
         """
         phasors_data = app.reader_data["phasors"]["data"]["phasors_data"]
-        laser_period = app.reader_data["phasors"]["metadata"]["laser_period_ns"]
-        active_channels = app.reader_data["phasors"]["metadata"]["channels"]
-        spectroscopy_curves = app.reader_data["phasors"]["data"]["spectroscopy_data"][
-            "channels_curves"
-        ]
-        spectroscopy_times = app.reader_data["phasors"]["data"]["spectroscopy_data"][
-            "times"
-        ]
+        # phasors metadata can be stored as a list (multi-file) or a dict (single file)
+        phasors_meta = app.reader_data["phasors"].get("phasors_metadata") or app.reader_data["phasors"].get("metadata")
+        if isinstance(phasors_meta, list):
+            meta = phasors_meta[0] if len(phasors_meta) > 0 else {}
+        elif isinstance(phasors_meta, dict):
+            meta = phasors_meta
+        else:
+            meta = {}
+
+        laser_period = meta.get("laser_period_ns", 0)
+        active_channels = meta.get("channels", [])
+
+        # spectroscopy data can be stored per-file under 'files_data' or as aggregated times/channels_curves
+        spectroscopy_section = app.reader_data["phasors"]["data"].get("spectroscopy_data", {})
+        if isinstance(spectroscopy_section, dict) and "files_data" in spectroscopy_section:
+            # multi-file mode: individual file infos will be passed separately when exporting
+            spectroscopy_curves = None
+            spectroscopy_times = None
+        else:
+            spectroscopy_curves = spectroscopy_section.get("channels_curves") if isinstance(spectroscopy_section, dict) else None
+            spectroscopy_times = spectroscopy_section.get("times") if isinstance(spectroscopy_section, dict) else None
         return (
             phasors_data,
             laser_period,

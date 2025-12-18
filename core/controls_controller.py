@@ -658,6 +658,7 @@ class ControlsController:
         PhasorsController.generate_phasors_cluster_center(
             app, app.harmonic_selector_value
         )
+        PhasorsController.hide_phasors_legends(app)
         PhasorsController.generate_phasors_legend(app, app.harmonic_selector_value)
 
         for i, channel_index in enumerate(app.plots_to_show):
@@ -1009,7 +1010,6 @@ class ControlsController:
                 app.control_inputs[s.HARMONIC_SELECTOR].clear()
                 for i in range(harmonics):
                     app.control_inputs[s.HARMONIC_SELECTOR].addItem(str(i + 1))
-                    print(f"[SHOW_HARMONIC_SELECTOR] Added item: {i + 1}")
             app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(
                 app.phasors_harmonic_selected - 1
             )

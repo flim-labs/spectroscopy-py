@@ -67,17 +67,18 @@ class PhasorsController:
         """
         import os
         
+        # Get the plot item
+        plot_item = app.phasors_widgets[channel].getPlotItem()
+        
+        existing_legend = plot_item.legend
+        
+        if existing_legend is not None:
+            # Remove the legend item from the plot completely
+            plot_item.removeItem(existing_legend)
+            plot_item.legend = None
+        
         if not file_order:
             return
-        
-        # Access the PlotItem to check for existing legend
-        plot_item = app.phasors_widgets[channel].getPlotItem()
-        if hasattr(plot_item, 'legend') and plot_item.legend is not None:
-            try:
-                plot_item.removeItem(plot_item.legend)
-                plot_item.legend = None
-            except Exception:
-                pass
         
         # Create legend items
         legend_items = []
@@ -135,7 +136,6 @@ class PhasorsController:
             harmonic (int): The harmonic number of the phasor points.
             phasors (list[tuple]): A list of (g, s) or (g, s, file_name) tuples to plot.
         """
-        print("draw_points_in_phasors")
         if channel in app.plots_to_show:
             # Check if we are in phasors read mode
             import settings.settings as settings
@@ -143,6 +143,12 @@ class PhasorsController:
                                    app.acquire_read_mode == "read")
             
             if is_phasors_read_mode:
+                # Clear existing scatter plots for this channel before adding new ones
+                if hasattr(app, 'phasors_file_scatters') and channel in app.phasors_file_scatters:
+                    for scatter in app.phasors_file_scatters[channel]:
+                        app.phasors_widgets[channel].removeItem(scatter)
+                    app.phasors_file_scatters[channel] = []
+                
                 # New behavior for phasors read mode: Group points by file name and use different colors
                 points_by_file = {}
                 file_order = []  # Keep track of file order
@@ -241,6 +247,8 @@ class PhasorsController:
                 additional_tau = np.arange(10e-9, 26e-9, 5e-9)
                 tau_m = np.concatenate((tau_m, additional_tau))
             tau_phi = tau_m
+            if laser_period_ns == 0 or laser_period_ns is None:
+                return
             fex = (1 / laser_period_ns) * 10e8
             k = 1 / (2 * np.pi * harmonic * fex)
             phi = np.arctan(tau_phi / k)
@@ -356,20 +364,11 @@ class PhasorsController:
                     continue
                 if channel in app.phasors_widgets:
                     try:
-                        app.phasors_widgets[channel].removeItem(legend)
+                        legend.items = []
+                        legend.updateSize()
+                        legend.setVisible(False)
                     except Exception:
                         pass
-            app.phasors_files_legend.clear()
-        
-        # Also clear the plot item's internal legend reference
-        for channel in app.phasors_widgets:
-            try:
-                plot_item = app.phasors_widgets[channel].getPlotItem()
-                if hasattr(plot_item, 'legend') and plot_item.legend is not None:
-                    plot_item.removeItem(plot_item.legend)
-                    plot_item.legend = None
-            except Exception:
-                pass
         
     
     @staticmethod
@@ -644,6 +643,7 @@ class PhasorsController:
         # Hide fixed legend labels
         if hasattr(app, 'phasors_legend_labels'):
             for channel_index, legend_label in app.phasors_legend_labels.items():
+                legend_label.setText("")  # Clear the HTML content
                 legend_label.setVisible(False)
         
         # Hide plot-based legends

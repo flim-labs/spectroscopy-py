@@ -1,5 +1,6 @@
 import json
 import struct
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -45,7 +46,6 @@ def load_data(file_path, selected_channels):
         while True:
             time_ns = f.read(8)
             if not time_ns:
-                print("End of file data")
                 break
             for channel in selected_channels:
                 current_curve = [
@@ -83,7 +83,6 @@ def load_phasors(file_path, selected_channels):
 
                     bytes_read = f.read(32)
                     if not bytes_read:
-                        print("End of file phasors")
                         return data  # Exit the function if no more data
 
                     # Unpack the read bytes
@@ -92,7 +91,6 @@ def load_phasors(file_path, selected_channels):
                             "QIIdd", bytes_read
                         )
                     except struct.error as e:
-                        print(f"Error unpacking data: {e}")
                         return data
 
                     data[channel][harmonic].append((g, s))
@@ -156,6 +154,9 @@ def plot_phasors_data(
     spectroscopy_curves,
     selected_harmonic,
     show_plot=True,
+    per_file_spectroscopy=False,
+    spectroscopy_files_info=None,
+    show_file_legend=True,
 ):
     """Creates a comprehensive plot showing both spectroscopy and phasor data.
 
@@ -174,43 +175,92 @@ def plot_phasors_data(
     # plot layout config
     num_channels = len(phasors_data)
     max_channels_per_row = 3
-    num_rows = (num_channels + max_channels_per_row - 1) // max_channels_per_row
-    fig, axs = plt.subplots(
-        num_rows + 1, max_channels_per_row, figsize=(20, (num_rows + 1) * 6)
-    )
-    # Spectroscopy plot
+    ncol = 3 if num_channels > 2 else num_channels
+    nrow = int(np.ceil(num_channels / ncol))
+    # Make figure slightly larger to improve readability
+    fig, axs = plt.subplots(nrow + 1, ncol, figsize=(24, (nrow + 1) * 7), squeeze=False)
+    # Spectroscopy plot (support per-file spectroscopy export)
     num_bins = 256
-    x_values = np.linspace(0, laser_period, num_bins)
+    x_values = np.linspace(0, laser_period if laser_period else 1, num_bins)
     ax = axs[0, 0]
-    ax.set_title(
-        "Spectroscopy (time: "
-        + str(round(spectroscopy_times[-1]))
-        + "s, curves stored: "
-        + str(len(spectroscopy_times))
-        + ")"
-    )
+    
+    # Set title based on mode
+    if per_file_spectroscopy and spectroscopy_files_info:
+        ax.set_title("Spectroscopy")
+    else:
+        # Prepare title/metadata safely (spectroscopy_times may be None for per-file mode)
+        try:
+            time_info = f"time: {str(round(spectroscopy_times[-1]))}s, curves stored: {str(len(spectroscopy_times))}"
+        except Exception:
+            time_info = "time: N/A, curves stored: N/A"
+        ax.set_title(f"Spectroscopy ({time_info})")
     ax.set_xlabel(f"Time (ns, Laser period = {laser_period} ns)")
     ax.set_ylabel("Intensity")
     ax.set_yscale("log")
     ax.grid(True)
     total_max = 0
-    total_min = 9999999999999
-    for i in range(len(active_channels)):
-        sum_curve = np.sum(spectroscopy_curves[i], axis=0)
-        max_val = np.max(sum_curve)
-        min_val = np.min(sum_curve)
-        if max_val > total_max:
-            total_max = max_val
-        if min_val < total_min:
-            total_min = min_val
-        ax.plot(x_values, sum_curve, label=f"Channel {active_channels[i] + 1}")
+    total_min = float("inf")
+
+    if per_file_spectroscopy and spectroscopy_files_info:
+        # Plot one summed curve per file (use first matching active channel per file)
+        # Try to reuse app palette (PhasorsController) for consistent colors, fallback to tab10
+        try:
+            from core.phasors_controller import PhasorsController
+
+            def _spec_file_color(idx):
+                return PhasorsController.get_color_for_file_index(idx)
+
+            spec_colors = [_spec_file_color(i) for i in range(len(spectroscopy_files_info))]
+        except Exception:
+            spec_colors = plt.cm.tab10(np.linspace(0, 1, max(1, len(spectroscopy_files_info))))
+
+        for file_idx, file_info in enumerate(spectroscopy_files_info):
+            file_name = os.path.basename(file_info.get("file_path", f"file{file_idx}"))
+            file_channels = file_info.get("channels_curves", {})
+            plotted = False
+            for ch in active_channels:
+                if ch in file_channels:
+                    ch_curves = file_channels[ch]
+                    if len(ch_curves) == 0:
+                        continue
+                    sum_curve = np.sum(ch_curves, axis=0)
+                    total_max = max(total_max, np.max(sum_curve))
+                    total_min = min(total_min, np.min(sum_curve))
+                    color = spec_colors[file_idx % len(spec_colors)]
+                    ax.plot(x_values, sum_curve, label=f"{file_name}", color=color)
+                    plotted = True
+                    break
+            if not plotted:
+                # If no active channel found in this file, skip plotting
+                continue
+
+        # Legend will be created at figure level after all plotting is complete
+        # to avoid overlapping with the spectroscopy title
+    else:
+        # Legacy aggregated behaviour (one curve per active channel)
+        for i in range(len(active_channels)):
+            if i >= len(spectroscopy_curves):
+                continue
+            sum_curve = np.sum(spectroscopy_curves[i], axis=0)
+            max_val = np.max(sum_curve)
+            min_val = np.min(sum_curve)
+            if max_val > total_max:
+                total_max = max_val
+            if min_val < total_min:
+                total_min = min_val
+            ax.plot(x_values, sum_curve, label=f"Channel {active_channels[i] + 1}")
+        # Legend will be created at figure level after all plotting is complete
+
+    if total_min == float("inf") or total_max == 0:
+        total_min = 1
+        total_max = 1
     ax.set_ylim(total_min * 0.99, total_max * 1.01)
-    ax.set_xlim(0, laser_period)
-    ax.legend()
+    ax.set_xlim(0, laser_period if laser_period else max(x_values))
     # Phasors plots
-    for i, (channel, harmonics) in enumerate(phasors_data.items(), start=1):
-        row = i // max_channels_per_row
-        col = i % max_channels_per_row
+    # I plot phasors partono dalla seconda riga (row=1), la prima è la spectroscopy (row=0)
+    for i, (channel, harmonics) in enumerate(phasors_data.items()):
+        row = (i // ncol) + 1  # +1 per saltare la riga spectroscopy
+        col = i % ncol
         ax = axs[row, col]
         x = np.linspace(0, 1, 1000)
         y = np.sqrt(0.5**2 - (x - 0.5) ** 2)
@@ -221,57 +271,201 @@ def plot_phasors_data(
             if selected_harmonic is not None and harmonic != selected_harmonic:
                 continue  # Skip non-selected harmonics
             if values:
-                g_values, s_values = zip(*values)
-                g_values = np.array(g_values)
-                s_values = np.array(s_values)
-                mask = (np.abs(g_values) < 1e9) & (np.abs(s_values) < 1e9)
-                g_values = g_values[mask]
-                s_values = s_values[mask]
-                ax.scatter(
-                    g_values,
-                    s_values,
-                    label=f"Harmonic: {harmonic}",
-                    zorder=2,
-                    color="#00FFFF",
-                )
-                mean_g = np.mean(g_values)
-                mean_s = np.mean(s_values)
-                freq_mhz = ns_to_mhz(laser_period)
-                tau_phi = (
-                    (1 / (2 * np.pi * freq_mhz * harmonic)) * (mean_s / mean_g) * 1e3
-                )
-                tau_m_component = (1 / (mean_s**2 + mean_g**2)) - 1
-                tau_m = (
-                    (
-                        (1 / (2 * np.pi * freq_mhz * harmonic))
-                        * np.sqrt(tau_m_component)
-                        * 1e3
+                # values can be (g, s) or (g, s, file_name)
+                entries = []
+                for v in values:
+                    try:
+                        g_val = v[0]
+                        s_val = v[1]
+                        file_val = v[2] if len(v) > 2 else None
+                    except Exception:
+                        # unexpected shape, skip
+                        continue
+                    entries.append((g_val, s_val, file_val))
+
+                # group points by file name (basename). Use a fallback key for points without file info
+                groups = {}
+                for g_val, s_val, f_val in entries:
+                    key = os.path.basename(str(f_val)) if f_val else "__combined__"
+                    groups.setdefault(key, []).append((g_val, s_val))
+
+                # prepare colors for files using the same palette as the app if available
+                try:
+                    from core.phasors_controller import PhasorsController
+
+                    def _file_color(idx):
+                        return PhasorsController.get_color_for_file_index(idx)
+
+                    color_map = [_file_color(i) for i in range(max(1, len(groups)))]
+                except Exception:
+                    color_map = plt.cm.tab10(np.linspace(0, 1, max(1, len(groups))))
+
+                # collect all g/s for computing overall mean and per-group means
+                all_g = []
+                all_s = []
+                mean_handles = []
+                mean_labels = []
+                from matplotlib.lines import Line2D
+                for idx, (fname, pts) in enumerate(groups.items()):
+                    g_vals = np.array([p[0] for p in pts])
+                    s_vals = np.array([p[1] for p in pts])
+                    mask = (np.abs(g_vals) < 1e9) & (np.abs(s_vals) < 1e9)
+                    g_vals = g_vals[mask]
+                    s_vals = s_vals[mask]
+                    if g_vals.size == 0:
+                        continue
+                    all_g.extend(g_vals.tolist())
+                    all_s.extend(s_vals.tolist())
+                    if fname == "__combined__":
+                        label = f"Harmonic: {harmonic}"
+                        color = "#00FFFF"
+                    else:
+                        label = fname
+                        color = color_map[idx % len(color_map)]
+                    ax.scatter(
+                        g_vals,
+                        s_vals,
+                        label=label,
+                        zorder=2,
+                        color=color,
+                        alpha=0.8,
                     )
-                    if tau_m_component >= 0
-                    else None
+                    # Per-group mean
+                    mean_g = np.mean(g_vals)
+                    mean_s = np.mean(s_vals)
+                    freq_mhz = ns_to_mhz(laser_period)
+                    tau_phi = (
+                        (1 / (2 * np.pi * freq_mhz * harmonic)) * (mean_s / mean_g) * 1e3
+                    )
+                    tau_m_component = (1 / (mean_s**2 + mean_g**2)) - 1
+                    tau_m = (
+                        (
+                            (1 / (2 * np.pi * freq_mhz * harmonic))
+                            * np.sqrt(tau_m_component)
+                            * 1e3
+                        )
+                        if tau_m_component >= 0
+                        else None
+                    )
+                    mean_label = f"G (mean): {round(mean_g, 2)}; S (mean): {round(mean_s, 2)}; τϕ={round(tau_phi, 2)} ns"
+                    if tau_m is not None:
+                        mean_label += f"; τm={round(tau_m, 2)} ns"
+                    ax.scatter(
+                        mean_g,
+                        mean_s,
+                        color="#0066CC",
+                        marker="x",
+                        s=100,
+                        zorder=3
+                    )
+                    mean_handles.append(Line2D(
+                        [],
+                        [],
+                        color=color,
+                        marker="x",
+                        linestyle="None",
+                        markersize=8,
+                        label=mean_label,
+                    ))
+                    mean_labels.append(mean_label)
+
+                color_handles, color_labels = ax.get_legend_handles_labels()
+                n_labels = len(color_labels)
+                if n_labels == 3:
+                    ncol = 2
+                elif n_labels >= 4:
+                    ncol = min(3, n_labels // 2)
+                else:
+                    ncol = n_labels
+                color_legend = ax.legend(
+                    color_handles,
+                    color_labels,
+                    loc="upper center",
+                    bbox_to_anchor=(0.5, -0.18),
+                    ncol=ncol,
+                    fontsize="small"
                 )
-                mean_label = f"G (mean): {round(mean_g, 2)}; S (mean): {round(mean_s, 2)}; τϕ={round(tau_phi, 2)} ns"
-                if tau_m is not None:
-                    mean_label += f"; τm={round(tau_m, 2)} ns"
-                ax.scatter(
-                    mean_g,
-                    mean_s,
-                    color="#FF0000",
-                    marker="x",
-                    s=100,
-                    zorder=3,
-                    label=mean_label,
-                )
-        ax.legend(fontsize="small")
-        ax.set_title(f"Phasor - Channel {channel + 1}")
+                ax.add_artist(color_legend)
+
+                # Second legend for means below the first
+                if mean_handles:
+                    n_mean_labels = len(mean_labels)
+                    if n_mean_labels <= 2:
+                        ncol_mean = n_mean_labels
+                    else:
+                        ncol_mean = 2
+                    mean_legend = ax.legend(
+                        mean_handles,
+                        mean_labels,
+                        loc="upper center",
+                        bbox_to_anchor=(0.5, -0.35),
+                        ncol=ncol_mean,
+                        fontsize="small"
+                    )
+                    ax.add_artist(mean_legend)
+
+        ax.set_title(f"Phasor (harmonic {selected_harmonic})")
         ax.set_xlabel("G")
         ax.set_ylabel("S")
         ax.grid(True)
-    for i in range(num_channels + 1, (num_rows + 1) * max_channels_per_row):
-        row = i // max_channels_per_row
-        col = i % max_channels_per_row
-        fig.delaxes(axs[row, col])
-    plt.tight_layout(pad=4.0, w_pad=4.0, h_pad=4.0)
+    axs_flat = axs.flatten()
+    for i in range(num_channels + 1, (nrow + 1) * ncol):
+        if i < len(axs_flat):
+            axs_flat[i].axis("off")
+    
+    # Use a more aggressive approach to ensure complete removal
+    legends_removed = 0
+    while fig.legends:
+        fig.legends[0].remove()
+        legends_removed += 1
+    
+    # Clear the figure's legend list completely
+    fig.legends.clear()
+    
+    if show_file_legend and per_file_spectroscopy and spectroscopy_files_info:
+        from matplotlib.lines import Line2D
+        legend_handles = []
+        
+        for idx, file_info in enumerate(spectroscopy_files_info):
+            file_name = os.path.basename(file_info.get("file_path", f"file{idx}"))
+            
+            # Calculate time and curves info
+            times = file_info.get("times", [])
+            channels_curves = file_info.get("channels_curves", {})
+            
+            # Calculate total curves and time
+            total_curves = 0
+            for ch_curves in channels_curves.values():
+                if isinstance(ch_curves, (list, np.ndarray)):
+                    total_curves += len(ch_curves)
+            
+            time_s = round(times[-1], 2) if times and len(times) > 0 else 0
+            
+            # Format file name with metadata
+            if time_s > 0 or total_curves > 0:
+                file_label = f"{file_name} (time: {time_s}s, curves: {total_curves})"
+            else:
+                file_label = file_name
+            
+            # Get consistent colors from the app if available, fallback to matplotlib colors
+            try:
+                from core.phasors_controller import PhasorsController
+                color = PhasorsController.get_color_for_file_index(idx)
+            except Exception:
+                color = plt.cm.tab10(idx / max(1, len(spectroscopy_files_info) - 1))
+            
+            legend_handles.append(Line2D([], [], color=color, linewidth=3, label=file_label))
+        
+        new_legend = fig.legend(
+            handles=legend_handles,
+            loc="upper center", 
+            bbox_to_anchor=(0.5, 0.98),
+            ncol=2,
+            fontsize=10,
+            frameon=True,
+            edgecolor="black",
+            framealpha=0.9
+        )
     if show_plot:
         plt.show()
     return fig

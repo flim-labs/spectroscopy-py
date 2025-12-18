@@ -242,7 +242,6 @@ class ReadAcquireModeButton(QWidget):
         if self.app.tab_selected == s.TAB_PHASORS:          
             channels = self.app.selected_channels or []
             self.app.plots_to_show = channels[:4]
-            print("self.app.plots_to_show", self.app.plots_to_show)
             self.app.settings.setValue(
                 s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
             )
@@ -378,6 +377,11 @@ class ExportPlotImageButton(QWidget):
                 spectroscopy_times,
                 spectroscopy_curves,
             ) = ReadData.prepare_phasors_data_for_export_img(self.app)
+            spectroscopy_files_info = None
+            ph_spectroscopy_data = self.app.reader_data.get("phasors", {}).get("data", {}).get("spectroscopy_data", {})
+            if isinstance(ph_spectroscopy_data, dict) and "files_data" in ph_spectroscopy_data:
+                spectroscopy_files_info = ph_spectroscopy_data.get("files_data", [])
+
             plot = plot_phasors_data(
                 phasors_data,
                 laser_period,
@@ -386,6 +390,9 @@ class ExportPlotImageButton(QWidget):
                 spectroscopy_curves,
                 self.app.phasors_harmonic_selected,
                 show_plot=False,
+                per_file_spectroscopy=bool(spectroscopy_files_info),
+                spectroscopy_files_info=spectroscopy_files_info,
+                show_file_legend=True,
             )
             ReadData.save_plot_image(plot)
         if self.app.tab_selected == s.TAB_FITTING:
