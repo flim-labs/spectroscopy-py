@@ -370,7 +370,7 @@ class ReadData:
             return None, None
 
         try:
-            with open(file_name, "r", encoding="utf-8") as f:
+            with open(file_name, "r") as f:
                 data = json.load(f)
                 return file_name, data
         except json.JSONDecodeError:
