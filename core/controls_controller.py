@@ -1041,7 +1041,6 @@ class ControlsController:
             app: The main application instance.
             harmonics (int): The number of harmonics to display.
         """
-        print(f"[SHOW_HARMONIC_SELECTOR] Called with harmonics={harmonics}")
         if harmonics > 1:
             app.control_inputs[s.HARMONIC_SELECTOR].show()
             app.control_inputs[s.HARMONIC_SELECTOR_LABEL].show()
@@ -1049,24 +1048,18 @@ class ControlsController:
                 int(app.control_inputs[s.HARMONIC_SELECTOR].itemText(index))
                 for index in range(app.control_inputs[s.HARMONIC_SELECTOR].count())
             ]
-            print(f"[SHOW_HARMONIC_SELECTOR] Current items: {selector_harmonics}")
-            print(f"[SHOW_HARMONIC_SELECTOR] Settings harmonic value: {app.control_inputs[s.SETTINGS_HARMONIC].value()}")
-            print(f"[SHOW_HARMONIC_SELECTOR] acquire_read_mode: {app.acquire_read_mode}")
             if (
                 len(selector_harmonics)
                 != app.control_inputs[s.SETTINGS_HARMONIC].value()
                 or app.acquire_read_mode == "read"
             ):
                 # clear the items
-                print(f"[SHOW_HARMONIC_SELECTOR] Clearing and adding {harmonics} items")
                 app.control_inputs[s.HARMONIC_SELECTOR].clear()
                 for i in range(harmonics):
                     app.control_inputs[s.HARMONIC_SELECTOR].addItem(str(i + 1))
-                    print(f"[SHOW_HARMONIC_SELECTOR] Added item: {i + 1}")
             app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(
                 app.phasors_harmonic_selected - 1
             )
-            print(f"[SHOW_HARMONIC_SELECTOR] Set current index to {app.phasors_harmonic_selected - 1}")
 
     @staticmethod
     def hide_harmonic_selector(app):

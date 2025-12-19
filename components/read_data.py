@@ -563,7 +563,7 @@ class ReadData:
                 PhasorsController.draw_points_in_phasors(app, 0, harmonic, values)
             app.all_phasors_points[0][harmonic].extend(values)       
         PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
-        #PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)       
+        PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)       
         #for i, channel_index in enumerate(app.plots_to_show):
             #PhasorsController.draw_lifetime_points_in_phasors(
                 #app,
