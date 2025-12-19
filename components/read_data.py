@@ -444,6 +444,19 @@ class ReadData:
                     harmonics_values.append(max(h))
             max_harmonic = max(harmonics_values)
             
+            # Plot spectroscopy decay curves if multi-file data available
+            spectroscopy_data = app.reader_data["phasors"]["data"]["spectroscopy_data"]
+            if "files_data" in spectroscopy_data and len(spectroscopy_data["files_data"]) > 0:
+                # Get channels from first file's metadata
+                channels = spectroscopy_metadata[0]["channels"] if len(spectroscopy_metadata) > 0 else []
+                ReadData.plot_spectroscopy_data(
+                    app,
+                    None,  # times not used in multi-file mode
+                    None,  # channels_curves not used in multi-file mode
+                    laser_period_ns,
+                    channels,
+                )
+            
             phasors_data = app.reader_data["phasors"]["data"]["phasors_data"]
             grouped_data = ReadData.group_phasors_data_without_channels(phasors_data)
             ReadData.plot_phasors_data(app, grouped_data, max_harmonic, laser_period_ns)
@@ -456,25 +469,59 @@ class ReadData:
 
         Args:
             app: The main application instance.
-            times (list): A list of timestamps for the measurements.
-            channels_curves (dict): A dictionary of decay curve data per channel.
+            times (list): A list of timestamps for the measurements (unused in multi-file mode).
+            channels_curves (dict): A dictionary of decay curve data per channel (unused in multi-file mode).
             laser_period_ns (float): The laser period in nanoseconds.
             metadata_channels (list): A list of active channel indices from metadata.
         """
+        import pyqtgraph as pg
         from core.plots_controller import PlotsController
-        num_bins = 256
-        x_values = np.linspace(0, laser_period_ns, num_bins) / 1_000
-        for channel, curves in channels_curves.items():
-            if metadata_channels[channel] in app.plots_to_show:
-                y_values = np.sum(curves, axis=0)
-                if app.tab_selected != s.TAB_PHASORS:
-                    app.cached_decay_values[app.tab_selected][
-                        metadata_channels[channel]
-                    ] = y_values
-                PlotsController.update_plots(
-                    app,
-                    metadata_channels[channel], x_values, y_values, reader_mode=True
-                )
+        from core.phasors_controller import PhasorsController
+        
+        # Check if we're in phasors read mode with multi-file data
+        spectroscopy_data = app.reader_data["phasors"]["data"]["spectroscopy_data"]
+        is_multi_file = "files_data" in spectroscopy_data
+        
+        if is_multi_file and app.tab_selected == s.TAB_PHASORS:
+            # Multi-file mode: plot each file's curve with a different color
+            files_data = spectroscopy_data["files_data"]
+            num_bins = 256
+            frequency_mhz = ns_to_mhz(laser_period_ns)
+            period_ns = 1_000 / frequency_mhz if frequency_mhz != 0.0 else laser_period_ns
+            x_values = np.linspace(0, period_ns, num_bins)
+                        
+            # Clear decay widgets first
+            for ch in app.plots_to_show:
+                if ch in app.decay_widgets:
+                    app.decay_widgets[ch].clear()
+            
+            # Plot each file's data with its own color
+            for file_idx, file_data in enumerate(files_data):
+                file_channels_curves = file_data["channels_curves"]
+                color = PhasorsController.get_color_for_file_index(file_idx)
+                                
+                for channel, curves in file_channels_curves.items():
+                    if channel in app.plots_to_show:
+                        y_values = np.sum(curves, axis=0)
+                        
+                        # Plot with specific color for this file
+                        if channel in app.decay_widgets:
+                            pen = pg.mkPen(color=color, width=2)
+                            app.decay_widgets[channel].plot(x_values, y_values, pen=pen)
+        else:
+            # Single-file mode (original behavior)
+            num_bins = 256
+            x_values = np.linspace(0, laser_period_ns, num_bins) / 1_000
+            for channel, curves in channels_curves.items():
+                if metadata_channels[channel] in app.plots_to_show:
+                    y_values = np.sum(curves, axis=0)
+                    if app.tab_selected != s.TAB_PHASORS:
+                        app.cached_decay_values[app.tab_selected][
+                            metadata_channels[channel]
+                        ] = y_values
+                    PlotsController.update_plots(
+                        app, metadata_channels[channel], x_values, y_values, reader_mode=True
+                    )
 
     @staticmethod
     def group_phasors_data_without_channels(data):
@@ -558,20 +605,19 @@ class ReadData:
             app.harmonic_selector_shown = True
             ControlsController.show_harmonic_selector(app, harmonics)
         for harmonic, values in data.items():
-            print("harmonic", harmonic)
             if harmonic == 1:
                 PhasorsController.draw_points_in_phasors(app, 0, harmonic, values)
             app.all_phasors_points[0][harmonic].extend(values)       
         PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
         PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)       
-        #for i, channel_index in enumerate(app.plots_to_show):
-            #PhasorsController.draw_lifetime_points_in_phasors(
-                #app,
-                #channel_index,
-                #app.phasors_harmonic_selected,
-                #laser_period_ns,
-                #frequency_mhz,
-            #)
+        for i, channel_index in enumerate(app.plots_to_show):
+            PhasorsController.draw_lifetime_points_in_phasors(
+                app,
+                channel_index,
+                app.phasors_harmonic_selected,
+                laser_period_ns,
+                frequency_mhz,
+            )
 
     @staticmethod
     def show_warning_message(title, message):
@@ -782,7 +828,10 @@ class ReadData:
             float: The frequency in MHz, or 0.0 if not found.
         """
         metadata = app.reader_data["phasors"]["phasors_metadata"]
-        if "laser_period_ns" in metadata:
+        # Handle both single file (dict) and multiple files (list of dicts)
+        if isinstance(metadata, list) and len(metadata) > 0:
+            metadata = metadata[0]  # Get first file's metadata
+        if isinstance(metadata, dict) and "laser_period_ns" in metadata:
             return ns_to_mhz(metadata["laser_period_ns"])
         return 0.0
 
@@ -797,7 +846,10 @@ class ReadData:
             float: The frequency in MHz, or 0.0 if not found.
         """
         metadata = app.reader_data["spectroscopy"]["metadata"]
-        if "laser_period_ns" in metadata:
+        # Handle both single file (dict) and multiple files (list of dicts)
+        if isinstance(metadata, list) and len(metadata) > 0:
+            metadata = metadata[0]  # Get first file's metadata
+        if isinstance(metadata, dict) and "laser_period_ns" in metadata:
             return ns_to_mhz(metadata["laser_period_ns"])
         return 0.0
 
@@ -1356,7 +1408,7 @@ class ReaderPopup(QWidget):
             self.app.reader_data[self.data_type]["data"]["phasors_data"] = {}
         elif file_type == "spectroscopy":
             self.app.reader_data[self.data_type]["spectroscopy_metadata"] = []
-            self.app.reader_data[self.data_type]["data"]["spectroscopy_data"] = {}
+            self.app.reader_data[self.data_type]["data"]["spectroscopy_data"] = {"files_data": []}
         
         # Set the files list
         self.app.reader_data[self.data_type]["files"][file_type] = valid_files
@@ -1382,13 +1434,14 @@ class ReaderPopup(QWidget):
                             # Accumula dati
                             if file_type == "spectroscopy":
                                 times, channels_curves = data
-                                if "times" not in self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]:
-                                    self.app.reader_data[self.data_type]["data"]["spectroscopy_data"] = {"times": [], "channels_curves": {}}
-                                self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]["times"].extend(times)
-                                for ch, curves in channels_curves.items():
-                                    if ch not in self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]["channels_curves"]:
-                                        self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]["channels_curves"][ch] = []
-                                    self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]["channels_curves"][ch].extend(curves)
+                                # Store per-file data as list instead of accumulating
+                                if "files_data" not in self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]:
+                                    self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]["files_data"] = []
+                                self.app.reader_data[self.data_type]["data"]["spectroscopy_data"]["files_data"].append({
+                                    "file_path": file_path,
+                                    "times": times,
+                                    "channels_curves": channels_curves
+                                })
                             elif file_type == "phasors":
                                 phasors_data = data[0]
                                 for ch, harmonics in phasors_data.items():
