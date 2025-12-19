@@ -163,10 +163,12 @@ class ControlsController:
         PhasorsController.initialize_phasor_feature(app)
         ControlsController._update_phasor_plots_for_harmonic(app)
 
-        if app.harmonic_selector_shown:
-            ControlsController.show_harmonic_selector(
-                app, app.control_inputs[s.SETTINGS_HARMONIC].value()
-            )
+        # Show harmonic selector if needed (for both acquire and read modes)
+        # In read mode with loaded files, always show if we have loaded_phasors_harmonics
+        if app.harmonic_selector_shown or (app.acquire_read_mode == "read" and hasattr(app, 'loaded_phasors_harmonics')):
+            # Use loaded_phasors_harmonics if available (from loaded file), otherwise use settings value
+            harmonics_count = getattr(app, 'loaded_phasors_harmonics', app.control_inputs[s.SETTINGS_HARMONIC].value())
+            ControlsController.show_harmonic_selector(app, harmonics_count)
 
         channels_grid = app.widgets[s.CHANNELS_GRID]
         plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
@@ -652,15 +654,16 @@ class ControlsController:
             )
 
         if not app.quantized_phasors:
-            # In phasors read mode, points are ONLY drawn by plot_phasors_data
-            # which has access to the file-specific data and colors
-            
-            # Only redraw in acquisition mode - never in phasors read mode
-            if not is_phasors_read_mode:
+            # In phasors read mode, clear old scatters and redraw for new harmonic
+            if is_phasors_read_mode:
+                PhasorsController.clear_phasors_file_scatters(app)
+                PhasorsController.clear_phasors_files_legend(app)
+                
+                # Redraw points for the selected harmonic (only in read mode)
                 for i, channel_index in enumerate(app.plots_to_show):
                     if (
-                        len(app.plots_to_show) <= len(app.all_phasors_points)
-                        and channel_index in app.all_phasors_points
+                        channel_index < len(app.all_phasors_points)
+                        and app.harmonic_selector_value in app.all_phasors_points[channel_index]
                     ):
                         PhasorsController.draw_points_in_phasors(
                             app,
@@ -1038,6 +1041,7 @@ class ControlsController:
             app: The main application instance.
             harmonics (int): The number of harmonics to display.
         """
+        print(f"[SHOW_HARMONIC_SELECTOR] Called with harmonics={harmonics}")
         if harmonics > 1:
             app.control_inputs[s.HARMONIC_SELECTOR].show()
             app.control_inputs[s.HARMONIC_SELECTOR_LABEL].show()
@@ -1045,18 +1049,24 @@ class ControlsController:
                 int(app.control_inputs[s.HARMONIC_SELECTOR].itemText(index))
                 for index in range(app.control_inputs[s.HARMONIC_SELECTOR].count())
             ]
+            print(f"[SHOW_HARMONIC_SELECTOR] Current items: {selector_harmonics}")
+            print(f"[SHOW_HARMONIC_SELECTOR] Settings harmonic value: {app.control_inputs[s.SETTINGS_HARMONIC].value()}")
+            print(f"[SHOW_HARMONIC_SELECTOR] acquire_read_mode: {app.acquire_read_mode}")
             if (
                 len(selector_harmonics)
                 != app.control_inputs[s.SETTINGS_HARMONIC].value()
                 or app.acquire_read_mode == "read"
             ):
                 # clear the items
+                print(f"[SHOW_HARMONIC_SELECTOR] Clearing and adding {harmonics} items")
                 app.control_inputs[s.HARMONIC_SELECTOR].clear()
                 for i in range(harmonics):
                     app.control_inputs[s.HARMONIC_SELECTOR].addItem(str(i + 1))
+                    print(f"[SHOW_HARMONIC_SELECTOR] Added item: {i + 1}")
             app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(
                 app.phasors_harmonic_selected - 1
             )
+            print(f"[SHOW_HARMONIC_SELECTOR] Set current index to {app.phasors_harmonic_selected - 1}")
 
     @staticmethod
     def hide_harmonic_selector(app):

@@ -66,24 +66,17 @@ class PhasorsController:
         """
         import os
         
-        print("LEGEND")
-        # Remove previous legend if exists
-        if hasattr(app, 'phasors_files_legend') and channel in app.phasors_files_legend:
-            print(f"[LEGEND] Removing existing legend for channel {channel}")
-            try:
-                app.phasors_widgets[channel].removeItem(app.phasors_files_legend[channel])
-                print(f"[LEGEND] Legend removed successfully")
-            except Exception as e:
-                print(f"[LEGEND] Error removing legend: {e}")
-        else:
-            print(f"[LEGEND] No existing legend found for channel {channel}")
-        
-        # Check if plot widget already has a legend
-        if hasattr(app.phasors_widgets[channel], 'legend') and app.phasors_widgets[channel].legend is not None:
-            print(f"[LEGEND] WARNING: Plot widget already has a legend object!")
-        
         if not file_order:
             return
+        
+        # Access the PlotItem to check for existing legend
+        plot_item = app.phasors_widgets[channel].getPlotItem()
+        if hasattr(plot_item, 'legend') and plot_item.legend is not None:
+            try:
+                plot_item.removeItem(plot_item.legend)
+                plot_item.legend = None
+            except Exception:
+                pass
         
         # Create legend items
         legend_items = []
@@ -356,7 +349,18 @@ class PhasorsController:
                     except Exception:
                         pass
             app.phasors_files_legend.clear()
-
+        
+        # Also clear the plot item's internal legend reference
+        for channel in app.phasors_widgets:
+            try:
+                plot_item = app.phasors_widgets[channel].getPlotItem()
+                if hasattr(plot_item, 'legend') and plot_item.legend is not None:
+                    plot_item.removeItem(plot_item.legend)
+                    plot_item.legend = None
+            except Exception:
+                pass
+        
+    
     @staticmethod
     def calculate_phasors_points_mean(app, channel_index, harmonic):
         """

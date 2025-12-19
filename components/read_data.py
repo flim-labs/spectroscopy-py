@@ -551,6 +551,9 @@ class ReadData:
         frequency_mhz = ns_to_mhz(laser_period_ns)
         app.all_phasors_points = PhasorsController.get_empty_phasors_points()       
         app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
+        # Store the number of harmonics for later use when switching modes
+        app.loaded_phasors_harmonics = harmonics
+        
         if harmonics > 1:
             app.harmonic_selector_shown = True
             ControlsController.show_harmonic_selector(app, harmonics)
@@ -559,7 +562,7 @@ class ReadData:
             if harmonic == 1:
                 PhasorsController.draw_points_in_phasors(app, 0, harmonic, values)
             app.all_phasors_points[0][harmonic].extend(values)       
-        #PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
+        PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
         #PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)       
         #for i, channel_index in enumerate(app.plots_to_show):
             #PhasorsController.draw_lifetime_points_in_phasors(
