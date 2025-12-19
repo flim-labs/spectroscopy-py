@@ -681,6 +681,7 @@ class ControlsController:
         PhasorsController.generate_phasors_cluster_center(
             app, app.harmonic_selector_value
         )
+        PhasorsController.hide_phasors_legends(app)
         PhasorsController.generate_phasors_legend(app, app.harmonic_selector_value)
 
         for i, channel_index in enumerate(app.plots_to_show):

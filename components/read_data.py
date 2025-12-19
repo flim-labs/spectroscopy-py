@@ -370,7 +370,7 @@ class ReadData:
             return None, None
 
         try:
-            with open(file_name, "r") as f:
+            with open(file_name, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return file_name, data
         except json.JSONDecodeError:
@@ -510,8 +510,6 @@ class ReadData:
                             app.decay_widgets[channel].plot(x_values, y_values, pen=pen)
         else:
             # Single-file mode (original behavior)
-            num_bins = 256
-            x_values = np.linspace(0, laser_period_ns, num_bins) / 1_000
             for channel, curves in channels_curves.items():
                 if metadata_channels[channel] in app.plots_to_show:
                     y_values = np.sum(curves, axis=0)
@@ -519,6 +517,9 @@ class ReadData:
                         app.cached_decay_values[app.tab_selected][
                             metadata_channels[channel]
                         ] = y_values
+                    # Get x values from the existing plot instead of recalculating
+                    decay_curve = app.decay_curves[app.tab_selected][metadata_channels[channel]]
+                    x_values, _ = decay_curve.getData()
                     PlotsController.update_plots(
                         app, metadata_channels[channel], x_values, y_values, reader_mode=True
                     )
@@ -596,20 +597,33 @@ class ReadData:
         from core.controls_controller import ControlsController
         from core.phasors_controller import PhasorsController
         frequency_mhz = ns_to_mhz(laser_period_ns)
-        app.all_phasors_points = PhasorsController.get_empty_phasors_points()       
-        app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
-        # Store the number of harmonics for later use when switching modes
-        app.loaded_phasors_harmonics = harmonics
+        
+        # Clear previous phasors data before loading new files
+        PhasorsController.clear_phasors_file_scatters(app)
+        PhasorsController.clear_phasors_files_legend(app)
+        PhasorsController.hide_phasors_legends(app)
+        
+        # Reset all_phasors_points
+        app.all_phasors_points = PhasorsController.get_empty_phasors_points()
+        
+        # Populate all_phasors_points BEFORE resetting harmonic selector
+        # to ensure _update_phasor_plots_for_harmonic has data to work with
+        for harmonic, values in data.items():
+            app.all_phasors_points[0][harmonic].extend(values)
         
         if harmonics > 1:
             app.harmonic_selector_shown = True
             ControlsController.show_harmonic_selector(app, harmonics)
-        for harmonic, values in data.items():
-            if harmonic == 1:
-                PhasorsController.draw_points_in_phasors(app, 0, harmonic, values)
-            app.all_phasors_points[0][harmonic].extend(values)       
+        
+        # Now reset harmonic selector (this will trigger _update_phasor_plots_for_harmonic)
+        # which will handle drawing points and generating legends
+        app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
+        # Store the number of harmonics for later use when switching modes
+        app.loaded_phasors_harmonics = harmonics
+        
         PhasorsController.generate_phasors_cluster_center(app, app.phasors_harmonic_selected)
-        PhasorsController.generate_phasors_legend(app, app.phasors_harmonic_selected)       
+        # Note: draw_points_in_phasors and generate_phasors_legend are called by 
+        # _update_phasor_plots_for_harmonic which is triggered when harmonic selector is reset
         for i, channel_index in enumerate(app.plots_to_show):
             PhasorsController.draw_lifetime_points_in_phasors(
                 app,
@@ -850,7 +864,12 @@ class ReadData:
         if isinstance(metadata, list) and len(metadata) > 0:
             metadata = metadata[0]  # Get first file's metadata
         if isinstance(metadata, dict) and "laser_period_ns" in metadata:
-            return ns_to_mhz(metadata["laser_period_ns"])
+            laser_period_ns = metadata["laser_period_ns"]
+            # If the value is > 1000, it's likely in picoseconds, convert to ns
+            if laser_period_ns > 1000:
+                laser_period_ns = laser_period_ns / 1000.0
+            freq = ns_to_mhz(laser_period_ns)
+            return freq
         return 0.0
 
     @staticmethod
@@ -912,14 +931,29 @@ class ReadData:
             tuple: A tuple containing all necessary data for plotting.
         """
         phasors_data = app.reader_data["phasors"]["data"]["phasors_data"]
-        laser_period = app.reader_data["phasors"]["metadata"]["laser_period_ns"]
-        active_channels = app.reader_data["phasors"]["metadata"]["channels"]
-        spectroscopy_curves = app.reader_data["phasors"]["data"]["spectroscopy_data"][
-            "channels_curves"
-        ]
-        spectroscopy_times = app.reader_data["phasors"]["data"]["spectroscopy_data"][
-            "times"
-        ]
+        
+        # phasors metadata can be stored as a list (multi-file) or a dict (single file)
+        phasors_meta = app.reader_data["phasors"].get("phasors_metadata") or app.reader_data["phasors"].get("metadata")
+        if isinstance(phasors_meta, list):
+            meta = phasors_meta[0] if len(phasors_meta) > 0 else {}
+        elif isinstance(phasors_meta, dict):
+            meta = phasors_meta
+        else:
+            meta = {}
+
+        laser_period = meta.get("laser_period_ns", 0)
+        active_channels = meta.get("channels", [])
+
+        # spectroscopy data can be stored per-file under 'files_data' or as aggregated times/channels_curves
+        spectroscopy_section = app.reader_data["phasors"]["data"].get("spectroscopy_data", {})
+        if isinstance(spectroscopy_section, dict) and "files_data" in spectroscopy_section:
+            # multi-file mode: individual file infos will be passed separately when exporting
+            spectroscopy_curves = None
+            spectroscopy_times = None
+        else:
+            spectroscopy_curves = spectroscopy_section.get("channels_curves") if isinstance(spectroscopy_section, dict) else None
+            spectroscopy_times = spectroscopy_section.get("times") if isinstance(spectroscopy_section, dict) else None
+        
         return (
             phasors_data,
             laser_period,
@@ -1005,9 +1039,19 @@ class ReadDataControls:
         if app.acquire_read_mode == "read":
             ReadDataControls.handle_plots_config(app, file_type)
             PlotsController.clear_plots(app)
-            PlotsController.generate_plots(app, ReadData.get_frequency_mhz(app))
+            # First try to get frequency from already loaded data
+            freq = ReadData.get_frequency_mhz(app)
+            # Generate plots - if freq is 0, will use default
+            PlotsController.generate_plots(app, freq)
             ControlsController.toggle_intensities_widgets_visibility(app)
             ReadData.plot_data(app)
+            # If frequency was 0 before but now we have data, regenerate with correct frequency
+            new_freq = ReadData.get_frequency_mhz(app)
+            if freq == 0 and new_freq > 0:
+                PlotsController.clear_plots(app)
+                PlotsController.generate_plots(app, new_freq)
+                ControlsController.toggle_intensities_widgets_visibility(app)
+                ReadData.plot_data(app)
 
     @staticmethod
     def read_bin_metadata_enabled(app):
@@ -1507,6 +1551,7 @@ class ReaderPopup(QWidget):
     def on_plot_data_btn_clicked(self):
         """Handles the click event for the main 'Plot Data' or 'Fit Data' button."""
         from core.controls_controller import ControlsController
+        from core.plots_controller import PlotsController
         file_type = self.data_type
         if self.errors_in_data(file_type):
             return
@@ -1515,6 +1560,12 @@ class ReaderPopup(QWidget):
         if fitting_data and not spectroscopy_data:
            ControlsController.on_fit_btn_click(self.app)           
         else:
+            # Regenerate plots with correct frequency from loaded files
+            freq = ReadData.get_frequency_mhz(self.app)
+            if freq > 0:
+                PlotsController.clear_plots(self.app)
+                PlotsController.generate_plots(self.app, freq)
+                ControlsController.toggle_intensities_widgets_visibility(self.app)
             ReadData.plot_data(self.app)
         self.close()
 
