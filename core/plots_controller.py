@@ -192,7 +192,10 @@ class PlotsController:
         curve_widget = pg.PlotWidget()
         curve_widget.setLabel("left", "Photon counts", units="")
         curve_widget.setLabel("bottom", "Time", units="ns")
-        curve_widget.setTitle(f"Channel {channel + 1} decay")
+        if app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
+           curve_widget.setTitle(f"Decay") 
+        else:
+           curve_widget.setTitle(f"Channel {channel + 1} decay")
         curve_widget.setBackground("#0a0a0a")
         
         x, y = PlotsController.initialize_decay_curves(app, channel, frequency_mhz)
@@ -331,7 +334,7 @@ class PlotsController:
         phasors_widget.setLabel("left", "s", units="")
         phasors_widget.setLabel("bottom", "g", units="")
         if app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
-           phasors_widget.setTitle(f"phasors") 
+           phasors_widget.setTitle(f"Phasors") 
         else:
            phasors_widget.setTitle(f"Channel {channel + 1} phasors")
         PhasorsController.draw_semi_circle(phasors_widget)
