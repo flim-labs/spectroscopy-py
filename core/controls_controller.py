@@ -139,24 +139,27 @@ class ControlsController:
         """
         app.widgets[s.TIME_TAGGER_WIDGET].setVisible(False)
         ControlsController.fit_button_hide(app)
-        (
-            show_layout(app.control_inputs["phasors_resolution_container"])
-            if app.quantized_phasors
-            else hide_layout(app.control_inputs["phasors_resolution_container"])
-        )
-        show_layout(app.control_inputs["quantize_phasors_container"])
+        
+        if app.acquire_read_mode == "read":
+           app.control_inputs[s.LOAD_REF_BTN].hide()
+           hide_layout(app.control_inputs["phasors_resolution_container"])
+           hide_layout(app.control_inputs["quantize_phasors_container"])
+           ControlsController.on_quantize_phasors_changed(app, False)
+           app.settings.setValue(s.SETTINGS_QUANTIZE_PHASORS, False)
+        else:
+            app.control_inputs[s.LOAD_REF_BTN].show()
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
+            show_layout(app.control_inputs["quantize_phasors_container"])
+            if app.quantized_phasors :
+                show_layout(app.control_inputs["phasors_resolution_container"]) 
+      
         app.control_inputs["tau_label"].hide()
         app.control_inputs["tau"].hide()
         app.control_inputs["calibration"].hide()
         app.control_inputs["calibration_label"].hide()
         app.control_inputs[s.SETTINGS_HARMONIC].hide()
         app.control_inputs[s.SETTINGS_HARMONIC_LABEL].hide()
-        if app.acquire_read_mode == "read":
-            app.control_inputs[s.LOAD_REF_BTN].hide()
-        else:
-            app.control_inputs[s.LOAD_REF_BTN].show()
-            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
-
+        
         PhasorsController.initialize_phasor_feature(app)
         ControlsController._update_phasor_plots_for_harmonic(app)
 
