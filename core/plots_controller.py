@@ -330,7 +330,10 @@ class PlotsController:
         phasors_widget.setAspectLocked(True)
         phasors_widget.setLabel("left", "s", units="")
         phasors_widget.setLabel("bottom", "g", units="")
-        phasors_widget.setTitle(f"Channel {channel + 1} phasors")
+        if app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
+           phasors_widget.setTitle(f"phasors") 
+        else:
+           phasors_widget.setTitle(f"Channel {channel + 1} phasors")
         PhasorsController.draw_semi_circle(phasors_widget)
         app.phasors_charts[channel] = phasors_widget.plot([], [], pen=None, symbol="o", symbolPen="#1E90FF", symbolSize=1, symbolBrush="#1E90FF")
         app.phasors_widgets[channel] = phasors_widget
@@ -374,7 +377,10 @@ class PlotsController:
             app.grid_layout.addWidget(QWidget(), 0, 0)
             return
 
-        for i, channel in enumerate(app.plots_to_show):
+        plots_to_show = app.plots_to_show
+        print("plots to show", plots_to_show)
+              
+        for i, channel in enumerate(plots_to_show):
             plot_widget = None
             if app.tab_selected in [s.TAB_SPECTROSCOPY, s.TAB_FITTING]:
                 plot_widget = PlotsController._create_spectroscopy_plot_widget(app, channel, frequency_mhz)
@@ -383,7 +389,7 @@ class PlotsController:
 
             if plot_widget:
                 col_map = {1: 1, 2: 2, 3: 3}
-                col_length = col_map.get(len(app.plots_to_show), 2)
+                col_length = col_map.get(len(plots_to_show), 2)
                 plot_widget.setStyleSheet(GUIStyles.chart_wrapper_style())
                 app.grid_layout.addWidget(plot_widget, i // col_length, i % col_length)
             

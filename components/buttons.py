@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 import os
 from PyQt6.QtCore import QPropertyAnimation
 from PyQt6.QtWidgets import (
@@ -238,6 +239,13 @@ class ReadAcquireModeButton(QWidget):
         self.app.settings.setValue(
             s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
         )
+        if self.app.tab_selected == s.TAB_PHASORS:          
+            channels = self.app.selected_channels or []
+            self.app.plots_to_show = channels[:4]
+            print("self.app.plots_to_show", self.app.plots_to_show)
+            self.app.settings.setValue(
+                s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
+            )
         self.set_buttons_styles()
         self.app.reader_data = deepcopy(s.DEFAULT_READER_DATA)
         PlotsController.clear_plots(self.app)
@@ -264,6 +272,11 @@ class ReadAcquireModeButton(QWidget):
         self.app.acquire_read_mode = "read" if checked else "acquire"
         self.app.settings.setValue(
             s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
+        )
+        if self.app.tab_selected == s.TAB_PHASORS:
+            self.app.plots_to_show = [0]
+            self.app.settings.setValue(
+            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
         )
         self.set_buttons_styles()
         PlotsController.clear_plots(self.app)
