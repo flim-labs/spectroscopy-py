@@ -223,6 +223,70 @@ class ReadData:
             return None 
             
     @staticmethod
+    def read_multiple_json_data(window, app, tab_selected, file_type="laserblood_metadata"):
+        """Reads multiple JSON metadata files (max 4) in phasors/read mode.
+        
+        Args:
+            window: The parent window for the file dialog.
+            app: The main application instance.
+            tab_selected (str): The currently active tab identifier.
+            file_type (str): The type of JSON file (e.g., 'laserblood_metadata').
+            
+        Returns:
+            list: List of tuples (file_name, data) for each valid JSON file.
+        """
+        active_tab = ReadData.get_data_type(tab_selected)
+        
+        dialog = QFileDialog()
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+        
+        filter_pattern = "JSON files (*.json)"
+        dialog.setNameFilter(filter_pattern)
+        
+        file_names, _ = dialog.getOpenFileNames(
+            window,
+            f"Load multiple {file_type} files (max 4)",
+            "",
+            filter_pattern
+        )
+        
+        if not file_names:
+            return []
+            
+        if len(file_names) > 4:
+            ReadData.show_warning_message(
+                "Too many files", "You can select a maximum of 4 files. Only the first 4 will be loaded."
+            )
+            file_names = file_names[:4]
+        
+        # Validate and load each file
+        valid_results = []
+        invalid_count = 0
+        
+        for file_name in file_names:
+            if not file_name.endswith(".json"):
+                invalid_count += 1
+                continue
+                
+            try:
+                with open(file_name, "r") as f:
+                    data = json.load(f)
+                    valid_results.append((file_name, data))
+            except json.JSONDecodeError:
+                invalid_count += 1
+            except Exception as e:
+                invalid_count += 1
+        
+        if invalid_count > 0:
+            ReadData.show_warning_message(
+                "Invalid files",
+                f"{invalid_count} out of {len(file_names)} selected files could not be loaded."
+            )
+        
+        return valid_results
+    
+    @staticmethod
     def read_laserblood_metadata(window, app, tab_selected):
         """Reads LaserBlood-specific metadata from a JSON file.
 
@@ -997,15 +1061,6 @@ class ReadDataControls:
         app.control_inputs["tau"].setEnabled(not read_mode)
         app.control_inputs[s.SETTINGS_TIME_SPAN].setEnabled(not read_mode)
         app.control_inputs[s.SETTINGS_HARMONIC].setEnabled(not read_mode)
-        
-        # Handle N° Replicate visibility: hide in phasors tab (both read and acquire modes)
-        if app.tab_selected == s.TAB_PHASORS:
-            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(False)
-            app.control_inputs["replicates_label"].setVisible(False)
-        else:
-            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
-            app.control_inputs["replicates_label"].setVisible(True)
-        
         if app.tab_selected == s.TAB_PHASORS:
             app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode)
             if read_mode : 
@@ -1210,16 +1265,27 @@ class ReaderPopup(QWidget):
             load_file_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             GUIStyles.set_start_btn_style(load_file_btn)
             load_file_btn.setFixedHeight(36)
-            # Modifica: collega alla funzione specifica per phasors se siamo in PHASORS-READ
-            # ma solo per file binari (spectroscopy e phasors), non per laserblood_metadata
-            if self.data_type == "phasors" and file_type in ["spectroscopy", "phasors"]:
-                load_file_btn.clicked.connect(
-                    partial(self.on_load_file_btn_clicked_phasors, file_type)
-                )
+            # Route to appropriate handler based on data type and file type
+            if self.data_type == "phasors":
+                if file_type in ["spectroscopy", "phasors"]:
+                    # Binary files: multi-selection
+                    load_file_btn.clicked.connect(
+                        partial(self.on_load_file_btn_clicked_phasors, file_type)
+                    )
+                elif file_type == "laserblood_metadata":
+                    # Metadata files: multi-selection
+                    load_file_btn.clicked.connect(
+                        partial(self.on_load_file_btn_clicked_phasors_metadata, file_type)
+                    )
+                else:
+                    load_file_btn.clicked.connect(
+                        partial(self.on_load_file_btn_clicked, file_type)
+                    )
             else:
+                # Non-phasors tabs: single file selection
                 load_file_btn.clicked.connect(
                     partial(self.on_load_file_btn_clicked, file_type)
-            )
+                )
             control_row.addWidget(input)
             control_row.addWidget(load_file_btn)
             v_box.addWidget(input_desc)
@@ -1294,7 +1360,32 @@ class ReaderPopup(QWidget):
         plot_btn.setFixedHeight(40)
         plot_btn.setFixedWidth(200)
         plots_to_show = self.app.reader_data[self.data_type]["plots"]
-        plot_btn.setEnabled(len(plots_to_show) > 0)
+        
+        # Enable button based on data type
+        if self.data_type == "phasors":
+            # For phasors mode, check if required files are loaded
+            phasors_file = self.app.reader_data["phasors"]["files"]["phasors"]
+            spectroscopy_file = self.app.reader_data["phasors"]["files"]["spectroscopy"]
+            # Check if files are loaded (handle both string and list formats)
+            phasors_loaded = False
+            spectroscopy_loaded = False
+            
+            if isinstance(phasors_file, list):
+                phasors_loaded = len(phasors_file) > 0 and any(f.strip() for f in phasors_file if isinstance(f, str))
+            elif isinstance(phasors_file, str):
+                phasors_loaded = len(phasors_file.strip()) > 0
+                
+            if isinstance(spectroscopy_file, list):
+                spectroscopy_loaded = len(spectroscopy_file) > 0 and any(f.strip() for f in spectroscopy_file if isinstance(f, str))
+            elif isinstance(spectroscopy_file, str):
+                spectroscopy_loaded = len(spectroscopy_file.strip()) > 0
+            
+            should_enable = phasors_loaded and spectroscopy_loaded
+        else:
+            # For other modes, check if there are plots to show
+            should_enable = len(plots_to_show) > 0
+        
+        plot_btn.setEnabled(should_enable)
         plot_btn.clicked.connect(self.on_plot_data_btn_clicked)
         self.widgets["plot_btn"] = plot_btn
         row_btn.addStretch(1)
@@ -1362,16 +1453,9 @@ class ReaderPopup(QWidget):
         else:
             for checkbox in self.channels_checkboxes:
                 checkbox.setEnabled(True)
-        if "plot_btn" in self.widgets:            
+        if "plot_btn" in self.widgets:
             plot_btn_enabled = len(self.app.plots_to_show) > 0
-            # If phasors tab is selected, both phasors and spectroscopy files must be loaded to be able to plot data
-            if self.data_type == "phasors":
-                phasors_file = self.app.reader_data["phasors"]["files"]["phasors"]
-                spectroscopy_file = self.app.reader_data["phasors"]["files"]["spectroscopy"]
-                both_files_present = len(phasors_file.strip()) > 0 and len(spectroscopy_file.strip()) > 0
-                self.widgets["plot_btn"].setEnabled(both_files_present and plot_btn_enabled)  
-            else:                 
-                self.widgets["plot_btn"].setEnabled(plot_btn_enabled)
+            self.widgets["plot_btn"].setEnabled(plot_btn_enabled)
         PlotsController.clear_plots(self.app)
         PlotsController.generate_plots(self.app)
         ControlsController.toggle_intensities_widgets_visibility(self.app)
@@ -1446,6 +1530,41 @@ class ReaderPopup(QWidget):
             else: 
                 self.widgets["plot_btn"].setText("PLOT DATA") 
             
+    
+    def on_load_file_btn_clicked_phasors_metadata(self, file_type="laserblood_metadata"):
+        """Handle metadata file load button click for phasors mode with multi-selection.
+        
+        Args:
+            file_type (str): Type of metadata file to load.
+        """
+        from core.controls_controller import ControlsController
+        
+        valid_results = ReadData.read_multiple_json_data(self, self.app, self.tab_selected, file_type)
+        
+        if not valid_results:
+            return
+        
+        # Store metadata files as list
+        self.app.reader_data[self.data_type]["files"][file_type] = [result[0] for result in valid_results]
+        
+        # Store metadata data (list of metadata dicts)
+        self.app.reader_data[self.data_type][file_type] = [result[1] for result in valid_results]
+        
+        # Update UI
+        widget_key = f"load_{file_type}_input"
+        if len(valid_results) == 1:
+            display_text = valid_results[0][0]
+        else:
+            display_text = f"{len(valid_results)} file(s) loaded"
+        
+        self.widgets[widget_key].setText(display_text)
+        
+        # Update visibility
+        bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(self.app)
+        self.app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
+        self.app.control_inputs[s.EXPORT_PLOT_IMG_BUTTON].setVisible(
+            bin_metadata_btn_visible and self.tab_selected != s.TAB_FITTING
+        )
     
     def on_load_file_btn_clicked_phasors(self, file_type):
         """
@@ -1675,6 +1794,29 @@ class ReaderMetadataPopup(QWidget):
         h_box.addWidget(key_label)
         h_box.addWidget(value_label)
         return h_box
+    
+    def create_compact_label_row(self, key, value, key_bg_color, value_bg_color):
+        """Create a compact label row for grid layout.
+        
+        Args:
+            key (str): The key (label).
+            value (str): The value.
+            key_bg_color (str): The background color for the key label.
+            value_bg_color (str): The background color for the value label.
+
+        Returns:
+            QHBoxLayout: The layout containing the compact styled labels.
+        """
+        h_box = QHBoxLayout()
+        h_box.setContentsMargins(0, 0, 0, 0)
+        h_box.setSpacing(0)
+        key_label = QLabel(key)
+        key_label.setStyleSheet(f"min-width: 210px; font-size: 12px; border: 1px solid {key_bg_color}; padding: 6px; color: white; background-color: {key_bg_color}")
+        value_label = QLabel(value)
+        value_label.setStyleSheet(f"min-width: 500px; font-size: 12px; border: 1px solid {value_bg_color}; padding: 6px; color: white")
+        h_box.addWidget(key_label, 0)
+        h_box.addWidget(value_label, 1)
+        return h_box
 
     def create_metadata_table(self):
         """Creates the main layout displaying all metadata in a table-like format.
@@ -1683,8 +1825,8 @@ class ReaderMetadataPopup(QWidget):
             QVBoxLayout: The layout containing all metadata rows.
         """
         from core.phasors_controller import PhasorsController
+        from PyQt6.QtCore import Qt
         import os
-        from PyQt6.QtWidgets import QGridLayout
         
         metadata_keys = self.get_metadata_keys_dict()
         v_box = QVBoxLayout()
@@ -1694,72 +1836,97 @@ class ReaderMetadataPopup(QWidget):
         if self.data_type == "phasors":
             spectroscopy_metadata = self.app.reader_data[self.data_type].get("spectroscopy_metadata", [])
             spectroscopy_files = self.app.reader_data[self.data_type]["files"]["spectroscopy"]
+            phasors_metadata = self.app.reader_data[self.data_type].get("phasors_metadata", [])
+            phasors_files = self.app.reader_data[self.data_type]["files"]["phasors"]
+            laserblood_metadata = self.app.reader_data[self.data_type].get("laserblood_metadata", [])
+            laserblood_files = self.app.reader_data[self.data_type]["files"].get("laserblood_metadata", [])
             
             # Convert to list if needed
             if isinstance(spectroscopy_files, str):
                 spectroscopy_files = [spectroscopy_files] if spectroscopy_files.strip() else []
+            if isinstance(phasors_files, str):
+                phasors_files = [phasors_files] if phasors_files.strip() else []
+            if isinstance(laserblood_files, str):
+                laserblood_files = [laserblood_files] if laserblood_files.strip() else []
             
-            # Create grid layout (2 columns)
-            grid_layout = QGridLayout()
-            grid_layout.setSpacing(20)
-            
-            # Show each spectroscopy file with its metadata
-            for file_idx, metadata in enumerate(spectroscopy_metadata):
-                row = file_idx // 2
-                col = file_idx % 2
+            # SPECTROSCOPY FILES SECTION - GRID LAYOUT
+            if len(spectroscopy_files) > 0 or (isinstance(laserblood_metadata, list) and len(laserblood_metadata) > 0):
+                from PyQt6.QtWidgets import QGridLayout
                 
-                # Get color for this file
-                color = PhasorsController.get_color_for_file_index(file_idx)
-                file_path = spectroscopy_files[file_idx] if file_idx < len(spectroscopy_files) else f"file_{file_idx}"
-                file_name = os.path.basename(file_path) if isinstance(file_path, str) else file_path
+                spectroscopy_title = QLabel("PHASORS FILE METADATA")
+                spectroscopy_title.setStyleSheet("font-size: 16px; font-family: 'Montserrat'; margin-bottom: 10px;")
+                v_box.addWidget(spectroscopy_title)
+                v_box.addSpacing(10)
                 
-                # Create container for this file
-                file_container = QVBoxLayout()
-                file_container.setSpacing(0)
+                # Create grid layout (2 columns)
+                grid_layout = QGridLayout()
+                grid_layout.setSpacing(12)
+                grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
                 
-                def get_key_label_style(bg_color):
-                    return f"width: 120px; font-size: 12px; border: 1px solid {bg_color}; padding: 6px; color: white; background-color: {bg_color}"
+                # Determine how many files to show (max of spectroscopy files and laserblood metadata)
+                max_files = max(len(spectroscopy_metadata), len(laserblood_metadata) if isinstance(laserblood_metadata, list) else 0)
                 
-                def get_value_label_style(bg_color):
-                    return f"width: 280px; font-size: 12px; border: 1px solid {bg_color}; padding: 6px; color: white"
+                for file_idx in range(max_files):
+                    row = file_idx // 2
+                    col = file_idx % 2
+                    
+                    color = PhasorsController.get_color_for_file_index(file_idx)
+                    # Prefer spectroscopy (.bin) file name, not laserblood (.json) file name
+                    if file_idx < len(spectroscopy_files) and spectroscopy_files[file_idx]:
+                        file_path = spectroscopy_files[file_idx]
+                        file_name = os.path.basename(file_path) if isinstance(file_path, str) else str(file_path)
+                    elif file_idx < len(laserblood_files) and laserblood_files[file_idx]:
+                        file_path = laserblood_files[file_idx]
+                        file_name = os.path.basename(file_path) if isinstance(file_path, str) else str(file_path)
+                    else:
+                        file_name = f"Metadata {file_idx + 1}"
+                    
+                    # Create content widget for this file's metadata
+                    content_widget = QWidget()
+                    file_layout = QVBoxLayout()
+                    file_layout.setSpacing(0)
+                    file_layout.setContentsMargins(0, 0, 0, 0)
+                    
+                    # File row with colored header
+                    file_info_row = self.create_compact_label_row("File", file_name, color, color)
+                    file_layout.addLayout(file_info_row)
+                    
+                    # LaserBlood metadata if available
+                    if isinstance(laserblood_metadata, list) and file_idx < len(laserblood_metadata) and laserblood_metadata[file_idx]:
+                        parsed_laserblood = self.parse_laserblood_metadata(laserblood_metadata[file_idx])
+                        for key, value in parsed_laserblood.items():
+                            metadata_row = self.create_compact_label_row(key, str(value), "#11468F", "#11468F")
+                            file_layout.addLayout(metadata_row)
+                    
+                    # Standard metadata (only if spectroscopy metadata exists for this index)
+                    if file_idx < len(spectroscopy_metadata):
+                        metadata = spectroscopy_metadata[file_idx]
+                        for key, label in metadata_keys.items():
+                            if key in metadata:
+                                metadata_value = str(metadata[key])
+                                if key == "channels":
+                                    metadata_value = ", ".join(["Channel " + str(ch + 1) for ch in metadata[key]])
+                                if key == "acquisition_time_millis":
+                                    metadata_value = str(metadata[key] / 1000)
+                                metadata_row = self.create_compact_label_row(label, metadata_value, "#11468F", "#11468F")
+                                file_layout.addLayout(metadata_row)
+                    
+                    content_widget.setLayout(file_layout)
+                    
+                    # Create scroll area for this file
+                    from PyQt6.QtWidgets import QScrollArea
+                    scroll_area = QScrollArea()
+                    scroll_area.setWidget(content_widget)
+                    scroll_area.setWidgetResizable(False)
+                    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+                    scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+                    scroll_area.setMinimumWidth(750)
+                    scroll_area.setMaximumHeight(550)
+                    scroll_area.setStyleSheet("QScrollArea { border: none; }")
+                    
+                    grid_layout.addWidget(scroll_area, row, col, Qt.AlignmentFlag.AlignTop)
                 
-                # File row with colored header
-                h_box = QHBoxLayout()
-                h_box.setContentsMargins(0, 0, 0, 0)
-                h_box.setSpacing(0)
-                key_label = QLabel("File")
-                key_label.setStyleSheet(get_key_label_style(color))
-                value_label = QLabel(file_name)
-                value_label.setStyleSheet(get_value_label_style(color))
-                h_box.addWidget(key_label)
-                h_box.addWidget(value_label)
-                file_container.addLayout(h_box)
-                
-                # Metadata rows (blue)
-                for key, value in metadata_keys.items():
-                    if key in metadata:
-                        metadata_value = str(metadata[key])
-                        if key == "channels":
-                            metadata_value = ", ".join(
-                                ["Channel " + str(ch + 1) for ch in metadata[key]]
-                            )
-                        if key == "acquisition_time_millis":
-                            metadata_value = str(metadata[key] / 1000)
-                        h_box = QHBoxLayout()
-                        h_box.setContentsMargins(0, 0, 0, 0)
-                        h_box.setSpacing(0)
-                        key_label = QLabel(value)
-                        value_label = QLabel(metadata_value)
-                        key_label.setStyleSheet(get_key_label_style("#11468F"))
-                        value_label.setStyleSheet(get_value_label_style("#11468F"))
-                        h_box.addWidget(key_label)
-                        h_box.addWidget(value_label)
-                        file_container.addLayout(h_box)
-                
-                # Add file container to grid
-                grid_layout.addLayout(file_container, row, col)
-            
-            v_box.addLayout(grid_layout)
+                v_box.addLayout(grid_layout)
         else:
             # Original single-file behavior for Spectroscopy/Fitting tabs
             metadata = self.app.reader_data[self.data_type]["metadata"]
