@@ -73,6 +73,11 @@ class ControlsController:
         """
         app.widgets[s.TIME_TAGGER_WIDGET].setVisible(app.write_data_gui)
         ControlsController.fit_button_hide(app)
+        
+        # Show N° Replicate control in spectroscopy tab
+        app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
+        app.control_inputs["replicates_label"].setVisible(True)
+        
         ControlsController.hide_harmonic_selector(app)
         hide_layout(app.control_inputs["phasors_resolution_container"])
         hide_layout(app.control_inputs["quantize_phasors_container"])
@@ -111,6 +116,11 @@ class ControlsController:
             ControlsController.fit_button_show(app)
         else:
             ControlsController.fit_button_hide(app)
+        
+        # Show N° Replicate control in fitting tab
+        app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
+        app.control_inputs["replicates_label"].setVisible(True)
+        
         app.control_inputs[s.LOAD_REF_BTN].hide()
         ControlsController.hide_harmonic_selector(app)
         hide_layout(app.control_inputs["phasors_resolution_container"])
@@ -139,6 +149,14 @@ class ControlsController:
         """
         app.widgets[s.TIME_TAGGER_WIDGET].setVisible(False)
         ControlsController.fit_button_hide(app)
+        
+        # Hide N° Replicate control only in phasors read mode
+        if app.acquire_read_mode == "read":
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(False)
+            app.control_inputs["replicates_label"].setVisible(False)
+        else:
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
+            app.control_inputs["replicates_label"].setVisible(True)
         
         if app.acquire_read_mode == "read":
            app.control_inputs[s.LOAD_REF_BTN].hide()

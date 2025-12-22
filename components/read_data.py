@@ -997,6 +997,15 @@ class ReadDataControls:
         app.control_inputs["tau"].setEnabled(not read_mode)
         app.control_inputs[s.SETTINGS_TIME_SPAN].setEnabled(not read_mode)
         app.control_inputs[s.SETTINGS_HARMONIC].setEnabled(not read_mode)
+        
+        # Handle N° Replicate visibility: hide in phasors tab (both read and acquire modes)
+        if app.tab_selected == s.TAB_PHASORS:
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(False)
+            app.control_inputs["replicates_label"].setVisible(False)
+        else:
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
+            app.control_inputs["replicates_label"].setVisible(True)
+        
         if app.tab_selected == s.TAB_PHASORS:
             app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode)
             if read_mode : 
@@ -1828,14 +1837,14 @@ class SavePlotTask(QRunnable):
                 if not self.base_path.endswith(".png")
                 else self.base_path
             )
-            self.plot.savefig(png_path, format="png")
+            self.plot.savefig(png_path, format="png", bbox_inches='tight')
             # eps
             eps_path = (
                 f"{self.base_path}.eps"
                 if not self.base_path.endswith(".eps")
                 else self.base_path
             )
-            self.plot.savefig(eps_path, format="eps")
+            self.plot.savefig(eps_path, format="eps", bbox_inches='tight')
             plt.close(self.plot)
             self.signals.success.emit(
                 f"Plot images saved successfully as {png_path} and {eps_path}"

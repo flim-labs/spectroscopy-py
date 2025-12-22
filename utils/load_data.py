@@ -457,13 +457,14 @@ def plot_phasors_data(
         new_legend = fig.legend(
             handles=legend_handles,
             loc="upper center", 
-            bbox_to_anchor=(0.5, 0.98),
+            bbox_to_anchor=(0.5, 1.0),
             ncol=2,
             fontsize=10,
             frameon=True,
             edgecolor="black",
             framealpha=0.9
         )
+    fig.tight_layout(rect=[0, 0.05, 1, 0.96])
     if show_plot:
         plt.show()
     return fig
