@@ -574,6 +574,11 @@ class ReadData:
                             app.decay_widgets[channel].plot(x_values, y_values, pen=pen)
         else:
             # Single-file mode (original behavior)
+            num_bins = 256
+            frequency_mhz = ns_to_mhz(laser_period_ns)
+            period_ns = 1_000 / frequency_mhz if frequency_mhz != 0.0 else laser_period_ns
+            x_values = np.linspace(0, period_ns, num_bins)
+            
             for channel, curves in channels_curves.items():
                 if metadata_channels[channel] in app.plots_to_show:
                     y_values = np.sum(curves, axis=0)
@@ -581,9 +586,6 @@ class ReadData:
                         app.cached_decay_values[app.tab_selected][
                             metadata_channels[channel]
                         ] = y_values
-                    # Get x values from the existing plot instead of recalculating
-                    decay_curve = app.decay_curves[app.tab_selected][metadata_channels[channel]]
-                    x_values, _ = decay_curve.getData()
                     PlotsController.update_plots(
                         app, metadata_channels[channel], x_values, y_values, reader_mode=True
                     )
