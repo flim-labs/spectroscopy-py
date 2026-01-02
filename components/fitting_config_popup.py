@@ -396,6 +396,8 @@ class FittingDecayConfigPopup(QWidget):
         charts_layout.addLayout(warning_layout)
         # Fitted curve
         plot_widget = pg.PlotWidget()
+        plot_widget.setMinimumHeight(500)
+        plot_widget.setMaximumHeight(600)
         plot_widget.setBackground("#0a0a0a")
         plot_widget.setLabel("left", "Counts", color="white")
         plot_widget.setLabel("bottom", "Time", color="white")
@@ -426,14 +428,16 @@ class FittingDecayConfigPopup(QWidget):
             plot_widget.addItem(roi)
         # Residuals
         residuals_widget = pg.PlotWidget()
+        residuals_widget.setMinimumHeight(120)
+        residuals_widget.setMaximumHeight(150)
         residuals_widget.setBackground("#0a0a0a")
         residuals_widget.setLabel("left", "Residuals", color="white")
         residuals_widget.setLabel("bottom", "Time", color="white")
         residuals_widget.getAxis("left").setPen("white")
         residuals_widget.getAxis("bottom").setPen("white")
         residuals_widget.showGrid(x=True, y=True, alpha=0.3)
-        charts_layout.addWidget(plot_widget, stretch=3)
-        charts_layout.addWidget(residuals_widget, stretch=1)
+        charts_layout.addWidget(plot_widget)
+        charts_layout.addWidget(residuals_widget)
         container.addLayout(charts_layout, 11)
         layout.addLayout(container, stretch=2)
         fitted_params_text = QLabel("")
@@ -490,6 +494,11 @@ class FittingDecayConfigPopup(QWidget):
 
         axis = plot_widget.getAxis("left")
         axis.setTicks([y_ticks])
+        
+        if hasattr(plot_widget.plotItem, 'legend') and plot_widget.plotItem.legend is not None:
+            plot_widget.plotItem.legend.scene().removeItem(plot_widget.plotItem.legend)
+            plot_widget.plotItem.legend = None
+        
         plot_widget.clear()
         legend = plot_widget.addLegend(offset=(0, 20), labelTextSize='11pt')
         legend.setParent(plot_widget)
