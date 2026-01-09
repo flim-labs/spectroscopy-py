@@ -324,21 +324,45 @@ class ReadData:
 
     @staticmethod
     def read_fitting_data(window, app):
-        """Reads fitting results from a JSON file.
+        """Reads fitting results from JSON files (max 4 files).
 
         Args:
             window: The parent window for the file dialog.
             app: The main application instance.
         """
-        result = ReadData.read_json(window, "Fitting", "fitting_result")
-        if None in result:
+        dialog = QFileDialog()
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+        filter_pattern = "JSON files (*fitting_result*.json)"
+        dialog.setNameFilter(filter_pattern)
+        file_names, _ = dialog.getOpenFileNames(window, "Load fitting files (max 4)", "", filter_pattern)
+        
+        if not file_names:
             return
-        file_name, data = result
-        if data is not None:
-            active_channels = [item["channel"] for item in data]
-            app.reader_data["fitting"]["files"]["fitting"] = file_name
-            app.reader_data["fitting"]["data"]["fitting_data"] = data
-            app.reader_data["fitting"]["metadata"]["channels"] = active_channels
+        
+        if len(file_names) > 4:
+            ReadData.show_warning_message("Too many files", "You can select a maximum of 4 files. Only the first 4 will be loaded.")
+            file_names = file_names[:4]
+        
+        valid_data = []
+        all_channels = []
+        for file_name in file_names:
+            if not file_name.endswith(".json"):
+                continue
+            try:
+                with open(file_name, "r") as f:
+                    data = json.load(f)
+                    if data:
+                        valid_data.append({"file": file_name, "data": data, "channels": [item["channel"] for item in data]})
+                        all_channels.extend([item["channel"] for item in data])
+            except:
+                pass
+        
+        if valid_data:
+            app.reader_data["fitting"]["files"]["fitting"] = [item["file"] for item in valid_data]
+            app.reader_data["fitting"]["data"]["fitting_data"] = [item["data"] for item in valid_data]
+            app.reader_data["fitting"]["fitting_metadata"] = [item["channels"] for item in valid_data]
+            app.reader_data["fitting"]["metadata"]["channels"] = list(set(all_channels))
 
     @staticmethod
     def get_fitting_active_channels(app):
@@ -352,27 +376,128 @@ class ReadData:
         """
         data = app.reader_data["fitting"]["data"]["fitting_data"]
         if data:
-            return [item["channel"] for item in data]
+            if isinstance(data, list) and len(data) > 0:
+                all_channels = []
+                for file_data in data:
+                    all_channels.extend([item["channel"] for item in file_data])
+                return list(set(all_channels))
+            elif isinstance(data, dict):
+                return [item["channel"] for item in data]
         return []
 
 
     @staticmethod
     def preloaded_fitting_data(app):
         """Retrieves and parses preloaded fitting data if available.
+        
+        For multiple files, calculates the average of all channels per file.
 
         Args:
             app: The main application instance.
 
         Returns:
-            list or None: A list of parsed fitting results, or None if not available.
+            list or None: A list of averaged fitting results per file, or None if not available.
         """
-        fitting_file = app.reader_data["fitting"]["files"]["fitting"]
-        if len(fitting_file.strip()) > 0 and app.acquire_read_mode == "read":
-            fitting_results = app.reader_data["fitting"]["data"]["fitting_data"]
-            parsed_fitting_results = convert_json_serializable_item_into_np_fitting_result(fitting_results)
-            return parsed_fitting_results
-        else:
+        fitting_files = app.reader_data["fitting"]["files"]["fitting"]
+        has_files = (isinstance(fitting_files, list) and len(fitting_files) > 0) or (isinstance(fitting_files, str) and len(fitting_files.strip()) > 0)
+        if has_files and app.acquire_read_mode == "read":
+            fitting_data = app.reader_data["fitting"]["data"]["fitting_data"]
+            if isinstance(fitting_data, list) and len(fitting_data) > 0:
+                # Multiple files: calculate average of channels for each file
+                averaged_results = []
+                for file_index, file_data in enumerate(fitting_data):
+                    file_results = convert_json_serializable_item_into_np_fitting_result(file_data)
+                    if len(file_results) > 0:
+                        # Get file name from path
+                        file_name = os.path.basename(fitting_files[file_index]) if isinstance(fitting_files, list) else f"File {file_index + 1}"
+                        averaged_result = ReadData._average_channels_for_file(file_results, file_index, file_name)
+                        if averaged_result:
+                            averaged_results.append(averaged_result)
+                return averaged_results
+            else:
+                # Single file
+                results = convert_json_serializable_item_into_np_fitting_result(fitting_data)
+                # Add file_name and file_index to each result
+                if results:
+                    file_name = os.path.basename(fitting_files) if isinstance(fitting_files, str) else "File 1"
+                    for result in results:
+                        if "error" not in result:
+                            result["file_name"] = file_name
+                            result["file_index"] = 0
+                return results
+        return None
+
+    @staticmethod
+    def _average_channels_for_file(file_results, file_index, file_name=""):
+        """Calculates the average of all channels for a single fitting file.
+        
+        Args:
+            file_results (list): List of fitting results for all channels in a file.
+            file_index (int): Index of the file (for color assignment).
+            file_name (str): Name of the file.
+            
+        Returns:
+            dict: Averaged fitting result with file_index and file_name.
+        """
+        if not file_results or len(file_results) == 0:
             return None
+            
+        # Filter out results with errors
+        valid_results = [r for r in file_results if "error" not in r]
+        if not valid_results:
+            return None
+        
+        # Find minimum length to handle arrays of different sizes
+        min_len_y = min(len(r['y_data']) for r in valid_results)
+        min_len_fitted = min(len(r['fitted_values']) for r in valid_results)
+        min_len_residuals = min(len(r['residuals']) for r in valid_results)
+        min_len_x = min(len(r['x_values']) for r in valid_results)
+        min_len_t = min(len(r['t_data']) for r in valid_results)
+        
+        # Calculate averages with truncated arrays
+        avg_chi2 = np.mean([r['chi2'] for r in valid_results])
+        # Check if r2 exists in results (may not be present in older saved files)
+        avg_r2 = np.mean([r.get('r2', 0) for r in valid_results]) if all('r2' in r for r in valid_results) else 0
+        output_data = valid_results[0]['output_data']
+        model = valid_results[0]['model']
+        
+        # Build fitted_params_text like in fitting_utilities.py (without file name)
+        fitted_params_text = ""
+        
+        # Extract tau components from output_data
+        component_num = 1
+        while f'component_A{component_num}' in output_data:
+            comp = output_data[f'component_A{component_num}']
+            fitted_params_text += f'τ{component_num} = {comp["tau_ns"]:.4f} ns, {comp["percentage"]:.2%} of total\n'
+            component_num += 1
+        
+        # Add B component
+        if 'component_B' in output_data:
+            # Calculate B percentage (this is approximation from first result)
+            fitted_params_text += f'B component included\n'
+        
+        fitted_params_text += f'X² = {avg_chi2:.4f}\n'
+        fitted_params_text += f'Model = {model}\n'
+        fitted_params_text += f'R² = {avg_r2:.4f}\n'
+        
+        avg_result = {
+            'x_values': valid_results[0]['x_values'][:min_len_x],
+            't_data': valid_results[0]['t_data'][:min_len_t],
+            'y_data': np.mean([r['y_data'][:min_len_y] for r in valid_results], axis=0),
+            'fitted_values': np.mean([r['fitted_values'][:min_len_fitted] for r in valid_results], axis=0),
+            'residuals': np.mean([r['residuals'][:min_len_residuals] for r in valid_results], axis=0),
+            'fitted_params_text': fitted_params_text,
+            'output_data': output_data,
+            'scale_factor': np.mean([r['scale_factor'] for r in valid_results]),
+            'decay_start': valid_results[0]['decay_start'],
+            'channel': 0,
+            'chi2': avg_chi2,
+            'r2': avg_r2,
+            'model': model,
+            'file_index': file_index,
+            'file_name': file_name
+        }
+        return avg_result
 
     @staticmethod
     def are_spectroscopy_and_fitting_from_same_acquisition(app):
@@ -542,6 +667,11 @@ class ReadData:
         from core.plots_controller import PlotsController
         from core.phasors_controller import PhasorsController
         
+        # In FITTING READ mode, force plots_to_show to contain only first channel
+        if app.tab_selected == s.TAB_FITTING and app.acquire_read_mode == "read":
+            if len(metadata_channels) > 0:
+                app.plots_to_show = [metadata_channels[0]]
+        
         # Check if we're in phasors read mode with multi-file data
         spectroscopy_data = app.reader_data["phasors"]["data"]["spectroscopy_data"]
         is_multi_file = "files_data" in spectroscopy_data
@@ -579,16 +709,51 @@ class ReadData:
             period_ns = 1_000 / frequency_mhz if frequency_mhz != 0.0 else laser_period_ns
             x_values = np.linspace(0, period_ns, num_bins) if app.tab_selected == s.TAB_PHASORS else np.linspace(0, period_ns, num_bins) / 1_000
             
-            for channel, curves in channels_curves.items():
-                if metadata_channels[channel] in app.plots_to_show:
-                    y_values = np.sum(curves, axis=0)
-                    if app.tab_selected != s.TAB_PHASORS:
-                        app.cached_decay_values[app.tab_selected][
-                            metadata_channels[channel]
-                        ] = y_values
+            # In FITTING tab READ mode, calculate average of all channels and show single plot
+            if app.tab_selected == s.TAB_FITTING and app.acquire_read_mode == "read":
+                all_y_values = []
+                first_channel = None
+                
+                for channel, curves in channels_curves.items():
+                    if channel < len(metadata_channels) and metadata_channels[channel] in app.plots_to_show:
+                        y_values = np.sum(curves, axis=0)
+                        all_y_values.append(y_values)
+                        if first_channel is None:
+                            first_channel = metadata_channels[channel]
+                        # Cache individual channel values for fitting
+                        app.cached_decay_values[app.tab_selected][metadata_channels[channel]] = y_values
+                
+                # Calculate average and plot only on the first channel widget
+                if len(all_y_values) > 0 and first_channel is not None:
+                    y_avg = np.mean(all_y_values, axis=0)
                     PlotsController.update_plots(
-                        app, metadata_channels[channel], x_values, y_values, reader_mode=True
+                        app, first_channel, x_values, y_avg, reader_mode=True
                     )
+                    
+                    # Hide other channel plots by hiding their parent widgets
+                    for channel, curves in channels_curves.items():
+                        if channel < len(metadata_channels):
+                            ch = metadata_channels[channel]
+                            if ch != first_channel and ch in app.plots_to_show:
+                                # Hide the entire decay container widget for this channel
+                                if ch in app.decay_widgets:
+                                    parent_widget = app.decay_widgets[ch].parent()
+                                    if parent_widget is not None:
+                                        parent_widget.hide()
+                                    else:
+                                        app.decay_widgets[ch].hide()
+            else:
+                # Original behavior: plot each channel separately
+                for channel, curves in channels_curves.items():
+                    if channel < len(metadata_channels) and metadata_channels[channel] in app.plots_to_show:
+                        y_values = np.sum(curves, axis=0)
+                        if app.tab_selected != s.TAB_PHASORS:
+                            app.cached_decay_values[app.tab_selected][
+                                metadata_channels[channel]
+                            ] = y_values
+                        PlotsController.update_plots(
+                            app, metadata_channels[channel], x_values, y_values, reader_mode=True
+                        )
 
     @staticmethod
     def group_phasors_data_without_channels(data):
@@ -1052,7 +1217,13 @@ class ReadDataControls:
         app.control_inputs["read_bin_button"].setVisible(read_mode)
         app.control_inputs[s.EXPORT_PLOT_IMG_BUTTON].setVisible(
             bin_metadata_btn_visible and app.tab_selected != s.TAB_FITTING
-        ) 
+        )
+        
+        # Handle N° Replicate visibility for fitting tab
+        if app.tab_selected == s.TAB_FITTING:
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(not read_mode)
+            app.control_inputs["replicates_label"].setVisible(not read_mode)
+         
         app.widgets[s.TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
         app.widgets["collapse_button"].setVisible(not read_mode)
         app.control_inputs[s.SETTINGS_BIN_WIDTH].setEnabled(not read_mode)
@@ -1160,13 +1331,11 @@ class ReadDataControls:
         """
         tab_selected_fitting = app.tab_selected == s.TAB_FITTING
         read_mode = app.acquire_read_mode == "read"
-        fitting_file = app.reader_data["fitting"]["files"]["fitting"]
+        fitting_files = app.reader_data["fitting"]["files"]["fitting"]
         spectroscopy_file = app.reader_data["fitting"]["files"]["spectroscopy"]
-        fitting_file_exists = len(fitting_file.strip()) > 0
+        fitting_file_exists = (isinstance(fitting_files, list) and len(fitting_files) > 0) or (isinstance(fitting_files, str) and len(fitting_files.strip()) > 0)
         spectroscopy_file_exists = len(spectroscopy_file.strip()) > 0
-        return tab_selected_fitting and read_mode and (
-            fitting_file_exists or spectroscopy_file_exists
-        )
+        return tab_selected_fitting and read_mode and (fitting_file_exists or spectroscopy_file_exists)
 
 
 class ReaderPopup(QWidget):
@@ -1242,16 +1411,11 @@ class ReaderPopup(QWidget):
 
                 return callback
 
-            # Modifica: assicurati che display_text sia sempre una stringa
             display_text = ""
             if isinstance(file_path, list):
-                if len(file_path) == 1:
-                    display_text = file_path[0]  # Primo file come stringa
-                elif len(file_path) > 1:
-                    display_text = f"{len(file_path)} file(s) loaded"  # Riassunto come stringa
-                # Se vuota, lascia placeholder
+                display_text = file_path[0] if len(file_path) == 1 else f"{len(file_path)} file(s) loaded" if len(file_path) > 1 else ""
             else:
-                display_text = file_path  # Stringa esistente
+                display_text = file_path
             
             _, input = InputTextControl.setup(
                 label="",
@@ -1270,24 +1434,15 @@ class ReaderPopup(QWidget):
             # Route to appropriate handler based on data type and file type
             if self.data_type == "phasors":
                 if file_type in ["spectroscopy", "phasors"]:
-                    # Binary files: multi-selection
-                    load_file_btn.clicked.connect(
-                        partial(self.on_load_file_btn_clicked_phasors, file_type)
-                    )
+                    load_file_btn.clicked.connect(partial(self.on_load_file_btn_clicked_phasors, file_type))
                 elif file_type == "laserblood_metadata":
-                    # Metadata files: multi-selection
-                    load_file_btn.clicked.connect(
-                        partial(self.on_load_file_btn_clicked_phasors_metadata, file_type)
-                    )
+                    load_file_btn.clicked.connect(partial(self.on_load_file_btn_clicked_phasors_metadata, file_type))
                 else:
-                    load_file_btn.clicked.connect(
-                        partial(self.on_load_file_btn_clicked, file_type)
-                    )
+                    load_file_btn.clicked.connect(partial(self.on_load_file_btn_clicked, file_type))
+            elif self.data_type == "fitting" and file_type == "fitting":
+                load_file_btn.clicked.connect(partial(self.on_load_file_btn_clicked, file_type))
             else:
-                # Non-phasors tabs: single file selection
-                load_file_btn.clicked.connect(
-                    partial(self.on_load_file_btn_clicked, file_type)
-                )
+                load_file_btn.clicked.connect(partial(self.on_load_file_btn_clicked, file_type))
             control_row.addWidget(input)
             control_row.addWidget(load_file_btn)
             v_box.addWidget(input_desc)
@@ -1318,6 +1473,19 @@ class ReaderPopup(QWidget):
             ControlsController.set_selected_channels_to_settings(self.app)
             if len(plots_to_show) == 0:
                 plots_to_show = selected_channels[:2]
+            
+            # In FITTING READ mode, show only first channel (will display average)
+            if self.data_type == "fitting" and self.app.acquire_read_mode == "read":
+                plots_to_show = [selected_channels[0]] if len(selected_channels) > 0 else []
+                # Update plots_to_show before returning
+                self.app.plots_to_show = plots_to_show
+                self.app.settings.setValue(
+                    s.SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
+                )
+                self.app.reader_data[self.data_type]["plots"] = plots_to_show
+                # Don't show the channels selection section in fitting read mode
+                return None
+            
             self.app.plots_to_show = plots_to_show
             self.app.settings.setValue(
                 s.SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
@@ -1348,13 +1516,15 @@ class ReaderPopup(QWidget):
             QHBoxLayout: The layout with the main action button.
         """
         fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
-        spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]        
+        spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]
+        has_fitting = (isinstance(fitting_data, list) and len(fitting_data) > 0) or (isinstance(fitting_data, dict) and bool(fitting_data))
+        has_spectroscopy = bool(spectroscopy_data)
         row_btn = QHBoxLayout()
         # PLOT BTN
         plot_btn = QPushButton("")
-        if fitting_data and not spectroscopy_data:
-                plot_btn.setText("FIT DATA")   
-        else:     
+        if has_fitting and not has_spectroscopy:
+            plot_btn.setText("FIT DATA")
+        else:
             plot_btn.setText("PLOT DATA")     
         plot_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         plot_btn.setObjectName("btn")
@@ -1485,6 +1655,12 @@ class ReaderPopup(QWidget):
             PlotsController.generate_plots(self.app)
             ControlsController.toggle_intensities_widgets_visibility(self.app)
         self.app.reader_data[self.data_type]["files"][file_type] = text
+        
+        # Update FIT button visibility when files change
+        if ReadDataControls.fit_button_enabled(self.app):
+            ControlsController.fit_button_show(self.app)
+        else:
+            ControlsController.fit_button_hide(self.app)
    
         
 
@@ -1502,8 +1678,10 @@ class ReaderPopup(QWidget):
             ReadData.read_fitting_data(self, self.app)
         else:
             ReadData.read_bin_data(self, self.app, self.tab_selected, file_type)
-        file_name = self.app.reader_data[self.data_type]["files"][file_type]
-        if file_name is not None and len(file_name) > 0:
+        file_path = self.app.reader_data[self.data_type]["files"][file_type]
+        file_name = file_path[0] if isinstance(file_path, list) and len(file_path) > 0 else file_path if isinstance(file_path, str) else ""
+        has_files = (isinstance(file_path, list) and len(file_path) > 0) or (isinstance(file_path, str) and len(file_path) > 0)
+        if has_files:
             bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(
                 self.app
             )
@@ -1514,12 +1692,25 @@ class ReaderPopup(QWidget):
                 bin_metadata_btn_visible and self.tab_selected != s.TAB_FITTING
             )
             widget_key = f"load_{file_type}_input"
-            self.widgets[widget_key].setText(file_name)
+            display_name = f"{len(file_path)} file(s) loaded" if isinstance(file_path, list) and len(file_path) > 1 else file_name
+            self.widgets[widget_key].setText(display_name)
             if file_type != "laserblood_metadata":
                 self.remove_channels_grid()
                 channels_layout = self.init_channels_layout()
                 if channels_layout is not None:
                     self.layout.insertLayout(2, channels_layout)
+                # Update plot button enabled state after channels are initialized
+                if "plot_btn" in self.widgets:
+                    plots_to_show = self.app.reader_data[self.data_type]["plots"]
+                    if self.data_type == "phasors":
+                        phasors_file = self.app.reader_data["phasors"]["files"]["phasors"]
+                        spectroscopy_file = self.app.reader_data["phasors"]["files"]["spectroscopy"]
+                        phasors_loaded = (isinstance(phasors_file, list) and len(phasors_file) > 0) or (isinstance(phasors_file, str) and len(phasors_file.strip()) > 0)
+                        spectroscopy_loaded = (isinstance(spectroscopy_file, list) and len(spectroscopy_file) > 0) or (isinstance(spectroscopy_file, str) and len(spectroscopy_file.strip()) > 0)
+                        should_enable = phasors_loaded and spectroscopy_loaded
+                    else:
+                        should_enable = len(plots_to_show) > 0
+                    self.widgets["plot_btn"].setEnabled(should_enable)
         if ReadDataControls.fit_button_enabled(self.app):
             ControlsController.fit_button_show(self.app)
         else:
@@ -1527,9 +1718,11 @@ class ReaderPopup(QWidget):
         if "plot_btn" in self.widgets:
             fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
             spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]
-            if fitting_data and not spectroscopy_data:
-                self.widgets["plot_btn"].setText("FIT DATA")   
-            else: 
+            has_fitting = (isinstance(fitting_data, list) and len(fitting_data) > 0) or (isinstance(fitting_data, dict) and bool(fitting_data))
+            has_spectroscopy = bool(spectroscopy_data)
+            if has_fitting and not has_spectroscopy:
+                self.widgets["plot_btn"].setText("FIT DATA")
+            else:
                 self.widgets["plot_btn"].setText("PLOT DATA") 
             
     
@@ -1669,7 +1862,9 @@ class ReaderPopup(QWidget):
         if file_type == "fitting":
             file_fitting = self.app.reader_data["fitting"]["files"]["fitting"]
             file_spectroscopy = self.app.reader_data["fitting"]["files"]["spectroscopy"]
-            if len(file_fitting.strip()) == 0 or len(file_spectroscopy.strip()) == 0:
+            has_fitting = (isinstance(file_fitting, list) and len(file_fitting) > 0) or (isinstance(file_fitting, str) and len(file_fitting.strip()) > 0)
+            has_spectroscopy = len(file_spectroscopy.strip()) > 0
+            if not has_fitting or not has_spectroscopy:
                 return False
             channels = ReadData.get_fitting_active_channels(self.app)
             return not (ReadData.are_spectroscopy_and_fitting_from_same_acquisition(self.app))
@@ -1687,7 +1882,9 @@ class ReaderPopup(QWidget):
             return
         fitting_data = self.app.reader_data["fitting"]["data"]["fitting_data"]
         spectroscopy_data = self.app.reader_data["fitting"]["data"]["spectroscopy_data"]
-        if fitting_data and not spectroscopy_data:
+        has_fitting = (isinstance(fitting_data, list) and len(fitting_data) > 0) or (isinstance(fitting_data, dict) and bool(fitting_data))
+        has_spectroscopy = bool(spectroscopy_data)
+        if has_fitting and not has_spectroscopy:
            ControlsController.on_fit_btn_click(self.app)           
         else:
             # Regenerate plots with correct frequency from loaded files

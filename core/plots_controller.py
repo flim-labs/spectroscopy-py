@@ -192,10 +192,13 @@ class PlotsController:
         curve_widget = pg.PlotWidget()
         curve_widget.setLabel("left", "Photon counts", units="")
         curve_widget.setLabel("bottom", "Time", units="ns")
-        if app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
-           curve_widget.setTitle(f"Decay") 
+        # Show channel title only in ACQUIRE mode, hide in READ mode
+        if app.acquire_read_mode == "acquire":
+            curve_widget.setTitle(f"Channel {channel + 1} decay")
+        elif app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
+            curve_widget.setTitle(f"Decay")
         else:
-           curve_widget.setTitle(f"Channel {channel + 1} decay")
+            curve_widget.setTitle("")
         curve_widget.setBackground("#0a0a0a")
         
         x, y = PlotsController.initialize_decay_curves(app, channel, frequency_mhz)
@@ -381,6 +384,11 @@ class PlotsController:
             return
 
         plots_to_show = app.plots_to_show
+        
+        # In FITTING READ mode, force only first channel to be shown
+        if app.tab_selected == s.TAB_FITTING and app.acquire_read_mode == "read":
+            if len(plots_to_show) > 0:
+                plots_to_show = [plots_to_show[0]]
               
         for i, channel in enumerate(plots_to_show):
             plot_widget = None
@@ -459,7 +467,12 @@ class PlotsController:
                 0
                 if channel_index not in app.time_shifts
                 else app.time_shifts[channel_index]
-            ) if app.acquire_read_mode == "acquire" else 0     
+            ) if app.acquire_read_mode == "acquire" else 0
+        
+        # Check if decay_widget exists for this channel
+        if channel_index not in app.decay_widgets:
+            return
+            
         # Handle linear/logarithmic mode
         decay_widget = app.decay_widgets[channel_index]
         if (
@@ -499,11 +512,18 @@ class PlotsController:
         if not reader_mode:
             # Update intensity plots
             PlotsController.update_intensity_plots(app, channel_index, time_ns, curve)
-        decay_curve = app.decay_curves[app.tab_selected][channel_index]
-        if decay_curve is not None:
+        
+        # Get decay_curve if it exists, but don't fail if it doesn't (especially in reader_mode)
+        decay_curve = None
+        if (app.tab_selected in app.decay_curves and 
+            channel_index in app.decay_curves[app.tab_selected]):
+            decay_curve = app.decay_curves[app.tab_selected][channel_index]
+        
+        # In reader_mode with fitting data, we can proceed without decay_curve
+        if decay_curve is not None or (reader_mode and app.tab_selected == s.TAB_FITTING):
             if reader_mode:
                 x, y = time_ns, curve
-            else:
+            elif decay_curve is not None:
                 x, y = decay_curve.getData()
                 if app.tab_selected == s.TAB_PHASORS:
                     decay_curve.setData(x, curve + y)

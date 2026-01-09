@@ -159,42 +159,66 @@ class LinLogControl(QWidget):
         """
         from core.plots_controller import PlotsController
         if self.fitting_popup is not None:
-            plot_widget = self.fitting_popup.plot_widgets[self.channel]
-            plot_widget.clear()
-            counts_x = self.fitting_popup.cached_counts_data[self.channel]["x"]
-            counts_y = self.fitting_popup.cached_counts_data[self.channel]["y"]
-            fitted_x = self.fitting_popup.cached_fitted_data[self.channel]["x"]
-            fitted_y = self.fitting_popup.cached_fitted_data[self.channel]["y"]
+            # Update mode
             if state:
                 self.fitting_popup.lin_log_modes[self.channel] = "LIN"
-                _, y_data = LinLogControl.calculate_lin_mode(counts_y) 
-                y_ticks, fitted_data = LinLogControl.calculate_lin_mode(fitted_y)  
             else:
-                self.fitting_popup.lin_log_modes[self.channel] = "LOG"  
-                y_data, __, _ = LinLogControl.calculate_log_ticks(counts_y) 
-                fitted_data, y_ticks, _ = LinLogControl.calculate_log_ticks(fitted_y)    
-            axis = plot_widget.getAxis("left")    
-            axis.setTicks([y_ticks])
-            plot_widget.clear()
-            legend = plot_widget.addLegend(offset=(0, 20))
-            legend.setParent(plot_widget)
-            # Fitted Curve
-            plot_widget.plot(
-                counts_x,
-                y_data,
-                pen=None,
-                symbol="o",
-                symbolSize=4,
-                symbolBrush="#04f7ee",
-                name="Counts",
-            )
-            plot_widget.plot(
-                fitted_x,
-                fitted_data,
-                pen=pg.mkPen("#f72828", width=2),
-                name="Fitted curve",
-            )
-            PlotsController.set_plot_y_range(plot_widget)
+                self.fitting_popup.lin_log_modes[self.channel] = "LOG"
+            
+            # Check if multi-file mode
+            is_multi_file = (self.fitting_popup.read_mode and 
+                           self.fitting_popup.preloaded_fitting and 
+                           len(self.fitting_popup.preloaded_fitting) > 1 and 
+                           'file_index' in self.fitting_popup.preloaded_fitting[0])
+            
+            if is_multi_file:
+                # Multi-file: re-call update method
+                plot_widget = self.fitting_popup.plot_widgets[self.channel]
+                residuals_widget = self.fitting_popup.residuals_widgets[self.channel]
+                fitted_params_text = self.fitting_popup.fitted_params_labels[self.channel]
+                self.fitting_popup._update_plot_multiple_files(
+                    self.fitting_popup.preloaded_fitting, 
+                    self.channel, 
+                    plot_widget, 
+                    residuals_widget, 
+                    fitted_params_text
+                )
+            else:
+                # Single file: original logic
+                plot_widget = self.fitting_popup.plot_widgets[self.channel]
+                plot_widget.clear()
+                counts_x = self.fitting_popup.cached_counts_data[self.channel]["x"]
+                counts_y = self.fitting_popup.cached_counts_data[self.channel]["y"]
+                fitted_x = self.fitting_popup.cached_fitted_data[self.channel]["x"]
+                fitted_y = self.fitting_popup.cached_fitted_data[self.channel]["y"]
+                if state:
+                    _, y_data = LinLogControl.calculate_lin_mode(counts_y) 
+                    y_ticks, fitted_data = LinLogControl.calculate_lin_mode(fitted_y)  
+                else:
+                    y_data, __, _ = LinLogControl.calculate_log_ticks(counts_y) 
+                    fitted_data, y_ticks, _ = LinLogControl.calculate_log_ticks(fitted_y)    
+                axis = plot_widget.getAxis("left")    
+                axis.setTicks([y_ticks])
+                plot_widget.clear()
+                legend = plot_widget.addLegend(offset=(0, 20))
+                legend.setParent(plot_widget)
+                # Fitted Curve
+                plot_widget.plot(
+                    counts_x,
+                    y_data,
+                    pen=None,
+                    symbol="o",
+                    symbolSize=4,
+                    symbolBrush="#04f7ee",
+                    name="Counts",
+                )
+                plot_widget.plot(
+                    fitted_x,
+                    fitted_data,
+                    pen=pg.mkPen("#f72828", width=2),
+                    name="Fitted curve",
+                )
+                PlotsController.set_plot_y_range(plot_widget)
 
     @staticmethod
     def calculate_lin_mode(y_values):

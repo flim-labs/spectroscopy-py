@@ -117,9 +117,13 @@ class ControlsController:
         else:
             ControlsController.fit_button_hide(app)
         
-        # Show N° Replicate control in fitting tab
-        app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
-        app.control_inputs["replicates_label"].setVisible(True)
+        # Hide N° Replicate control in fitting read mode
+        if app.acquire_read_mode == "read":
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(False)
+            app.control_inputs["replicates_label"].setVisible(False)
+        else:
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
+            app.control_inputs["replicates_label"].setVisible(True)
         
         app.control_inputs[s.LOAD_REF_BTN].hide()
         ControlsController.hide_harmonic_selector(app)
@@ -208,6 +212,15 @@ class ControlsController:
         app.control_inputs[app.tab_selected].setChecked(False)
         app.tab_selected = tab_name
         app.control_inputs[app.tab_selected].setChecked(True)
+
+        # Close fitting popup when changing tabs
+        if hasattr(app, 'fitting_config_popup') and app.fitting_config_popup is not None:
+            try:
+                app.fitting_config_popup.close()
+                app.fitting_config_popup.deleteLater()
+                app.fitting_config_popup = None
+            except:
+                pass
 
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(app)
         app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
@@ -308,40 +321,61 @@ class ControlsController:
         time_shift = 0
         frequency_mhz = ControlsController.get_frequency_mhz(app)
         laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
+        
+        preloaded_fitting_results = ReadData.preloaded_fitting_data(app)
+        has_multi_file_fitting = preloaded_fitting_results and any('file_index' in r for r in preloaded_fitting_results if "error" not in r)
+        
         if app.acquire_read_mode == "read":
             if app.reader_data["fitting"]["data"]["spectroscopy_data"]:
-                data, time_shift = (
-                    AcquisitionController.acquired_spectroscopy_data_to_fit(
-                        app, read=True
-                    )
-                )
-            else:
-                active_channels = ReadData.get_fitting_active_channels(app)
-                for channel in active_channels:
+                if has_multi_file_fitting:
+                    # Multi-file comparison: create single plot entry regardless of selected channels
+                    active_channels = ReadData.get_fitting_active_channels(app)
                     data.append(
                         {
                             "x": [0],
                             "y": [0],
                             "time_shift": 0,
-                            "title": "Channel " + str(channel + 1),
-                            "channel_index": channel,
+                            "title": "Multi-File Comparison",
+                            "channel_index": 0,
                         }
                     )
+                else:
+                    # Single file: create plot per channel
+                    data, time_shift = (
+                        AcquisitionController.acquired_spectroscopy_data_to_fit(
+                            app, read=True
+                        )
+                    )
+            else:
+                # In FITTING READ mode without spectroscopy data, create single plot
+                active_channels = ReadData.get_fitting_active_channels(app)
+                
+                # Create only one plot entry (will show fitting results for all channels averaged)
+                data.append(
+                    {
+                        "x": [0],
+                        "y": [0],
+                        "time_shift": 0,
+                        "title": f"Average of {len(active_channels)} channel(s)" if len(active_channels) > 1 else f"Channel {active_channels[0] + 1}" if len(active_channels) > 0 else "No data",
+                        "channel_index": 0,
+                    }
+                )
         else:
             data, time_shift = AcquisitionController.acquired_spectroscopy_data_to_fit(
                 app, read=False
             )
-        # check if every x len is the same as y len
-        if not all(len(data[0]["x"]) == len(data[i]["x"]) for i in range(1, len(data))):
-            BoxMessage.setup(
-                "Error",
-                "Different x-axis lengths detected. Please, check the data.",
-                QMessageBox.Icon.Warning,
-                GUIStyles.set_msg_box_style(),
-            )
-            return
-        preloaded_fitting_results = ReadData.preloaded_fitting_data(app)
+        
         read_mode = True if preloaded_fitting_results is not None else False
+        
+        # Close existing popup if it exists
+        if hasattr(app, 'fitting_config_popup') and app.fitting_config_popup is not None:
+            try:
+                app.fitting_config_popup.close()
+                app.fitting_config_popup.deleteLater()
+                app.fitting_config_popup = None
+            except:
+                pass
+        
         app.fitting_config_popup = FittingDecayConfigPopup(
             app,
             data,

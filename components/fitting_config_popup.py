@@ -110,6 +110,7 @@ class FittingDecayConfigPopup(QWidget):
         self.cut_data_y = {}
         self.cached_counts_data = {}
         self.cached_fitted_data = {}
+        self.file_colors = ['#f72828', '#00FF00', '#FFA500', '#FF00FF']  # Red, Green, Orange, Magenta
         self.initialize_dicts_for_plot_cached_data()
         # Create a scroll area for the plots
         self.scroll_area = QScrollArea()
@@ -123,8 +124,22 @@ class FittingDecayConfigPopup(QWidget):
         self.plot_layout.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
-        for index, data_point in enumerate(self.data):
-            self.display_plot(data_point["title"], data_point["channel_index"], index)
+        
+        # Check if we have multiple files with file_index (read mode only)
+        has_multiple_files = self.read_mode and self.preloaded_fitting and any('file_index' in r for r in self.preloaded_fitting if "error" not in r)
+        
+        if has_multiple_files:
+            # Create single plot for multiple files comparison
+            title = "Multi-File Comparison"
+            # Initialize cached data for channel 0
+            self.cached_counts_data[0] = {"y": [], "x": []}
+            self.cached_fitted_data[0] = {"y": [], "x": []}
+            self.display_plot(title, 0, 0)
+        else:
+            # Create plot for each channel (both acquire mode and single-file read mode)
+            for index, data_point in enumerate(self.data):
+                self.display_plot(data_point["title"], data_point["channel_index"], index)
+        
         if self.read_mode and self.preloaded_fitting:
             self.process_fitting_results(self.preloaded_fitting)
         self.scroll_widget.setLayout(self.plot_layout)
@@ -266,34 +281,109 @@ class FittingDecayConfigPopup(QWidget):
     def process_fitting_results(self, results):
         """
         Processes and displays the fitting results received from the worker.
+        Groups results by file_index if multiple files are loaded.
 
         Args:
             results (list): A list of result dictionaries from the fitting process.
         """
         self.fitting_results = results
+        
+        # Add file_name and file_index to results if not present
         for result in results:
-            if "error" in result:
-                title = (
-                    "Channel " + str(result["channel"] + 1) if "channel" in result else ""
-                )
-                self.display_error(result["error"], title)
+            if "error" not in result:
+                if "file_index" not in result:
+                    result["file_index"] = 0
+                if "file_name" not in result or result.get("file_name") == "File 1":
+                    # Try to get file name from reader_data
+                    fitting_files = self.app.reader_data.get("fitting", {}).get("files", {}).get("spectroscopy", "")
+                    if fitting_files:
+                        if isinstance(fitting_files, str):
+                            result["file_name"] = os.path.basename(fitting_files)
+                        elif isinstance(fitting_files, list) and len(fitting_files) > 0:
+                            file_idx = result.get("file_index", 0)
+                            if file_idx < len(fitting_files):
+                                result["file_name"] = os.path.basename(fitting_files[file_idx])
+                            else:
+                                result["file_name"] = os.path.basename(fitting_files[0])
+        
+        # Check if results have multiple different file_index values (true multi-file)
+        valid_results = [r for r in results if "error" not in r]
+        unique_file_indices = set(r.get('file_index', 0) for r in valid_results)
+        has_multiple_files = len(unique_file_indices) > 1
+        
+        # In READ mode with multiple channels from same file, we could average them
+        # But in ACQUIRE mode, we ALWAYS want separate plots per channel
+        has_multiple_channels_same_file = self.read_mode and len(valid_results) > 1 and len(unique_file_indices) == 1
+        
+        if has_multiple_files or has_multiple_channels_same_file:
+            # For multiple files OR multiple channels from same file (READ mode only), show aggregated result
+            if has_multiple_channels_same_file:
+                # Average the channels (READ mode only)
+                averaged_result = self._average_channels(valid_results)
+                if averaged_result and 0 in self.plot_widgets:
+                    self.update_plot(averaged_result, 0)
+                    # Store the averaged result for export instead of original results
+                    if self.save_plot_img:
+                        self.export_img_btn.set_data_to_save([averaged_result])
+                        self.export_img_btn.setVisible(True)
             else:
-                channel = next(
-                    (
-                        item["channel_index"]
-                        for item in self.data
-                        if item["channel_index"] == result["channel"]
-                    ),
-                    None,
-                )
-                if channel is not None:
-                    self.update_plot(result, channel)
+                # Multiple files case (READ mode)
+                if valid_results:
+                    # Check if channel 0 plot exists (should have been created in __init__ for multi-file mode)
+                    if 0 in self.plot_widgets:
+                        self.update_plot(valid_results, 0)
+                        # Set data for export
+                        if self.save_plot_img:
+                            self.export_img_btn.set_data_to_save(valid_results)
+                            self.export_img_btn.setVisible(True)
+                    else:
+                        # Fallback: display per-channel if channel 0 plot doesn't exist
+                        for result in valid_results:
+                            channel = next(
+                                (
+                                    item["channel_index"]
+                                    for item in self.data
+                                    if item["channel_index"] == result.get("channel", 0)
+                                ),
+                                None,
+                            )
+                            if channel is not None:
+                                self.update_plot(result, channel)
+        else:
+            # Original behavior for single file
+            for result in results:
+                if "error" in result:
+                    title = (
+                        "Channel " + str(result["channel"] + 1) if "channel" in result else ""
+                    )
+                    self.display_error(result["error"], title)
+                else:
+                    channel = next(
+                        (
+                            item["channel_index"]
+                            for item in self.data
+                            if item["channel_index"] == result["channel"]
+                        ),
+                        None,
+                    )
+                    # If channel not found in data (e.g., fitting only without spectroscopy),
+                    # use the channel from result directly if plot exists
+                    if channel is None:
+                        channel = result.get("channel", 0)
+                    
+                    if channel is not None and channel in self.plot_widgets:
+                        self.update_plot(result, channel)
+            
+            # Set export data for single file mode
+            if self.save_plot_img:
+                self.export_img_btn.set_data_to_save(results)
+                self.export_img_btn.setVisible(True)
+        
         # Hide roi checkboxes
         self.set_roi_checkboxes_visibility(False)
         LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, True)
-        if self.save_plot_img:
-            self.export_img_btn.set_data_to_save(results)
-            self.export_img_btn.setVisible(True)
+        # Note: export button visibility is now set inside the if/else branches above
+        # to ensure correct data is passed for export
 
     @pyqtSlot(list)
     def handle_fitting_done(self, results):
@@ -359,6 +449,8 @@ class FittingDecayConfigPopup(QWidget):
         chart_title.setStyleSheet(
             "color: #cecece; font-size: 18px; font-family: Montserrat; text-align: center;"
         )
+        # Show the channel title only in ACQUIRE mode, hide in READ mode
+        chart_title.setVisible(not self.read_mode)
         title_layout.addStretch()
         title_layout.addWidget(chart_title)
         if not (self.read_mode):
@@ -404,28 +496,36 @@ class FittingDecayConfigPopup(QWidget):
         plot_widget.getAxis("left").setPen("white")
         plot_widget.getAxis("bottom").setPen("white")
         plot_widget.showGrid(x=True, y=True, alpha=0.3)
-        margin = 0.5
-        plot_widget.setXRange(0 - margin, self.laser_period_ns + margin)
-        plot_widget.setLimits(xMin=0 - margin, xMax=self.laser_period_ns + margin)        
+        
+        # Don't set fixed limits for multi-file comparison in read mode
+        if not (self.read_mode and self.preloaded_fitting and any('file_index' in r for r in self.preloaded_fitting if "error" not in r)):
+            margin = 0.5
+            plot_widget.setXRange(0 - margin, self.laser_period_ns + margin)
+            plot_widget.setLimits(xMin=0 - margin, xMax=self.laser_period_ns + margin)
+        else:
+            # Auto-range for multi-file comparison
+            plot_widget.enableAutoRange()
+            
         if not (self.read_mode):
-            # Spectroscopy curve
-            x, y = self.display_spectroscopy_curve(plot_widget, channel)
-            # Roi selection
-            roi = pg.LinearRegionItem([2, 8])
-            result = self.get_saved_roi(channel)
-            if result is not None:
-                min_x, max_x = result
-                roi.setRegion([min_x, max_x])
-                self.set_roi_mask(roi, x, y, channel)
-            roi.setVisible(False)    
-            roi.sigRegionChanged.connect(
-                lambda: self.on_roi_selection_changed(roi, x, y, channel)
-            )
-            roi.sigRegionChangeFinished.connect(
-                lambda: self.limit_roi_bounds(roi)
-            )            
-            self.roi_items[channel] = roi
-            plot_widget.addItem(roi)
+            # Spectroscopy curve - skip for channel 0 (averaged/multi-file)
+            if channel != 0:
+                x, y = self.display_spectroscopy_curve(plot_widget, channel)
+                # Roi selection
+                roi = pg.LinearRegionItem([2, 8])
+                result = self.get_saved_roi(channel)
+                if result is not None:
+                    min_x, max_x = result
+                    roi.setRegion([min_x, max_x])
+                    self.set_roi_mask(roi, x, y, channel)
+                roi.setVisible(False)    
+                roi.sigRegionChanged.connect(
+                    lambda: self.on_roi_selection_changed(roi, x, y, channel)
+                )
+                roi.sigRegionChangeFinished.connect(
+                    lambda: self.limit_roi_bounds(roi)
+                )            
+                self.roi_items[channel] = roi
+                plot_widget.addItem(roi)
         # Residuals
         residuals_widget = pg.PlotWidget()
         residuals_widget.setMinimumHeight(120)
@@ -440,9 +540,41 @@ class FittingDecayConfigPopup(QWidget):
         charts_layout.addWidget(residuals_widget)
         container.addLayout(charts_layout, 11)
         layout.addLayout(container, stretch=2)
+        
+        # Container for fitted params (horizontal layout)
+        fitted_params_container = QWidget()
+        fitted_params_layout = QHBoxLayout(fitted_params_container)
+        fitted_params_layout.setContentsMargins(0, 0, 0, 0)
+        fitted_params_layout.setSpacing(20)
+        fitted_params_container.fitted_params_layout = fitted_params_layout  # Save reference
+        
+        # Store container reference for multi-file updates
+        if not hasattr(self, 'params_containers'):
+            self.params_containers = {}
+        self.params_containers[channel] = fitted_params_container
+        
+        # Create vertical container for single file: title on top, params below
+        single_file_container = QWidget()
+        single_file_vlayout = QVBoxLayout(single_file_container)
+        single_file_vlayout.setContentsMargins(0, 0, 0, 0)
+        single_file_vlayout.setSpacing(5)
+        
+        # Add "Fitted parameters:" title label
+        params_title = QLabel("Fitted parameters:")
+        params_title.setStyleSheet("color: #cecece; font-family: Montserrat; font-size: 16px;")
+        single_file_vlayout.addWidget(params_title)
+        
+        # Add single label for single file mode
         fitted_params_text = QLabel("")
         fitted_params_text.setStyleSheet("color: #cecece; font-family: Montserrat; font-size: 16px;")
-        charts_layout.addWidget(fitted_params_text)
+        single_file_vlayout.addWidget(fitted_params_text)
+        
+        fitted_params_layout.addWidget(single_file_container)
+        
+        # Hide the parameters container initially - show it only after fitting is done
+        fitted_params_container.setVisible(False)
+        
+        charts_layout.addWidget(fitted_params_container)
         charts_wrapper = QWidget()
         charts_wrapper.setContentsMargins(10, 10, 10, 10)
         charts_wrapper.setObjectName("chart_wrapper")
@@ -457,15 +589,42 @@ class FittingDecayConfigPopup(QWidget):
     def update_plot(self, result, channel):
         """
         Updates a channel's plot with the fitting results.
+        Supports multiple files with different colors.
 
         Args:
-            result (dict): The fitting result dictionary for the channel.
+            result (dict or list): Single fitting result or list of results from multiple files.
             channel (int): The channel index to update.
         """
         from core.plots_controller import PlotsController
+        
+        # Check if plot_widget exists for this channel
+        # If not found and channel is 0 (averaged data), try to use the first available plot
+        if channel not in self.plot_widgets:
+            if channel == 0 and len(self.plot_widgets) > 0:
+                # Use the first available plot widget (for averaged channels case)
+                channel = list(self.plot_widgets.keys())[0]
+            else:
+                print(f"Warning: No plot widget found for channel {channel}, skipping update")
+                return
+            
         plot_widget = self.plot_widgets[channel]
         residuals_widget = self.residuals_widgets[channel]
         fitted_params_text = self.fitted_params_labels[channel]
+        
+        # Handle multiple files
+        if isinstance(result, list):
+            self._update_plot_multiple_files(result, channel, plot_widget, residuals_widget, fitted_params_text)
+        else:
+            self._update_plot_single_file(result, channel, plot_widget, residuals_widget, fitted_params_text)
+    
+    def _update_plot_single_file(self, result, channel, plot_widget, residuals_widget, fitted_params_text):
+        """Updates plot with single file data."""
+        from core.plots_controller import PlotsController
+        
+        # Show the fitted parameters container now that we have results
+        if channel in self.params_containers:
+            self.params_containers[channel].setVisible(True)
+        
         truncated_x_values = result["x_values"][result["decay_start"] :]
         # Cache y values to handle lin/log change
         self.cached_counts_data[channel]["y"] = (
@@ -475,7 +634,10 @@ class FittingDecayConfigPopup(QWidget):
         self.cached_fitted_data[channel]["y"] = np.array(
             result["fitted_values"] * result["scale_factor"]
         )
-        self.cached_fitted_data[channel]["x"] = truncated_x_values
+        # IMPORTANT: Use result["t_data"] as X for fitted curve, not truncated_x_values
+        # This matches the logic from main branch
+        self.cached_fitted_data[channel]["x"] = result["t_data"]
+        
         # Retrieve Y values based on active lin/log mode
         if channel not in self.lin_log_modes or self.lin_log_modes[channel] == "LIN":
             _, y_data = LinLogControl.calculate_lin_mode(
@@ -500,35 +662,304 @@ class FittingDecayConfigPopup(QWidget):
             plot_widget.plotItem.legend = None
         
         plot_widget.clear()
+        
         legend = plot_widget.addLegend(offset=(0, 20), labelTextSize='11pt')
         legend.setParent(plot_widget)
-        # Fitted Curve
+        
+        # Get file name for legend
+        file_index = result.get('file_index', 0)
+        file_name = result.get('file_name', f'File {file_index + 1}')
+        color = self.file_colors[file_index % len(self.file_colors)]
+        
+        # Ensure arrays have matching lengths
+        min_len = min(len(truncated_x_values), len(y_data))
+        truncated_x_values = truncated_x_values[:min_len]
+        y_data = y_data[:min_len]
+        
+        # For fitted data, use t_data directly (matches main branch logic)
+        # No need to adjust length - fitted_data already matches t_data from fitting
+        
+        # Plot Counts (points)
         plot_widget.plot(
             truncated_x_values,
             y_data,
             pen=None,
             symbol="o",
             symbolSize=4,
-            symbolBrush="#04f7ee",
-            name="Counts",
+            symbolBrush=color,
+            name="Counts"
         )
+        
+        # Plot Fitted curve (line) - use result["t_data"] as X
         plot_widget.plot(
             result["t_data"],
             fitted_data,
-            pen=pg.mkPen("#f72828", width=2),
-            name="Fitted curve",
+            pen=pg.mkPen(color, width=2),
+            name="Fitted curve"
         )
+        
+        # Add single legend entry for this file with colored indicator (only in read mode)
+        if self.read_mode:
+            legend_item = pg.PlotDataItem(pen=pg.mkPen(color, width=10))
+            legend.addItem(legend_item, file_name)
+        
         PlotsController.set_plot_y_range(plot_widget)
         # Residuals
-        residuals = result["residuals"]
+        residuals = np.array(result["residuals"])
+        # Ensure residuals match truncated_x_values length
+        residuals_min_len = min(len(truncated_x_values), len(residuals))
         residuals_widget.clear()
         residuals_widget.plot(
-            truncated_x_values, residuals, pen=pg.mkPen("#1E90FF", width=2)
+            truncated_x_values[:residuals_min_len], residuals[:residuals_min_len], pen=pg.mkPen("#1E90FF", width=2)
         )
         residuals_widget.addLine(y=0, pen=pg.mkPen("w", style=Qt.PenStyle.DashLine))
-        if len(fitted_params_text.text()) > 55:
+        if len(result["fitted_params_text"]) > 55:
             fitted_params_text.setWordWrap(True)
-        fitted_params_text.setText(result["fitted_params_text"])
+        # Remove "Fitted parameters:\n" from the beginning since there's already a title label
+        params_text_clean = result["fitted_params_text"].replace("Fitted parameters:\n", "", 1)
+        fitted_params_text.setText(params_text_clean)
+    
+    def _update_plot_multiple_files(self, results, channel, plot_widget, residuals_widget, fitted_params_text):
+        """Updates plot with multiple file data using different colors."""
+        from core.plots_controller import PlotsController
+        
+        # Show the fitted parameters container now that we have results
+        if channel in self.params_containers:
+            self.params_containers[channel].setVisible(True)
+        
+        if hasattr(plot_widget.plotItem, 'legend') and plot_widget.plotItem.legend is not None:
+            plot_widget.plotItem.legend.scene().removeItem(plot_widget.plotItem.legend)
+            plot_widget.plotItem.legend = None
+        
+        plot_widget.clear()
+        legend = plot_widget.addLegend(offset=(0, 20), labelTextSize='11pt')
+        legend.setParent(plot_widget)
+        
+        # Add global legend entries to explain symbols
+        legend_counts = pg.PlotDataItem(pen=None, symbol='o', symbolSize=6, symbolBrush='white')
+        legend.addItem(legend_counts, "Counts")
+        legend_fitted = pg.PlotDataItem(pen=pg.mkPen('white', width=2))
+        legend.addItem(legend_fitted, "Fitted curve")
+        
+        all_y_data = []
+        all_fitted_data = []
+        
+        for idx, result in enumerate(results):
+            file_index = result.get('file_index', 0)
+            file_name = result.get('file_name', f'File {file_index + 1}')
+            color = self.file_colors[file_index % len(self.file_colors)]
+            
+            # Get x values
+            decay_start = result["decay_start"]
+            truncated_x_values = result["x_values"][decay_start:]
+            
+            # Calculate y_data (full array, scaled)
+            y_data_full = np.array(result["y_data"]) * result["scale_factor"]
+            fitted_data_full = np.array(result["fitted_values"]) * result["scale_factor"]
+            
+            # Apply lin/log mode to full arrays
+            if channel not in self.lin_log_modes or self.lin_log_modes[channel] == "LIN":
+                _, y_data_transformed = LinLogControl.calculate_lin_mode(y_data_full)
+                _, fitted_data_transformed = LinLogControl.calculate_lin_mode(fitted_data_full)
+            else:
+                y_data_transformed, _, _ = LinLogControl.calculate_log_ticks(y_data_full)
+                fitted_data_transformed, _, _ = LinLogControl.calculate_log_ticks(fitted_data_full)
+            
+            # For counts, we need to match with truncated_x_values
+            # y_data corresponds to the data from decay_start onwards
+            # truncated_x_values is x_values[decay_start:] which should match
+            
+            # However, y_data might be shorter due to fitting, so we need to align them properly
+            # Use the length of y_data and take corresponding x values
+            counts_len = len(y_data_transformed)
+            counts_x = truncated_x_values[:counts_len]
+            counts_y = y_data_transformed
+            
+            all_y_data.extend(counts_y)
+            all_fitted_data.extend(fitted_data_transformed)
+            
+            # Add small horizontal offset (jittering) to make overlapping points visible
+            # Offset is proportional to file index: centered around original position
+            num_files = len(results)
+            x_range = counts_x.max() - counts_x.min() if len(counts_x) > 0 else 1
+            jitter_amount = 0.003 * x_range  # 0.3% of x range - very small offset
+            # Center the jittering: offset from -(n-1)/2 to +(n-1)/2
+            offset_x = (file_index - (num_files - 1) / 2) * jitter_amount
+            counts_x_jittered = counts_x + offset_x
+            
+            # Plot counts with symbols (circles) only, no line (no legend)
+            plot_widget.plot(
+                counts_x_jittered,
+                counts_y,
+                pen=None,
+                symbol="o",
+                symbolSize=6,
+                symbolBrush=color,
+            )
+            
+            # Plot fitted curve with solid line in file color (use t_data as x, no legend)
+            t_data = result["t_data"]
+            min_len_fit = min(len(t_data), len(fitted_data_transformed))
+            
+            plot_widget.plot(
+                t_data[:min_len_fit],
+                fitted_data_transformed[:min_len_fit],
+                pen=pg.mkPen(color, width=2),
+            )
+            
+            # Add single legend entry for this file with a colored rectangle (only in read mode)
+            # Use a line with large width to create a rectangle effect
+            if self.read_mode:
+                legend_item = pg.PlotDataItem(pen=pg.mkPen(color, width=10))
+                legend.addItem(legend_item, file_name)
+        
+        # Set y-axis ticks based on combined data
+        if len(all_y_data + all_fitted_data) > 0:
+            if channel not in self.lin_log_modes or self.lin_log_modes[channel] == "LIN":
+                y_ticks, _ = LinLogControl.calculate_lin_mode(np.array(all_y_data + all_fitted_data))
+            else:
+                _, y_ticks, _ = LinLogControl.calculate_log_ticks(np.array(all_y_data + all_fitted_data))
+            
+            axis = plot_widget.getAxis("left")
+            axis.setTicks([y_ticks])
+        
+        PlotsController.set_plot_y_range(plot_widget)
+        
+        # Show residuals for all files with different colors
+        residuals_widget.clear()
+        for idx, result in enumerate(results):
+            file_index = result.get('file_index', 0)
+            color = self.file_colors[file_index % len(self.file_colors)]
+            residuals = result["residuals"]
+            residuals_x = result["x_values"][result["decay_start"]:]
+            min_len_res = min(len(residuals_x), len(residuals))
+            residuals_widget.plot(
+                residuals_x[:min_len_res], residuals[:min_len_res], pen=pg.mkPen(color, width=2)
+            )
+        residuals_widget.addLine(y=0, pen=pg.mkPen("w", style=Qt.PenStyle.DashLine))
+        
+        # Get the horizontal layout container from saved reference
+        params_container = self.params_containers.get(channel)
+        if not params_container:
+            print(f"WARNING: No params_container found for channel {channel}")
+            return
+        params_layout = params_container.fitted_params_layout
+        
+        # Cache data for LIN/LOG control - use first file as reference
+        if results:
+            first_result = results[0]
+            self.cached_counts_data[channel] = {
+                "x": first_result["t_data"],
+                "y": first_result["y_data"] * first_result["scale_factor"]
+            }
+            self.cached_fitted_data[channel] = {
+                "x": first_result["t_data"],
+                "y": first_result["fitted_values"] * first_result["scale_factor"]
+            }
+        
+        # Clear existing widgets
+        while params_layout.count():
+            item = params_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # Add one label per file, with "Fitted parameters:" title above each
+        for result in results:
+            file_index = result.get('file_index', 0)
+            file_name = result.get('file_name', f'File {file_index + 1}')
+            color = self.file_colors[file_index % len(self.file_colors)]
+            # Remove "Fitted parameters:\n" from beginning - we'll add it as a separate title
+            params_text = result["fitted_params_text"].replace("Fitted parameters:\n", "", 1)
+            
+            # Create a vertical container: title on top, then color indicator + text
+            file_container = QWidget()
+            file_vlayout = QVBoxLayout(file_container)
+            file_vlayout.setContentsMargins(0, 0, 0, 0)
+            file_vlayout.setSpacing(5)
+            
+            # Add "Fitted parameters:" title for this file
+            file_title = QLabel("Fitted parameters:")
+            file_title.setStyleSheet("color: #cecece; font-family: Montserrat; font-size: 16px;")
+            file_vlayout.addWidget(file_title)
+            
+            # Create horizontal layout for color indicator + parameters
+            content_widget = QWidget()
+            content_hlayout = QHBoxLayout(content_widget)
+            content_hlayout.setContentsMargins(0, 0, 0, 0)
+            content_hlayout.setSpacing(10)
+            
+            # Add colored rectangle as indicator
+            color_indicator = QLabel()
+            color_indicator.setFixedSize(15, 15)
+            color_indicator.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
+            content_hlayout.addWidget(color_indicator, alignment=Qt.AlignmentFlag.AlignTop)
+            
+            # Add parameters text (convert newlines to <br> for HTML)
+            colored_params_text = params_text.replace('\n', '<br>')
+            
+            file_label = QLabel(colored_params_text)
+            file_label.setTextFormat(Qt.TextFormat.RichText)
+            file_label.setStyleSheet("color: #cecece; font-family: Montserrat; font-size: 16px;")
+            file_label.setWordWrap(True)
+            content_hlayout.addWidget(file_label)
+            
+            file_vlayout.addWidget(content_widget)
+            
+            params_layout.addWidget(file_container)
+
+    def _average_channels(self, results):
+        """Calculates the average of multiple channels from the same file.
+        
+        Args:
+            results (list): List of fitting results for different channels.
+            
+        Returns:
+            dict: Averaged fitting result with channel=0.
+        """
+        if not results or len(results) == 0:
+            return None
+        
+        # Find minimum length to handle arrays of different sizes
+        min_len_y = min(len(r['y_data']) for r in results)
+        min_len_fitted = min(len(r['fitted_values']) for r in results)
+        min_len_residuals = min(len(r['residuals']) for r in results)
+        min_len_x = min(len(r['x_values']) for r in results)
+        min_len_t = min(len(r['t_data']) for r in results)
+        
+        # Calculate averages with truncated arrays
+        avg_chi2 = np.mean([r['chi2'] for r in results])
+        avg_r2 = np.mean([r.get('r2', 0) for r in results]) if all('r2' in r for r in results) else 0
+        
+        # Use first result as template
+        first = results[0]
+        
+        # Calculate averaged y_data
+        avg_y_data = np.mean([r['y_data'][:min_len_y] for r in results], axis=0)
+        avg_fitted = np.mean([r['fitted_values'][:min_len_fitted] for r in results], axis=0)
+        
+        # Build fitted_params_text from averaged values
+        fitted_params_text = f"Average of {len(results)} channels\n"
+        fitted_params_text += first.get('fitted_params_text', '').split('\n')[0] + '\n'  # Keep first line (tau values)
+        fitted_params_text += f'X² = {avg_chi2:.4f}\n'
+        fitted_params_text += f'R² = {avg_r2:.4f}\n'
+        
+        avg_result = {
+            'x_values': first['x_values'][:min_len_x],
+            't_data': first['t_data'][:min_len_t],
+            'y_data': avg_y_data,
+            'fitted_values': avg_fitted,
+            'residuals': np.mean([r['residuals'][:min_len_residuals] for r in results], axis=0),
+            'fitted_params_text': fitted_params_text,
+            'scale_factor': np.mean([r['scale_factor'] for r in results]),
+            'decay_start': first['decay_start'],
+            'channel': 0,
+            'chi2': avg_chi2,
+            'r2': avg_r2,
+            'file_index': first.get('file_index', 0),
+            'file_name': first.get('file_name', 'Averaged')
+        }
+        
+        return avg_result
 
     def add_chart_to_grid(self, chart_widget, index):
         """
@@ -538,11 +969,9 @@ class FittingDecayConfigPopup(QWidget):
             chart_widget (QWidget): The widget to add.
             index (int): The sequential index to determine the position in the grid.
         """
-        col_length = 1
-        if len(self.data) > 4:
-            col_length = 4
-        else:
-            col_length = len(self.data)
+        # Always use horizontal layout with up to 4 plots per row
+        col_length = 4
+        
         self.plot_layout.addWidget(
             chart_widget, index // col_length, index % col_length
         )

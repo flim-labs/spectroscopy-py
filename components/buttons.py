@@ -233,18 +233,48 @@ class ReadAcquireModeButton(QWidget):
         from core.plots_controller import PlotsController
         from core.phasors_controller import PhasorsController
         from core.controls_controller import ControlsController  
+        
+        # Close fitting popup if open when changing mode
+        if hasattr(self.app, 'fitting_config_popup') and self.app.fitting_config_popup is not None:
+            try:
+                self.app.fitting_config_popup.close()
+                self.app.fitting_config_popup.deleteLater()
+                self.app.fitting_config_popup = None
+            except:
+                pass
+        
         self.app.control_inputs[s.ACQUIRE_BUTTON].setChecked(checked)
         self.app.control_inputs[s.READ_BUTTON].setChecked(not checked)
         self.app.acquire_read_mode = "acquire" if checked else "read"
+        
         self.app.settings.setValue(
             s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
         )
+        
+        # Restore selected_channels from saved state when returning to ACQUIRE mode
+        if hasattr(self.app, 'acquire_mode_selected_channels'):
+            self.app.selected_channels = self.app.acquire_mode_selected_channels[:]
+            
+            # Update checkbox visual state to match restored selected_channels
+            for i, checkbox in enumerate(self.app.channel_checkboxes):
+                checkbox.set_checked(i in self.app.selected_channels)
+            
+            # Clear the saved state so next READ->ACQUIRE cycle uses fresh state
+            delattr(self.app, 'acquire_mode_selected_channels')
+        
+        # Restore plots_to_show from selected_channels for all tabs in acquire mode
         if self.app.tab_selected == s.TAB_PHASORS:          
             channels = self.app.selected_channels or []
             self.app.plots_to_show = channels[:4]
-            self.app.settings.setValue(
-                s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
-            )
+        else:
+            # For SPECTROSCOPY and FITTING tabs, restore all selected channels
+            channels = self.app.selected_channels or []
+            self.app.plots_to_show = channels[:4]
+        
+        self.app.settings.setValue(
+            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
+        )
+        
         self.set_buttons_styles()
         self.app.reader_data = deepcopy(s.DEFAULT_READER_DATA)
         
@@ -279,10 +309,29 @@ class ReadAcquireModeButton(QWidget):
             checked (bool): The new checked state of the button.
         """
         from core.plots_controller import PlotsController
-        from core.controls_controller import ControlsController      
+        from core.controls_controller import ControlsController
+        
+        # Close fitting popup if open when changing mode
+        if hasattr(self.app, 'fitting_config_popup') and self.app.fitting_config_popup is not None:
+            try:
+                self.app.fitting_config_popup.close()
+                self.app.fitting_config_popup.deleteLater()
+                self.app.fitting_config_popup = None
+            except:
+                pass
+              
         self.app.control_inputs[s.ACQUIRE_BUTTON].setChecked(not checked)
         self.app.control_inputs[s.READ_BUTTON].setChecked(checked)
+        
+        # Save current selected_channels state ONLY when entering READ mode from ACQUIRE
+        if self.app.acquire_read_mode == "acquire":
+            self.app.acquire_mode_selected_channels = self.app.selected_channels[:]
+        
         self.app.acquire_read_mode = "read" if checked else "acquire"
+
+        
+        self.app.acquire_read_mode = "read" if checked else "acquire"
+        
         self.app.settings.setValue(
             s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
         )
