@@ -77,7 +77,7 @@ model_formulas = {
     decay_model_4_with_B: "A1 * exp(-t / tau1) + A2 * exp(-t / tau2) + A3 * exp(-t / tau3) + A4 * exp(-t / tau4) + B",
 }
 
-def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_threshold=0.01):
+def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_threshold=0.01, method='lm'):
     """Fits a decay curve to the provided data using multiple exponential models.
 
     It automatically selects the best model (from 1 to 4 exponential components)
@@ -91,6 +91,9 @@ def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_thres
         y_shift (int, optional): A vertical shift to apply to the data. Defaults to 0.
         tau_similarity_threshold (float, optional): The threshold for considering
             decay times (tau) as similar. Defaults to 0.01.
+        method (str, optional): The optimization method for curve_fit. Can be 'lm' 
+            (Levenberg-Marquardt), 'trf' (Trust Region Reflective), or 'dogbox'. 
+            Defaults to 'lm'.
 
     Returns:
         dict: A dictionary containing the fitting results, including the fitted
@@ -160,10 +163,14 @@ def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_thres
     if tau_are_similar:
         model = decay_model_1_with_B
         initial_guess = [1, 1, 1]
-        popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=50000)
+        popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=50000, method=method)
         best_fit = model(t_data, *popt)
         best_model = model
         best_popt = popt
+        # Recalculate num_components and chi2 for the new single-component model
+        num_components = (len(best_popt) - 1) // 2
+        epsilon = 1e-10
+        best_chi2 = np.sum((np.array(y_data) - best_fit)**2 / (best_fit + epsilon)) / (len(y_data) - len(best_popt))
 
     output_data = {}
     fitted_params_text = 'Fitted parameters:\n'

@@ -20,6 +20,7 @@ from components.gradient_text import GradientText
 from utils.gui_styles import GUIStyles
 from utils.layout_utilities import clear_layout_widgets, draw_layout_separator
 from components.lin_log_control import LinLogControl
+from components.select_control import SelectControl
 from utils.resource_path import resource_path
 from utils.fitting_utilities import (
     convert_fitting_result_into_json_serializable_item,
@@ -91,12 +92,8 @@ class FittingDecayConfigPopup(QWidget):
         self.main_layout = QVBoxLayout()
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.controls_bar = self.create_controls_bar()
-        self.main_layout.addWidget(self.controls_bar)
-        self.main_layout.addSpacing(10)
-        self.loading_row = self.create_loading_row()
-        self.main_layout.addLayout(self.loading_row)
-        self.main_layout.addSpacing(10)
+        
+        # Initialize attributes before creating controls bar
         self.fitting_results = []
         self.plot_widgets = {}
         self.residuals_widgets = {}
@@ -110,7 +107,18 @@ class FittingDecayConfigPopup(QWidget):
         self.cut_data_y = {}
         self.cached_counts_data = {}
         self.cached_fitted_data = {}
+        self.selected_fitting_algorithm = self.app.fitting_algorithm
+        self.fitting_algorithm_select = None
+        self.fitting_algorithm_description_label = None
         self.initialize_dicts_for_plot_cached_data()
+        
+        # Create UI elements
+        self.controls_bar = self.create_controls_bar()
+        self.main_layout.addWidget(self.controls_bar)
+        self.main_layout.addSpacing(10)
+        self.loading_row = self.create_loading_row()
+        self.main_layout.addLayout(self.loading_row)
+        self.main_layout.addSpacing(10)
         # Create a scroll area for the plots
         self.scroll_area = QScrollArea()
         self.scroll_area.setStyleSheet("background-color: #141414; border: none;")
@@ -137,6 +145,23 @@ class FittingDecayConfigPopup(QWidget):
         self.setLayout(self.main_layout)
         self.app.widgets[s.FITTING_POPUP] = self
 
+    def on_fitting_algorithm_changed(self, index):
+        """Handles the fitting algorithm selection change.
+        
+        Args:
+            index (int): The index of the selected algorithm.
+        """
+        self.selected_fitting_algorithm = index
+        self.app.settings.setValue(s.SETTINGS_FITTING_ALGORITHM, index)
+        self.update_algorithm_description()
+    
+    def update_algorithm_description(self):
+        """Updates the description label with the selected algorithm's description."""
+        if self.fitting_algorithm_description_label:
+            algorithm_name = s.FITTING_ALGORITHMS[self.selected_fitting_algorithm]
+            description = s.FITTINGS_ALGORITHMS_DESC.get(algorithm_name, "")
+            self.fitting_algorithm_description_label.setText(description)
+    
     def initialize_dicts_for_plot_cached_data(self):
         """Initializes dictionaries to cache plot data for each channel."""
         for index, item in enumerate(self.data):
@@ -163,17 +188,77 @@ class FittingDecayConfigPopup(QWidget):
         controls_bar_widget.setStyleSheet("background-color: #1c1c1c")
         controls_bar = QVBoxLayout()
         controls_bar.setContentsMargins(0, 20, 0, 0)
+        # --- Custom alignment row for title and algorithm selector ---
         controls_row = QHBoxLayout()
-        controls_row.setAlignment(Qt.AlignmentFlag.AlignBaseline)
+        controls_row.setContentsMargins(0, 0, 0, 0)
+        controls_row.setSpacing(0)
+        controls_row.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+        # Container for title and algorithm selector, vertically centered
+        title_algo_widget = QWidget()
+        title_algo_layout = QHBoxLayout()
+        title_algo_layout.setContentsMargins(0, 0, 0, 0)
+        title_algo_layout.setSpacing(20)
+        title_algo_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
         fitting_title = GradientText(
             self,
             text="INTENSITY DECAY FITTING",
             colors=[(0.7, "#1E90FF"), (1.0, s.PALETTE_RED_1)],
             stylesheet=GUIStyles.set_main_title_style(),
         )
-        controls_row.addSpacing(10)
-        controls_row.addWidget(fitting_title)
-        controls_row.addSpacing(20)
+        fitting_title.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        title_algo_layout.addSpacing(10)
+        title_algo_layout.addWidget(fitting_title, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        # Algorithm selector layout
+        algorithm_layout = QVBoxLayout()
+        algorithm_layout.setSpacing(5)
+        algorithm_layout.setContentsMargins(0, 0, 0, 0)
+
+        algorithm_row_widget = QWidget()
+        algorithm_row_widget.setMinimumHeight(60)
+        algorithm_row_widget.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
+        algorithm_row_layout = QHBoxLayout()
+        algorithm_row_layout.setContentsMargins(0, 0, 0, 0)
+        algorithm_row_layout.setSpacing(8)
+        algorithm_row_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        algorithm_label = QLabel("Fitting Algorithm:")
+        algorithm_label.setStyleSheet(
+            f"font-size: 14px; color: {DARK_THEME_TEXT_COLOR}; font-family: {DARK_THEME_FONT_FAMILY};"
+        )
+        algorithm_label.setMinimumHeight(36)
+        algorithm_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        algorithm_row_layout.addWidget(algorithm_label, alignment=Qt.AlignmentFlag.AlignVCenter)
+        self.fitting_algorithm_select = SelectControl.setup(
+            "",
+            self.selected_fitting_algorithm,
+            algorithm_row_layout,
+            s.FITTING_ALGORITHMS,
+            self.on_fitting_algorithm_changed,
+            control_layout="horizontal",
+        )[1]
+        self.fitting_algorithm_select.setStyleSheet(GUIStyles.set_input_select_style())
+        self.fitting_algorithm_select.setMinimumHeight(36)
+        self.fitting_algorithm_select.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        algorithm_row_layout.addWidget(self.fitting_algorithm_select, alignment=Qt.AlignmentFlag.AlignVCenter)
+        algorithm_row_widget.setLayout(algorithm_row_layout)
+        algorithm_layout.addWidget(algorithm_row_widget)
+
+        # Add description label
+        self.fitting_algorithm_description_label = QLabel()
+        self.fitting_algorithm_description_label.setWordWrap(True)
+        self.fitting_algorithm_description_label.setMaximumWidth(400)
+        self.fitting_algorithm_description_label.setStyleSheet(
+            f"font-size: 11px; color: #999999; font-family: {DARK_THEME_FONT_FAMILY}; font-style: italic;"
+        )
+        self.update_algorithm_description()
+        algorithm_layout.addWidget(self.fitting_algorithm_description_label)
+
+        title_algo_layout.addLayout(algorithm_layout)
+        title_algo_widget.setLayout(title_algo_layout)
+        controls_row.addWidget(title_algo_widget, alignment=Qt.AlignmentFlag.AlignVCenter)
+        controls_row.addSpacing(30)
         # Export fitting data btn
         self.export_fitting_btn = QPushButton("EXPORT")
         self.export_fitting_btn.setStyleSheet(
@@ -252,12 +337,18 @@ class FittingDecayConfigPopup(QWidget):
         clear_layout_widgets(self.errors_layout)
         self.loading_text.setVisible(True)
         self.gif_label.setVisible(True)
+        
+        # Get the selected algorithm code
+        algorithm_name = s.FITTING_ALGORITHMS[self.selected_fitting_algorithm]
+        algorithm_code = s.FITTINGS_ALGORITHMS_CODES[algorithm_name]
+        
         self.worker = FittingWorker(
             self.data,
             self.roi_checkboxes,
             self.cut_data_x,
             self.cut_data_y,
             self.y_data_shift,
+            algorithm_code,
         )
         self.worker.fitting_done.connect(self.handle_fitting_done)
         self.worker.error_occurred.connect(self.handle_error)
@@ -752,7 +843,7 @@ class FittingWorker(QThread):
     error_occurred = pyqtSignal(str)  # Emit an error message
 
     def __init__(
-        self, data, roi_checkboxes, cut_data_x, cut_data_y, y_data_shift, parent=None
+        self, data, roi_checkboxes, cut_data_x, cut_data_y, y_data_shift, fitting_algorithm="lm", parent=None
     ):
         """
         Initializes the FittingWorker.
@@ -763,6 +854,7 @@ class FittingWorker(QThread):
             cut_data_x (dict): A dictionary of x-data, cut by ROI.
             cut_data_y (dict): A dictionary of y-data, cut by ROI.
             y_data_shift (int): A global time shift to apply to the data.
+            fitting_algorithm (str, optional): The optimization method for curve fitting. Defaults to "lm".
             parent (QObject, optional): The parent object. Defaults to None.
         """
         super().__init__(parent)
@@ -771,6 +863,7 @@ class FittingWorker(QThread):
         self.cut_data_x = cut_data_x
         self.cut_data_y = cut_data_y
         self.y_data_shift = y_data_shift
+        self.fitting_algorithm = fitting_algorithm
 
     def get_data_point(self, data_point, channel):
         """
@@ -800,7 +893,8 @@ class FittingWorker(QThread):
             try:
                 x, y = self.get_data_point(data_point, data_point["channel_index"])
                 result = fit_decay_curve(
-                    x, y, data_point["channel_index"], y_shift=data_point["time_shift"]
+                    x, y, data_point["channel_index"], y_shift=data_point["time_shift"],
+                    method=self.fitting_algorithm
                 )
                 results.append((result))
             except TimeoutError as te:

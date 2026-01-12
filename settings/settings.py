@@ -108,6 +108,19 @@ DEFAULT_PHASORS_RESOLUTION = 2
 SETTINGS_QUANTIZE_PHASORS = "quantize_phasors"
 DEFAULT_QUANTIZE_PHASORS = True
 
+FITTING_ALGORITHMS = ["Levenberg-Marquardt", "Trust Region Reflective", "Dogbox"]
+FITTINGS_ALGORITHMS_DESC = {
+    "Levenberg-Marquardt": "Usually the most efficient method for small unconstrained problems. Doesn’t handle bounds and sparse Jacobians.",
+    "Trust Region Reflective": "Particularly suitable for large sparse problems with bounds. Generally robust method.",
+    "Dogbox": "Typical use case is small problems with bounds. Not recommended for problems with rank-deficient Jacobian.",
+}
+FITTINGS_ALGORITHMS_CODES = {
+    "Levenberg-Marquardt": "lm",
+    "Trust Region Reflective": "trf",
+    "Dogbox": "dogbox",
+}
+SETTINGS_FITTING_ALGORITHM = "fitting_algorithm"
+DEFAULT_FITTING_ALGORITHM = 0
 
 READER_POPUP = "reader_popup"
 READER_METADATA_POPUP = "reader_metadata_popup"

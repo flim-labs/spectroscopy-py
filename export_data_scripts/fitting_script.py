@@ -1,10 +1,12 @@
 import numpy as np
 from scipy.optimize import curve_fit
-from scipy.special import wofz
 import struct
 import matplotlib.pyplot as plt
 
 file_path = "<FILE-PATH>"
+# You can change the fitting algorithm here if needed ("lm" for Levenberg-Marquardt, "trf" for Trust Region Reflective, "dogbox" for Dogbox)
+fitting_algorithm = "lm" # Levenberg-Marquardt
+
 with open(file_path, "rb") as f:
     # first 4 bytes must be SP01
     # 'SP01' is an identifier for spectroscopy bin files
@@ -117,7 +119,7 @@ with open(file_path, "rb") as f:
 
         for model, initial_guess in decay_models:
             try:
-                popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=500000)
+                popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=500000, method=fitting_algorithm)
                 fitted_values = model(t_data, *popt)
                 
                 # Chi-square (χ²) calculation to find best model
@@ -152,10 +154,14 @@ with open(file_path, "rb") as f:
         if tau_are_similar:
             model = decay_model_1_with_B
             initial_guess = [1, 1, 1]
-            popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=500000)
+            popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=500000, method=fitting_algorithm)
             best_fit = model(t_data, *popt)
             best_model = model
             best_popt = popt
+            # Recalculate num_components and chi2 for the new single-component model
+            num_components = (len(best_popt) - 1) // 2
+            epsilon = 1e-10
+            best_chi2 = np.sum((np.array(y_data) - best_fit)**2 / (best_fit + epsilon)) / (len(y_data) - len(best_popt))
 
         output_data = {}
         fitted_params_text = 'Fitted parameters:\n'

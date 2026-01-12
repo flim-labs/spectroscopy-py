@@ -2,6 +2,10 @@
 
 file_path = '<FILE-PATH>';
 
+% You can change the fitting algorithm here if needed
+% Available algorithms: 'levenberg-marquardt' (or 'lm'), 'trust-region-reflective', 'interior-point'
+fitting_algorithm = 'levenberg-marquardt'; % Levenberg-Marquardt
+
 % Open the file            
 fid = fopen(file_path, 'rb');
 if fid == -1
@@ -114,7 +118,7 @@ function result = fit_decay_curve(x_values, y_values, channel)
     best_fit = [];
     best_model = [];
     best_popt = [];
-    tau_similarity_threshold = 0.01;  % Definisci una soglia di somiglianza per i valori di tau
+    tau_similarity_threshold = 0.01;  % Define threshold for τ similarity
 
     for i = 1:length(decay_models)
         model = decay_models{i}{1};
@@ -122,7 +126,7 @@ function result = fit_decay_curve(x_values, y_values, channel)
 
         try
             % Set options for lsqcurvefit
-            opts = optimset('Display', 'off', 'TolFun', 1e-8, 'TolX', 1e-8, 'MaxFunEvals', 10000000);
+            opts = optimset('Display', 'off', 'Algorithm', fitting_algorithm, 'TolFun', 1e-8, 'TolX', 1e-8, 'MaxFunEvals', 10000000);
             % Fit model to data
             [popt, ~, residual, ~] = lsqcurvefit(model, initial_guess, t_data, y_data, [], [], opts);
             fitted_values = model(popt, t_data);
@@ -160,9 +164,12 @@ function result = fit_decay_curve(x_values, y_values, channel)
     if tau_are_similar && num_components > 1
         model = decay_model_1_with_B;
         initial_guess = [1, 1, 1];
+        opts = optimset('Display', 'off', 'Algorithm', fitting_algorithm, 'TolFun', 1e-8, 'TolX', 1e-8, 'MaxFunEvals', 10000000);
         [best_popt, ~, residual, ~] = lsqcurvefit(model, initial_guess, t_data, y_data, [], [], opts);
         best_fit = model(best_popt, t_data);
         best_model = model;
+        % Recalculate num_components and chi2 for the new single-component model
+        num_components = (length(best_popt) - 1) / 2;
         best_chi2 = sum((y_data - best_fit).^2 ./ (best_fit + epsilon)) / (length(y_data) - length(best_popt));
     end
 
