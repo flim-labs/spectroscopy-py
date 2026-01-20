@@ -684,9 +684,18 @@ class AcquisitionController:
                 
             x, _ = app.decay_curves[app.tab_selected][channel_index].getData()
             y = app.cached_decay_values[app.tab_selected][channel_index]
+            
+            # For FITTING READ mode with bin indices, don't multiply by 1000
+            # Check if x is already in bin indices (0-255 range)
+            is_bin_indices = len(x) > 0 and np.max(x) <= 256
+            if read and not is_bin_indices:
+                x_data = x * 1000
+            else:
+                x_data = x
+            
             data.append(
                 {
-                    "x": x * 1000 if read else x,
+                    "x": x_data,
                     "y": y,
                     "title": "Channel " + str(channel_index + 1),
                     "channel_index": channel_index,

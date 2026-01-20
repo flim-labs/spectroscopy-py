@@ -340,12 +340,34 @@ class ControlsController:
                         }
                     )
                 else:
-                    # Single file: create plot per channel
-                    data, time_shift = (
-                        AcquisitionController.acquired_spectroscopy_data_to_fit(
-                            app, read=True
-                        )
-                    )
+                    # Check if we have multi-file spectroscopy data
+                    spectroscopy_data = app.reader_data["fitting"]["data"]["spectroscopy_data"]
+                    is_multi_file = "files_data" in spectroscopy_data and len(spectroscopy_data.get("files_data", [])) > 1
+                    
+                    if is_multi_file:
+                        # Multi-file spectroscopy: get data from ReadData for separate curves
+                        data = ReadData.get_spectroscopy_data_to_fit(app)
+                        time_shift = 0
+                    else:
+                        # Single file: use EXACT main branch logic
+                        data, time_shift = AcquisitionController.acquired_spectroscopy_data_to_fit(app, read=True)
+                        
+                    if len(data) > 0 and 'file_index' not in data[0]:
+                        import os
+                        file_name = "Single File"
+                        if hasattr(app, 'reader_data') and app.reader_data:
+                            if 'fitting' in app.reader_data:
+                                if 'files' in app.reader_data['fitting']:
+                                    fitting_files = app.reader_data['fitting']['files']
+
+                                    # files is a dict with 'spectroscopy' key containing list of paths
+                                    if isinstance(fitting_files, dict) and 'spectroscopy' in fitting_files:
+                                        spectroscopy_files = fitting_files['spectroscopy']
+                                        if isinstance(spectroscopy_files, list) and len(spectroscopy_files) > 0:
+                                            file_name = os.path.basename(spectroscopy_files[0])
+                        for entry in data:
+                            entry['file_index'] = 0
+                            entry['file_name'] = file_name
             else:
                 # In FITTING READ mode without spectroscopy data, create single plot
                 active_channels = ReadData.get_fitting_active_channels(app)

@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 from utils.export_data import ExportData
 from components.gradient_text import GradientText
+from core.phasors_controller import PhasorsController
 from utils.gui_styles import GUIStyles
 from utils.layout_utilities import clear_layout_widgets, draw_layout_separator
 from components.lin_log_control import LinLogControl
@@ -125,8 +126,14 @@ class FittingDecayConfigPopup(QWidget):
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
         
-        # Check if we have multiple files with file_index (read mode only)
-        has_multiple_files = self.read_mode and self.preloaded_fitting and any('file_index' in r for r in self.preloaded_fitting if "error" not in r)
+        # Check if we have multiple files with file_index
+        # For fitting results: check read_mode (only in read mode)
+        # For spectroscopy data: check file_index presence AND multiple entries
+        has_multiple_files_from_fitting = self.read_mode and self.preloaded_fitting and any('file_index' in r for r in self.preloaded_fitting if "error" not in r)
+        has_multiple_files_from_spectroscopy = (self.data and 
+                                               any('file_index' in d for d in self.data) and 
+                                               len(self.data) > 1)  # Only multi-file if more than 1 entry
+        has_multiple_files = has_multiple_files_from_fitting or has_multiple_files_from_spectroscopy
         
         if has_multiple_files:
             # Create single plot for multiple files comparison
@@ -199,6 +206,10 @@ class FittingDecayConfigPopup(QWidget):
         self.export_fitting_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.export_fitting_btn.clicked.connect(self.export_fitting_data)
         self.export_fitting_btn.setEnabled(False)
+        
+        # Show export button only in ACQUIRE mode, hide in READ mode (fitting popup only)
+        is_read_mode = hasattr(self.app, 'acquire_read_mode') and self.app.acquire_read_mode == "read"
+        self.export_fitting_btn.setVisible(not is_read_mode)
         # Start fitting btn
         start_fitting_btn = QPushButton("START FITTING")
         start_fitting_btn.setObjectName("btn")
@@ -262,8 +273,7 @@ class FittingDecayConfigPopup(QWidget):
         self.gif_label.setVisible(False)
         return loading_row
 
-    def start_fitting(self):
-        """Initiates the fitting process in a background worker thread."""
+    def start_fitting(self):         
         clear_layout_widgets(self.errors_layout)
         self.loading_text.setVisible(True)
         self.gif_label.setVisible(True)
@@ -273,6 +283,7 @@ class FittingDecayConfigPopup(QWidget):
             self.cut_data_x,
             self.cut_data_y,
             self.y_data_shift,
+            self.app.roi,  # Pass ROI regions for multi-file mode
         )
         self.worker.fitting_done.connect(self.handle_fitting_done)
         self.worker.error_occurred.connect(self.handle_error)
@@ -413,7 +424,6 @@ class FittingDecayConfigPopup(QWidget):
         """
         self.loading_text.setVisible(False)
         self.gif_label.setVisible(False)
-        print(f"Error: {error_message}")
         self.display_error(error_message, "")
 
     def display_spectroscopy_curve(self, plot_widget, channel):
@@ -428,9 +438,65 @@ class FittingDecayConfigPopup(QWidget):
             tuple: A tuple containing the x and y data arrays that were plotted.
         """
         data = [d for d in self.data if d["channel_index"] == channel]
-        y = np.roll(data[0]["y"], data[0]["time_shift"])
-        plot_widget.plot(data[0]["x"], y, pen=pg.mkPen("#f72828", width=2))
-        return data[0]["x"], y
+        if len(data) == 0:
+            return np.array([]), np.array([])
+        
+        # Ensure y is a proper numpy array
+        y_data = np.array(data[0]["y"])
+        if y_data.ndim == 0:
+            # Scalar value
+            return np.array([]), np.array([])
+        elif y_data.ndim > 1:
+            # Multi-dimensional, flatten or take first dimension
+            y_data = y_data.flatten()
+                
+        # Validate that y_data has sufficient length
+        x_data = np.array(data[0]["x"])
+        if len(y_data) < 2 or len(x_data) < 2:
+            return np.array([]), np.array([])
+        
+        # Ensure X and Y have the same length
+        min_len = min(len(x_data), len(y_data))
+        if len(x_data) != len(y_data):
+            x_data = x_data[:min_len]
+            y_data = y_data[:min_len]
+        
+        # Use app.time_shifts to be consistent with main window
+        time_shift = 0 if channel not in self.app.time_shifts else self.app.time_shifts[channel]
+        y = np.roll(y_data, time_shift)
+        
+        # Add legend for single file case
+        if not hasattr(plot_widget.plotItem, 'legend') or plot_widget.plotItem.legend is None:
+            plot_widget.addLegend(offset=(10, 10))
+        
+        # Get file name from data or fallback to reader_data
+        file_name = data[0].get('file_name', 'File 1')
+        
+        if file_name in ['File 1', 'Single File'] or not file_name:
+            # Try to get actual file name from reader_data
+            fitting_files = self.app.reader_data.get("fitting", {}).get("files", {}).get("spectroscopy", "")
+            if fitting_files:
+                if isinstance(fitting_files, str):
+                    file_name = os.path.basename(fitting_files)
+                elif isinstance(fitting_files, list) and len(fitting_files) > 0:
+                    file_name = os.path.basename(fitting_files[0])
+            
+            # If still no good name, try alternative paths
+            if file_name in ['File 1', 'Single File'] or not file_name:
+                # Try spectroscopy files from main reader_data
+                spectroscopy_files = self.app.reader_data.get("spectroscopy", {}).get("files", {}).get("spectroscopy", "")
+                if spectroscopy_files:
+                    if isinstance(spectroscopy_files, str):
+                        file_name = os.path.basename(spectroscopy_files)
+                    elif isinstance(spectroscopy_files, list) and len(spectroscopy_files) > 0:
+                        file_name = os.path.basename(spectroscopy_files[0])
+                
+        # Don't show filename in legend in FITTING ACQUIRE mode
+        is_acquire_mode = hasattr(self.app, 'acquire_read_mode') and self.app.acquire_read_mode == "acquire"
+        legend_name = None if is_acquire_mode else file_name
+        
+        plot_widget.plot(x_data, y, pen=pg.mkPen("#f72828", width=2), name=legend_name)
+        return x_data, y
 
     def display_plot(self, title, channel, index):
         """
@@ -449,14 +515,16 @@ class FittingDecayConfigPopup(QWidget):
         chart_title.setStyleSheet(
             "color: #cecece; font-size: 18px; font-family: Montserrat; text-align: center;"
         )
-        # Show the channel title only in ACQUIRE mode, hide in READ mode
-        chart_title.setVisible(not self.read_mode)
+        # Hide channel title in READ tab (regardless of read_mode)
+        is_read_tab = hasattr(self.app, 'acquire_read_mode') and self.app.acquire_read_mode == 'read'
+        title_visible = not is_read_tab
+        chart_title.setVisible(title_visible)
         title_layout.addStretch()
         title_layout.addWidget(chart_title)
-        if not (self.read_mode):
-            title_layout.addStretch()
-            roi_checkbox = self.create_roi_checkbox(channel)
-            title_layout.addWidget(roi_checkbox)
+        # Add ROI checkbox in both ACQUIRE and READ modes
+        title_layout.addStretch()
+        roi_checkbox = self.create_roi_checkbox(channel)
+        title_layout.addWidget(roi_checkbox)
         title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addLayout(title_layout)
 
@@ -481,7 +549,7 @@ class FittingDecayConfigPopup(QWidget):
         self.roi_warnings[channel] = QLabel("")
         self.roi_warnings[channel].setWordWrap(True)
         self.roi_warnings[channel].setStyleSheet(
-            "color: #eed202; font-family: Montserrat; font-size: 14px; margin-top: 10px; margin-bottom: 10px;"
+            "color: #FF6B6B; font-size: 12px; font-weight: bold; padding: 5px;"
         )
         self.roi_warnings[channel].setVisible(False)
         warning_layout.addWidget(self.roi_warnings[channel])
@@ -498,25 +566,133 @@ class FittingDecayConfigPopup(QWidget):
         plot_widget.showGrid(x=True, y=True, alpha=0.3)
         
         # Don't set fixed limits for multi-file comparison in read mode
-        if not (self.read_mode and self.preloaded_fitting and any('file_index' in r for r in self.preloaded_fitting if "error" not in r)):
-            margin = 0.5
-            plot_widget.setXRange(0 - margin, self.laser_period_ns + margin)
-            plot_widget.setLimits(xMin=0 - margin, xMax=self.laser_period_ns + margin)
+        has_multi_file_fitting = self.read_mode and self.preloaded_fitting and any('file_index' in r for r in self.preloaded_fitting if "error" not in r)
+        has_multi_file_spectroscopy = (self.data and 
+                                     any('file_index' in d for d in self.data) and 
+                                     len(self.data) > 1)  # Only multi-file if more than 1 entry
+        is_multi_file_mode = has_multi_file_fitting or has_multi_file_spectroscopy       
+        
+        if not is_multi_file_mode:
+            # For single file mode, use actual data range instead of laser_period_ns
+            # since fitted curves may extend beyond the laser period
+            if self.data and len(self.data) > 0:
+                x_data = self.data[0]['x']
+                data_x_min, data_x_max = np.min(x_data), np.max(x_data)
+                margin = (data_x_max - data_x_min) * 0.1  # 10% margin
+                plot_widget.setXRange(data_x_min - margin, data_x_max + margin)
+                plot_widget.setLimits(xMin=data_x_min - margin, xMax=data_x_max + margin)
+            else:
+                # Fallback to laser period if no data available
+                margin = 0.5
+                plot_widget.setXRange(0 - margin, self.laser_period_ns + margin)
+                plot_widget.setLimits(xMin=0 - margin, xMax=self.laser_period_ns + margin)
         else:
             # Auto-range for multi-file comparison
             plot_widget.enableAutoRange()
             
-        if not (self.read_mode):
-            # Spectroscopy curve - skip for channel 0 (averaged/multi-file)
-            if channel != 0:
-                x, y = self.display_spectroscopy_curve(plot_widget, channel)
-                # Roi selection
-                roi = pg.LinearRegionItem([2, 8])
+        # Check multi-file spectroscopy first
+        if is_multi_file_mode and has_multi_file_spectroscopy:
+            
+            # Store data for lin/log control - use first file's data structure
+            first_entry = self.data[0]
+            self.cached_counts_data[channel]["x"] = first_entry['x']
+            # For multi-file, we'll store all y values combined (or just use first one for reference)
+            # The important thing is that cached_counts_data is not empty
+            all_y_values = []
+            for data_entry in self.data:
+                time_shift = 0 if channel not in self.app.time_shifts else self.app.time_shifts[channel]
+                y = np.roll(data_entry['y'], time_shift)
+                all_y_values.append(y)
+            # Store the sum for lin/log calculations (similar to main plot)
+            self.cached_counts_data[channel]["y"] = np.sum(all_y_values, axis=0)
+            
+            # Add legend BEFORE plotting (required by pyqtgraph)
+            plot_widget.addLegend(offset=(10, 10))
+            
+            # Don't show filename in legend in FITTING ACQUIRE mode
+            is_acquire_mode = hasattr(self.app, 'acquire_read_mode') and self.app.acquire_read_mode == "acquire"
+            
+            # Now plot each file with colors
+            for data_entry in self.data:
+                file_index = data_entry.get('file_index', 0)
+                file_name = data_entry.get('file_name', f'File {file_index}')
+                color = PhasorsController.get_color_for_file_index(file_index)
+                x = data_entry['x']
+                time_shift = 0 if channel not in self.app.time_shifts else self.app.time_shifts[channel]
+                y = np.roll(data_entry['y'], time_shift)
+                
+                # Ensure X and Y have the same length
+                min_len = min(len(x), len(y))
+                if len(x) != len(y):
+                    x = x[:min_len]
+                    y = y[:min_len]
+                
+                legend_name = None if is_acquire_mode else file_name
+                plot_widget.plot(x, y, pen=pg.mkPen(color, width=2), name=legend_name)
+
+            # Add ROI selection for multi-file mode (using combined data)
+            combined_x = self.cached_counts_data[channel]["x"]
+            combined_y = self.cached_counts_data[channel]["y"]
+            
+            # Ensure X and Y have the same length
+            min_len = min(len(combined_x), len(combined_y))
+            if len(combined_x) != len(combined_y):
+                combined_x = combined_x[:min_len]
+                combined_y = combined_y[:min_len]
+                # Update cached data
+                self.cached_counts_data[channel]["x"] = combined_x
+                self.cached_counts_data[channel]["y"] = combined_y
+            
+            if len(combined_x) > 0 and len(combined_y) > 0:
+                # Initialize ROI based on data range
+                x_min, x_max = np.min(combined_x), np.max(combined_x)
+                roi_start = x_min + (x_max - x_min) * 0.1  # 10% from start
+                roi_end = x_min + (x_max - x_min) * 0.5    # 50% from start
+                roi = pg.LinearRegionItem([roi_start, roi_end])
                 result = self.get_saved_roi(channel)
+                # Only use saved ROI if it's valid (min != max, within data range)
                 if result is not None:
-                    min_x, max_x = result
-                    roi.setRegion([min_x, max_x])
-                    self.set_roi_mask(roi, x, y, channel)
+                    min_x_saved, max_x_saved = result
+                    # Check if saved values are within actual data range (with some tolerance)
+                    data_range = x_max - x_min
+                    if (min_x_saved != max_x_saved and 
+                        abs(max_x_saved - min_x_saved) > 1 and
+                        min_x_saved >= x_min - data_range * 0.1 and
+                        max_x_saved <= x_max + data_range * 0.1):  # Valid range
+                        roi.setRegion([min_x_saved, max_x_saved])
+                        self.set_roi_mask(roi, combined_x, combined_y, channel)
+                roi.setVisible(False)
+                roi.sigRegionChanged.connect(
+                    lambda roi=roi, x=combined_x, y=combined_y, ch=channel: self.on_roi_selection_changed(roi, x, y, ch)
+                )
+                roi.sigRegionChangeFinished.connect(
+                    lambda roi=roi: self.limit_roi_bounds(roi)
+                )
+                self.roi_items[channel] = roi
+                plot_widget.addItem(roi)
+        elif not (self.read_mode):
+            # Single file acquire mode - Spectroscopy curve
+            # For fitting tab (read_mode=False), always show spectroscopy curve regardless of channel
+            # Skip channel != 0 condition for fitting tab since we want to show all channels
+            x, y = self.display_spectroscopy_curve(plot_widget, channel)
+            if len(x) > 0 and len(y) > 0:  # Only add ROI if data was found
+                # Roi selection - initialize based on data range
+                x_min, x_max = np.min(x), np.max(x)
+                roi_start = x_min + (x_max - x_min) * 0.1  # 10% from start
+                roi_end = x_min + (x_max - x_min) * 0.5    # 50% from start
+                roi = pg.LinearRegionItem([roi_start, roi_end])
+                result = self.get_saved_roi(channel)
+                # Only use saved ROI if it's valid (min != max, within data range)
+                if result is not None:
+                    min_x_saved, max_x_saved = result
+                    # Check if saved values are within actual data range (with some tolerance)
+                    data_range = x_max - x_min
+                    if (min_x_saved != max_x_saved and 
+                        abs(max_x_saved - min_x_saved) > 1 and
+                        min_x_saved >= x_min - data_range * 0.1 and
+                        max_x_saved <= x_max + data_range * 0.1):  # Valid range
+                        roi.setRegion([min_x_saved, max_x_saved])
+                        self.set_roi_mask(roi, x, y, channel)
                 roi.setVisible(False)    
                 roi.sigRegionChanged.connect(
                     lambda: self.on_roi_selection_changed(roi, x, y, channel)
@@ -526,6 +702,50 @@ class FittingDecayConfigPopup(QWidget):
                 )            
                 self.roi_items[channel] = roi
                 plot_widget.addItem(roi)
+        else:
+            if self.data and len(self.data) > 0:
+                # Find data for this channel
+                channel_data = [d for d in self.data if d["channel_index"] == channel]
+                if channel_data:
+                    data_entry = channel_data[0]
+                    x = data_entry['x']
+                    time_shift = 0 if channel not in self.app.time_shifts else self.app.time_shifts[channel]
+                    y = np.roll(data_entry['y'], time_shift)
+                    
+                    # Cache the data for lin/log controls
+                    self.cached_counts_data[channel] = {"x": x, "y": y}
+                    
+                    # Plot the spectroscopy curve
+                    curve_item = plot_widget.plot(x, y, pen=pg.mkPen("#f72828", width=2), name="Spectroscopy")
+                    
+                    # Add ROI selection (same as acquire mode)
+                    # Initialize ROI based on data range
+                    x_min, x_max = np.min(x), np.max(x)
+                    roi_start = x_min + (x_max - x_min) * 0.1  # 10% from start
+                    roi_end = x_min + (x_max - x_min) * 0.5    # 50% from start
+                    roi = pg.LinearRegionItem([roi_start, roi_end])
+                    result = self.get_saved_roi(channel)
+                    # Only use saved ROI if it's valid (min != max, within data range)
+                    if result is not None:
+                        min_x_saved, max_x_saved = result
+                        # Check if saved values are within actual data range (with some tolerance)
+                        data_range = x_max - x_min
+                        if (min_x_saved != max_x_saved and 
+                            abs(max_x_saved - min_x_saved) > 1 and
+                            min_x_saved >= x_min - data_range * 0.1 and
+                            max_x_saved <= x_max + data_range * 0.1):  # Valid range
+                            roi.setRegion([min_x_saved, max_x_saved])
+                            self.set_roi_mask(roi, x, y, channel)
+                    roi.setVisible(False)
+                    roi.sigRegionChanged.connect(
+                        lambda roi=roi, x=x, y=y, ch=channel: self.on_roi_selection_changed(roi, x, y, ch)
+                    )
+                    roi.sigRegionChangeFinished.connect(
+                        lambda roi=roi: self.limit_roi_bounds(roi)
+                    )
+                    self.roi_items[channel] = roi
+                    plot_widget.addItem(roi)
+
         # Residuals
         residuals_widget = pg.PlotWidget()
         residuals_widget.setMinimumHeight(120)
@@ -604,7 +824,6 @@ class FittingDecayConfigPopup(QWidget):
                 # Use the first available plot widget (for averaged channels case)
                 channel = list(self.plot_widgets.keys())[0]
             else:
-                print(f"Warning: No plot widget found for channel {channel}, skipping update")
                 return
             
         plot_widget = self.plot_widgets[channel]
@@ -634,9 +853,8 @@ class FittingDecayConfigPopup(QWidget):
         self.cached_fitted_data[channel]["y"] = np.array(
             result["fitted_values"] * result["scale_factor"]
         )
-        # IMPORTANT: Use result["t_data"] as X for fitted curve, not truncated_x_values
-        # This matches the logic from main branch
-        self.cached_fitted_data[channel]["x"] = result["t_data"]
+        # Use truncated_x_values for fitted curve X coordinates (same as main branch)
+        self.cached_fitted_data[channel]["x"] = truncated_x_values
         
         # Retrieve Y values based on active lin/log mode
         if channel not in self.lin_log_modes or self.lin_log_modes[channel] == "LIN":
@@ -668,8 +886,71 @@ class FittingDecayConfigPopup(QWidget):
         
         # Get file name for legend
         file_index = result.get('file_index', 0)
-        file_name = result.get('file_name', f'File {file_index + 1}')
-        color = self.file_colors[file_index % len(self.file_colors)]
+        file_name = result.get('file_name', '')
+        
+        # Try multiple locations to find the spectroscopy files
+        fitting_files = self.app.reader_data.get("fitting", {}).get("files", {}).get("spectroscopy", "")
+        
+        # If not found in fitting/spectroscopy, try fitting/fitting (JSON files)
+        if not fitting_files:
+            fitting_files = self.app.reader_data.get("fitting", {}).get("files", {}).get("fitting", "")
+        
+        # If not found, try spectroscopy tab
+        if not fitting_files:
+            fitting_files = self.app.reader_data.get("spectroscopy", {}).get("files", {}).get("spectroscopy", "")
+        
+        # If not found, try metadata
+        if not fitting_files:
+            spectroscopy_metadata = self.app.reader_data.get("fitting", {}).get("spectroscopy_metadata", [])
+            if spectroscopy_metadata and len(spectroscopy_metadata) > 0:
+                if isinstance(spectroscopy_metadata, list) and file_index < len(spectroscopy_metadata):
+                    metadata = spectroscopy_metadata[file_index]
+                    file_name = metadata.get("file_name", "")
+        
+        # Try to extract from files path
+        if fitting_files:
+            if isinstance(fitting_files, str) and fitting_files.strip():
+                file_name = os.path.basename(fitting_files)
+            elif isinstance(fitting_files, list) and len(fitting_files) > 0:
+                # Use file_index if available, otherwise first file
+                if file_index < len(fitting_files):
+                    file_name = os.path.basename(fitting_files[file_index])
+                else:
+                    file_name = os.path.basename(fitting_files[0])
+        
+        # If still no file name, try spectroscopy_metadata as last resort
+        if not file_name or file_name in ['File 1', 'Single File'] or file_name.startswith('File '):
+            spectroscopy_metadata = self.app.reader_data.get("fitting", {}).get("spectroscopy_metadata", [])
+            if isinstance(spectroscopy_metadata, list) and len(spectroscopy_metadata) > file_index:
+                metadata_file_name = spectroscopy_metadata[file_index].get("file_name", "")
+                if metadata_file_name and not metadata_file_name.startswith('File '):
+                    file_name = metadata_file_name
+            
+            # If still no good name, use fallback
+            if not file_name or file_name in ['File 1', 'Single File'] or file_name.startswith('File '):
+                file_name = f'File {file_index + 1}'
+                
+        # Use the same color function as main window for consistency
+        from core.phasors_controller import PhasorsController
+        color = PhasorsController.get_color_for_file_index(file_index)
+        
+        # Add explanatory legend entries first (same as multi-file)
+        plot_widget.plot(
+            [],  # Empty data for legend only
+            [],
+            pen=pg.mkPen("gray", width=2),
+            name="Fitted curve"
+        )
+        
+        plot_widget.plot(
+            [],  # Empty data for legend only
+            [],
+            pen=None,
+            symbol="o",
+            symbolSize=6,
+            symbolBrush="gray",
+            name="Counts"
+        )
         
         # Ensure arrays have matching lengths
         min_len = min(len(truncated_x_values), len(y_data))
@@ -679,36 +960,55 @@ class FittingDecayConfigPopup(QWidget):
         # For fitted data, use t_data directly (matches main branch logic)
         # No need to adjust length - fitted_data already matches t_data from fitting
         
-        # Plot Counts (points)
+        # Plot Counts (points) - no legend entry (already in generic legend above)
         plot_widget.plot(
             truncated_x_values,
             y_data,
             pen=None,
             symbol="o",
-            symbolSize=4,
+            symbolSize=6,
             symbolBrush=color,
-            name="Counts"
         )
+
+        # Plot original spectroscopy curve (for single file read mode)
+        if self.read_mode and self.data:
+            channel_data = [d for d in self.data if d["channel_index"] == channel]
+            if channel_data:
+                data_entry = channel_data[0]
+                orig_x = data_entry['x']
+                time_shift = 0 if channel not in self.app.time_shifts else self.app.time_shifts[channel]
+                orig_y = np.roll(data_entry['y'], time_shift)
+                spec_curve = plot_widget.plot(orig_x, orig_y, pen=pg.mkPen("#f72828", width=1))
         
-        # Plot Fitted curve (line) - use result["t_data"] as X
-        plot_widget.plot(
-            result["t_data"],
+        fitted_curve_item = plot_widget.plot(
+            self.cached_fitted_data[channel]["x"],
             fitted_data,
             pen=pg.mkPen(color, width=2),
-            name="Fitted curve"
         )
         
-        # Add single legend entry for this file with colored indicator (only in read mode)
-        if self.read_mode:
-            legend_item = pg.PlotDataItem(pen=pg.mkPen(color, width=10))
-            legend.addItem(legend_item, file_name)
+        # Get current plot range
+        current_x_range = plot_widget.viewRange()[0]
         
-        PlotsController.set_plot_y_range(plot_widget)
-        # Residuals
-        residuals = np.array(result["residuals"])
-        # Ensure residuals match truncated_x_values length
+        # Adjust plot range to match the actual data range (not the dummy spectroscopy data)
+        if len(truncated_x_values) > 0:
+            data_x_min = np.min(truncated_x_values)
+            data_x_max = np.max(truncated_x_values)
+            plot_widget.setXRange(data_x_min, data_x_max, padding=0.05)
+        
+        # Add file name to legend with file color (same as multi-file)
+        # Don't show filename in legend in FITTING ACQUIRE mode
+        is_acquire_mode = hasattr(self.app, 'acquire_read_mode') and self.app.acquire_read_mode == "acquire"
+        if not is_acquire_mode:
+            plot_widget.plot(
+                [],  # Empty data for legend only
+                [],
+                pen=pg.mkPen(color, width=3),
+                name=file_name
+            )
+        
+        # Plot residuals
+        residuals = np.array(result["y_data"]) - np.array(result["fitted_values"])
         residuals_min_len = min(len(truncated_x_values), len(residuals))
-        residuals_widget.clear()
         residuals_widget.plot(
             truncated_x_values[:residuals_min_len], residuals[:residuals_min_len], pen=pg.mkPen("#1E90FF", width=2)
         )
@@ -735,11 +1035,23 @@ class FittingDecayConfigPopup(QWidget):
         legend = plot_widget.addLegend(offset=(0, 20), labelTextSize='11pt')
         legend.setParent(plot_widget)
         
-        # Add global legend entries to explain symbols
-        legend_counts = pg.PlotDataItem(pen=None, symbol='o', symbolSize=6, symbolBrush='white')
-        legend.addItem(legend_counts, "Counts")
-        legend_fitted = pg.PlotDataItem(pen=pg.mkPen('white', width=2))
-        legend.addItem(legend_fitted, "Fitted curve")
+        # Add explanatory legend entries first (only once)
+        plot_widget.plot(
+            [],  # Empty data for legend only
+            [],
+            pen=pg.mkPen("gray", width=2),
+            name="Fitted curve"
+        )
+        
+        plot_widget.plot(
+            [],  # Empty data for legend only
+            [],
+            pen=None,
+            symbol="o",
+            symbolSize=6,
+            symbolBrush="gray",
+            name="Counts"
+        )
         
         all_y_data = []
         all_fitted_data = []
@@ -747,7 +1059,8 @@ class FittingDecayConfigPopup(QWidget):
         for idx, result in enumerate(results):
             file_index = result.get('file_index', 0)
             file_name = result.get('file_name', f'File {file_index + 1}')
-            color = self.file_colors[file_index % len(self.file_colors)]
+            from core.phasors_controller import PhasorsController
+            color = PhasorsController.get_color_for_file_index(file_index)
             
             # Get x values
             decay_start = result["decay_start"]
@@ -801,17 +1114,47 @@ class FittingDecayConfigPopup(QWidget):
             t_data = result["t_data"]
             min_len_fit = min(len(t_data), len(fitted_data_transformed))
             
-            plot_widget.plot(
+            curve_item = plot_widget.plot(
                 t_data[:min_len_fit],
                 fitted_data_transformed[:min_len_fit],
                 pen=pg.mkPen(color, width=2),
             )
             
-            # Add single legend entry for this file with a colored rectangle (only in read mode)
-            # Use a line with large width to create a rectangle effect
-            if self.read_mode:
-                legend_item = pg.PlotDataItem(pen=pg.mkPen(color, width=10))
-                legend.addItem(legend_item, file_name)
+            # Add file name to legend with file color
+            # Don't show filename in legend in FITTING ACQUIRE mode
+            is_acquire_mode = hasattr(self.app, 'acquire_read_mode') and self.app.acquire_read_mode == "acquire"
+            if not is_acquire_mode:
+                plot_widget.plot(
+                    [],  # Empty data for legend only
+                    [],
+                    pen=pg.mkPen(color, width=3),
+                    name=file_name
+                )
+            
+        # Force plot widget to update its view range to include all plot items
+        plot_widget.getPlotItem().getViewBox().autoRange()  # Use ViewBox autoRange instead
+        
+        # If autoRange didn't work properly for multi-file, ensure all curves are visible
+        current_range = plot_widget.viewRange()
+        
+        # Find the overall data range from all fitted curves
+        all_x_data = []
+        all_y_data = []
+        
+        # Get range from original data plots (scatter points)
+        for item in plot_widget.getPlotItem().listDataItems():
+            if hasattr(item, 'xData') and hasattr(item, 'yData'):
+                if item.xData is not None and item.yData is not None:
+                    all_x_data.extend(item.xData)
+                    all_y_data.extend(item.yData)
+        
+        if all_x_data and all_y_data:
+            x_min, x_max = min(all_x_data), max(all_x_data)
+            y_min, y_max = min(all_y_data), max(all_y_data)
+            
+            if (current_range[0][1] < x_min or current_range[0][0] > x_max):
+                plot_widget.setXRange(x_min - 0.5, x_max + 0.5, padding=0)
+                plot_widget.setYRange(y_min * 0.9, y_max * 1.1, padding=0)
         
         # Set y-axis ticks based on combined data
         if len(all_y_data + all_fitted_data) > 0:
@@ -829,7 +1172,8 @@ class FittingDecayConfigPopup(QWidget):
         residuals_widget.clear()
         for idx, result in enumerate(results):
             file_index = result.get('file_index', 0)
-            color = self.file_colors[file_index % len(self.file_colors)]
+            from core.phasors_controller import PhasorsController
+            color = PhasorsController.get_color_for_file_index(file_index)
             residuals = result["residuals"]
             residuals_x = result["x_values"][result["decay_start"]:]
             min_len_res = min(len(residuals_x), len(residuals))
@@ -841,7 +1185,6 @@ class FittingDecayConfigPopup(QWidget):
         # Get the horizontal layout container from saved reference
         params_container = self.params_containers.get(channel)
         if not params_container:
-            print(f"WARNING: No params_container found for channel {channel}")
             return
         params_layout = params_container.fitted_params_layout
         
@@ -850,11 +1193,11 @@ class FittingDecayConfigPopup(QWidget):
             first_result = results[0]
             self.cached_counts_data[channel] = {
                 "x": first_result["t_data"],
-                "y": first_result["y_data"] * first_result["scale_factor"]
+                "y": np.array(first_result["y_data"]) * first_result["scale_factor"]
             }
             self.cached_fitted_data[channel] = {
                 "x": first_result["t_data"],
-                "y": first_result["fitted_values"] * first_result["scale_factor"]
+                "y": np.array(first_result["fitted_values"]) * first_result["scale_factor"]
             }
         
         # Clear existing widgets
@@ -867,7 +1210,8 @@ class FittingDecayConfigPopup(QWidget):
         for result in results:
             file_index = result.get('file_index', 0)
             file_name = result.get('file_name', f'File {file_index + 1}')
-            color = self.file_colors[file_index % len(self.file_colors)]
+            from core.phasors_controller import PhasorsController
+            color = PhasorsController.get_color_for_file_index(file_index)
             # Remove "Fitted parameters:\n" from beginning - we'll add it as a separate title
             params_text = result["fitted_params_text"].replace("Fitted parameters:\n", "", 1)
             
@@ -1028,7 +1372,16 @@ class FittingDecayConfigPopup(QWidget):
         """
         min_val, max_val = roi.getRegion()
         min_limit = 0
-        max_limit = self.laser_period_ns
+        # Use data range instead of laser_period_ns for bin indices
+        if self.data and len(self.data) > 0:
+            x_data = self.data[0].get('x', [])
+            if len(x_data) > 0:
+                max_limit = np.max(x_data)
+            else:
+                max_limit = self.laser_period_ns
+        else:
+            max_limit = self.laser_period_ns
+        
         if min_val < min_limit:
             min_val = min_limit
         if max_val > max_limit:
@@ -1048,12 +1401,21 @@ class FittingDecayConfigPopup(QWidget):
         if not roi.isVisible():
             return
         min_x, max_x = roi.getRegion()
-        mask = (x >= min_x) & (x <= max_x)
-        selected_x = x[mask]
-        selected_y = y[mask]
-        self.cut_data_x[channel] = selected_x
-        self.cut_data_y[channel] = selected_y
-        self.app.roi[channel] = (min_x, max_x)        
+        
+        # Check if we're in multi-file mode
+        has_multi_file = self.data and len(self.data) > 1 and any('file_index' in d for d in self.data)
+        
+        if has_multi_file:
+            # For multi-file mode, just store the ROI region - we'll apply it per file in get_data_point
+            self.app.roi[channel] = (min_x, max_x)
+        else:
+            # For single file mode, apply the mask and store the cut data
+            mask = (x >= min_x) & (x <= max_x)
+            selected_x = x[mask]
+            selected_y = y[mask]
+            self.cut_data_x[channel] = selected_x
+            self.cut_data_y[channel] = selected_y
+            self.app.roi[channel] = (min_x, max_x)        
                 
 
     def create_roi_checkbox(self, channel):
@@ -1084,7 +1446,7 @@ class FittingDecayConfigPopup(QWidget):
         Args:
             checked (bool): The new state of the checkbox.
             channel (int): The channel index.
-        """
+        """        
         if checked:
             self.roi_warnings[channel].setText(
                 "Please select a significant portion of the curve that includes points from both the rising edge, the peak, and the falling edge for an accurate fit. Insufficient data may lead to unreliable fitting results."
@@ -1094,7 +1456,8 @@ class FittingDecayConfigPopup(QWidget):
             self.roi_warnings[channel].setVisible(False)
             self.roi_warnings[channel].setText("")
         if channel in self.roi_items:
-            self.roi_items[channel].setVisible(checked)
+            roi = self.roi_items[channel]
+            roi.setVisible(checked)
 
     def set_roi_checkboxes_visibility(self, visible):
         """
@@ -1136,8 +1499,28 @@ class FittingDecayConfigPopup(QWidget):
         for ch, checkbox in self.roi_checkboxes.items():
             if checkbox:
                 checkbox.setChecked(False)
-        for index, data_point in enumerate(self.data):
-            self.display_plot(data_point["title"], data_point["channel_index"], index)
+        
+        # Check if multi-file mode to create single plot or multiple plots
+        has_multiple_files_from_fitting = self.read_mode and self.preloaded_fitting and any('file_index' in r for r in self.preloaded_fitting if "error" not in r)
+        has_multiple_files_from_spectroscopy = (self.data and 
+                                               any('file_index' in d for d in self.data) and 
+                                               len(self.data) > 1)  # Only multi-file if more than 1 entry
+        has_multiple_files = has_multiple_files_from_fitting or has_multiple_files_from_spectroscopy
+        
+        if has_multiple_files:
+            # Create single plot for multiple files comparison
+            title = "Multi-File Comparison"
+            self.cached_counts_data[0] = {"y": [], "x": []}
+            self.cached_fitted_data[0] = {"y": [], "x": []}
+            self.display_plot(title, 0, 0)
+            # Enable lin/log control for multi-file spectroscopy visualization
+            if has_multiple_files_from_spectroscopy and not has_multiple_files_from_fitting:
+                LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, True)
+        else:
+            # Create plot for each channel (single file mode)
+            for index, data_point in enumerate(self.data):
+                self.display_plot(data_point["title"], data_point["channel_index"], index)
+        
         self.export_img_btn.setVisible(False)
 
     def center_window(self):
@@ -1186,7 +1569,7 @@ class FittingWorker(QThread):
     error_occurred = pyqtSignal(str)  # Emit an error message
 
     def __init__(
-        self, data, roi_checkboxes, cut_data_x, cut_data_y, y_data_shift, parent=None
+        self, data, roi_checkboxes, cut_data_x, cut_data_y, y_data_shift, roi_regions, parent=None
     ):
         """
         Initializes the FittingWorker.
@@ -1194,9 +1577,10 @@ class FittingWorker(QThread):
         Args:
             data (list): The list of channel data to be fitted.
             roi_checkboxes (dict): A dictionary of ROI checkboxes to check if ROI is active.
-            cut_data_x (dict): A dictionary of x-data, cut by ROI.
-            cut_data_y (dict): A dictionary of y-data, cut by ROI.
+            cut_data_x (dict): A dictionary of x-data, cut by ROI (for single file mode).
+            cut_data_y (dict): A dictionary of y-data, cut by ROI (for single file mode).
             y_data_shift (int): A global time shift to apply to the data.
+            roi_regions (dict): A dictionary of ROI regions (min, max) for each channel.
             parent (QObject, optional): The parent object. Defaults to None.
         """
         super().__init__(parent)
@@ -1205,6 +1589,7 @@ class FittingWorker(QThread):
         self.cut_data_x = cut_data_x
         self.cut_data_y = cut_data_y
         self.y_data_shift = y_data_shift
+        self.roi_regions = roi_regions
 
     def get_data_point(self, data_point, channel):
         """
@@ -1218,7 +1603,29 @@ class FittingWorker(QThread):
             tuple: A tuple of (x_data, y_data) arrays for fitting.
         """
         if channel in self.roi_checkboxes and self.roi_checkboxes[channel].isChecked():
-            return self.cut_data_x[channel], self.cut_data_y[channel]
+            # Check if we're in multi-file mode
+            has_file_index = 'file_index' in data_point
+            
+            if has_file_index and channel in self.roi_regions:
+                # Multi-file mode: apply ROI to this specific file's data
+                x = data_point["x"]
+                y = data_point["y"]
+                
+                # Ensure X and Y have the same length
+                min_len = min(len(x), len(y))
+                if len(x) != len(y):
+                    x = x[:min_len]
+                    y = y[:min_len]
+                
+                min_x, max_x = self.roi_regions[channel]
+                mask = (x >= min_x) & (x <= max_x)
+                return x[mask], y[mask]
+            elif channel in self.cut_data_x:
+                # Single file mode: use the pre-cut data
+                return self.cut_data_x[channel], self.cut_data_y[channel]
+            else:
+                # Fallback: no ROI data available
+                return data_point["x"], data_point["y"]
         else:
             return data_point["x"], data_point["y"]
 
@@ -1230,18 +1637,24 @@ class FittingWorker(QThread):
         and emits the results or an error.
         """
         results = []
-        for data_point in self.data:
-            try:
+        for idx, data_point in enumerate(self.data):
+            try:               
                 x, y = self.get_data_point(data_point, data_point["channel_index"])
                 result = fit_decay_curve(
                     x, y, data_point["channel_index"], y_shift=data_point["time_shift"]
                 )
+                # Preserve file_index and file_name from input data
+                if "file_index" in data_point:
+                    result["file_index"] = data_point["file_index"]
+                if "file_name" in data_point:
+                    result["file_name"] = data_point["file_name"]
                 results.append((result))
             except TimeoutError as te:
                 self.error_occurred.emit(f"An error occurred: {str(te)}")
                 return                    
             except Exception as e:
-                print(e)
+                import traceback
+                traceback.print_exc()
                 self.error_occurred.emit(f"An error occurred: {str(e)}")
                 return
         self.fitting_done.emit(results)
