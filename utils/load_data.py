@@ -517,6 +517,102 @@ def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
     return fig
 
 
+def plot_fitting_data_multifile(valid_results, show_plot=True):
+    """Generates a single comparison plot for multi-file fitting results."""
+    
+    # Color palette for different files
+    file_colors = ['#f72828', '#00FF00', '#FFA500', '#FF00FF']
+    
+    fig = plt.figure(figsize=(14, 10))
+    gs = fig.add_gridspec(3, 1, height_ratios=[3, 1, 0.8], hspace=0.3)
+    ax_main = fig.add_subplot(gs[0])
+    ax_residuals = fig.add_subplot(gs[1])
+    ax_params = fig.add_subplot(gs[2])
+    ax_params.axis('off')
+    
+    # Add generic legend entries first (Counts and Fitted curve)
+    ax_main.scatter([], [], color='gray', s=30, alpha=0.7, label='Counts')
+    ax_main.plot([], [], color='gray', linewidth=2, label='Fitted curve')
+    
+    # Plot each file with its color
+    for idx, result in enumerate(valid_results):
+        file_index = result.get('file_index', 0)
+        file_name = result.get('file_name', f'File {file_index + 1}')
+        color = file_colors[file_index % len(file_colors)]
+        
+        truncated_x_values = result["x_values"][result["decay_start"]:]
+        counts_y_data = np.array(result["y_data"]) * result["scale_factor"]
+        fitted_y_data = np.array(result["fitted_values"]) * result["scale_factor"]
+        
+        # Apply jitter for overlapping points
+        num_files = len(valid_results)
+        x_range = np.max(truncated_x_values) - np.min(truncated_x_values)
+        jitter_amount = 0.003 * x_range
+        offset_x = (file_index - (num_files - 1) / 2) * jitter_amount
+        
+        # Ensure same length
+        min_len = min(len(truncated_x_values), len(counts_y_data), len(result["t_data"]), len(fitted_y_data))
+        truncated_x_values = truncated_x_values[:min_len]
+        counts_y_data = counts_y_data[:min_len]
+        t_data = result["t_data"][:min_len]
+        fitted_y_data = fitted_y_data[:min_len]
+        
+        # Plot counts and fitted curve (no label here, to avoid duplication)
+        ax_main.scatter(truncated_x_values + offset_x, counts_y_data, 
+                       color=color, s=4, alpha=0.7)
+        ax_main.plot(t_data, fitted_y_data, color=color, linewidth=2)
+        
+        # Add colored rectangle for file name in legend
+        ax_main.plot([], [], color=color, linewidth=10, label=file_name)
+        
+        # Plot residuals
+        residuals = result["residuals"][:min_len]
+        ax_residuals.plot(truncated_x_values + offset_x, residuals, 
+                         color=color, linewidth=2)
+    
+    # Style main plot
+    ax_main.set_xlabel("Time (ns)")
+    ax_main.set_ylabel("Counts")
+    ax_main.set_title("Multi-File Comparison")
+    ax_main.legend(fontsize=9, loc='upper right')
+    ax_main.grid(True, linestyle="--", linewidth=0.5, alpha=0.5)
+    
+    # Style residuals plot
+    ax_residuals.axhline(0, color='black', linestyle='--', linewidth=1)
+    ax_residuals.set_xlabel("Time (ns)")
+    ax_residuals.set_ylabel("Residuals")
+    ax_residuals.grid(True, linestyle="--", linewidth=0.5, alpha=0.5)
+    
+    # Add fitting parameters in columns at the bottom
+    num_files = len(valid_results)
+    col_width = 1.0 / num_files
+    
+    for idx, result in enumerate(valid_results):
+        file_index = result.get('file_index', 0)
+        file_name = result.get('file_name', f'File {file_index + 1}')
+        color = file_colors[file_index % len(file_colors)]
+        params = result.get('fitted_params_text', '').strip()
+        # Remove "Fitted parameters:\n" prefix if present to avoid duplication
+        params = params.replace("Fitted parameters:\n", "", 1)
+        
+        # Position for this column using full horizontal space
+        x_pos = idx * col_width + 0.01
+        
+        # Add colored rectangle indicator
+        rect = plt.Rectangle((x_pos - 0.008, 0.92), 0.005, 0.06, 
+                            transform=ax_params.transAxes, 
+                            facecolor=color, edgecolor='none', clip_on=False)
+        ax_params.add_patch(rect)
+        
+        # Add text in default color (black) - show all parameters with label
+        ax_params.text(x_pos, 0.95, "Fitted parameters:\n" + params, fontsize=8, verticalalignment='top',
+                      fontfamily='monospace', color='black')
+    
+    if show_plot:
+        plt.show()
+    return fig
+
+
 def plot_fitting_data(data, show_plot=True):
     """Generates and displays plots for curve fitting results.
 
@@ -536,6 +632,17 @@ def plot_fitting_data(data, show_plot=True):
         if "error" in d:
             continue
         valid_results.append(d)
+    
+    if not valid_results:
+        return None
+    
+    # Check if this is multi-file mode (multiple files loaded)
+    has_file_index = 'file_index' in valid_results[0]
+    if has_file_index:
+        # Multi-file comparison mode - single plot
+        return plot_fitting_data_multifile(valid_results, show_plot)
+    
+    # Single file mode - grid of plots per channel
     num_plots = len(valid_results)
     plots_per_row = 4
     num_rows = int(np.ceil(num_plots / plots_per_row))
@@ -563,11 +670,18 @@ def plot_fitting_data(data, show_plot=True):
         counts_y_data = np.array(result["y_data"]) * result["scale_factor"]
         fitted_y_data = np.array(result["fitted_values"]) * result["scale_factor"]
 
+        # Ensure all arrays have the same length
+        min_len = min(len(truncated_x_values), len(counts_y_data), len(result["t_data"]), len(fitted_y_data))
+        truncated_x_values = truncated_x_values[:min_len]
+        counts_y_data = counts_y_data[:min_len]
+        t_data = result["t_data"][:min_len]
+        fitted_y_data = fitted_y_data[:min_len]
+
         axes[row, col].scatter(
             truncated_x_values, counts_y_data, label="Counts", color="green", s=2
         )
         axes[row, col].plot(
-            result["t_data"], fitted_y_data, label="Fitted curve", color="red"
+            t_data, fitted_y_data, label="Fitted curve", color="red"
         )
         axes[row, col].set_xlabel("Time")
         axes[row, col].set_ylabel("Counts")
@@ -576,9 +690,10 @@ def plot_fitting_data(data, show_plot=True):
         axes[row, col].grid( linestyle="--", linewidth=0.5)
         axes[row, col].tick_params()
 
-        residuals = result["residuals"]  
+        residuals = result["residuals"]
+        min_len_res = min(len(truncated_x_values), len(residuals))
         residual_axes[row, col].plot(
-            truncated_x_values, residuals, color="blue", linewidth=1
+            truncated_x_values[:min_len_res], residuals[:min_len_res], color="blue", linewidth=1
         )
         residual_axes[row, col].axhline(0, linestyle="--", linewidth=0.5)
         residual_axes[row, col].set_xlabel("Time")
@@ -586,11 +701,13 @@ def plot_fitting_data(data, show_plot=True):
         residual_axes[row, col].grid( linestyle="--", linewidth=0.5)
         residual_axes[row, col].tick_params()
 
+        # Remove "Fitted parameters:\n" prefix if present to avoid duplication
+        params_text = result["fitted_params_text"].replace("Fitted parameters:\n", "", 1)
         text_box_props = dict(boxstyle="round",  facecolor="white", alpha=0.8)
         residual_axes[row, col].text(
             0.02,
             -0.6,
-            result["fitted_params_text"],
+            "Fitted parameters:\n" + params_text,
             transform=residual_axes[row, col].transAxes,
             fontsize=10,
             va="top",

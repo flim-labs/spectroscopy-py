@@ -97,12 +97,6 @@ def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_thres
               parameters, R-squared, chi-squared, residuals, and the model used.
               Returns a dictionary with an 'error' key if fitting fails.
     """
-    decay_models = [
-        (decay_model_1_with_B, [1, 1, 1]),
-        (decay_model_2_with_B, [1, 1, 1, 1, 1]),
-        (decay_model_3_with_B, [1, 1, 1, 1, 1, 1, 1]),
-        (decay_model_4_with_B, [1, 1, 1, 1, 1, 1, 1, 1, 1]),
-    ]
     decay_start = np.argmax(y_values)
 
     # if y_values is all zeros, return an error
@@ -117,13 +111,41 @@ def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_thres
 
     t_data = x_values[decay_start:]
     y_data = y_values[decay_start:]
+    
+    # Ensure t_data and y_data have the same length (fix for multi-file with different dimensions)
+    min_len = min(len(t_data), len(y_data))
+    if len(t_data) != len(y_data):
+        t_data = t_data[:min_len]
+        y_data = y_data[:min_len]
+    
+    # Improve initial guesses based on actual data
+    y_max = np.max(y_data)
+    y_min = np.min(y_data)
+    y_background = y_min  # Assume minimum value is background
+    y_amplitude = y_max - y_min  # Amplitude above background
+    
+    # Estimate tau from the decay curve (time to reach 1/e of max)
+    target_value = y_background + y_amplitude / np.e
+    tau_estimate = 1000  # Default fallback in ns
+    for i in range(1, len(y_data)):
+        if y_data[i] <= target_value:
+            tau_estimate = t_data[i] - t_data[0]
+            break
+        
+    # Use data-driven initial guesses
+    decay_models = [
+        (decay_model_1_with_B, [y_amplitude, tau_estimate, y_background]),
+        (decay_model_2_with_B, [y_amplitude/2, tau_estimate, y_amplitude/2, tau_estimate*2, y_background]),
+        (decay_model_3_with_B, [y_amplitude/3, tau_estimate, y_amplitude/3, tau_estimate*2, y_amplitude/3, tau_estimate*3, y_background]),
+        (decay_model_4_with_B, [y_amplitude/4, tau_estimate, y_amplitude/4, tau_estimate*2, y_amplitude/4, tau_estimate*3, y_amplitude/4, tau_estimate*4, y_background]),
+    ]
 
     best_chi2 = np.inf
     best_fit = None
     best_model = None
     best_popt = None
 
-    for model, initial_guess in decay_models:
+    for i, (model, initial_guess) in enumerate(decay_models):
         try:
             popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=50000)
             fitted_values = model(t_data, *popt)
@@ -143,6 +165,8 @@ def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_thres
 
         except RuntimeError as e:
             continue
+        except Exception as e:
+            continue
     
     if best_fit is None:
         return {"error": "Optimal parameters not found for any model."}
@@ -159,11 +183,14 @@ def fit_decay_curve(x_values, y_values, channel, y_shift=0, tau_similarity_thres
     # If τ values are similar use decay_model_1_with_B by default 
     if tau_are_similar:
         model = decay_model_1_with_B
-        initial_guess = [1, 1, 1]
+        # Use intelligent initial guess instead of [1, 1, 1]
+        initial_guess = [y_amplitude, tau_estimate, y_background]
         popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=50000)
         best_fit = model(t_data, *popt)
         best_model = model
         best_popt = popt
+        # Recalculate num_components after model change
+        num_components = (len(best_popt) - 1) // 2
 
     output_data = {}
     fitted_params_text = 'Fitted parameters:\n'

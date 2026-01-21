@@ -1,4 +1,5 @@
 import json
+import os
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtWidgets import (
@@ -159,42 +160,127 @@ class LinLogControl(QWidget):
         """
         from core.plots_controller import PlotsController
         if self.fitting_popup is not None:
-            plot_widget = self.fitting_popup.plot_widgets[self.channel]
-            plot_widget.clear()
-            counts_x = self.fitting_popup.cached_counts_data[self.channel]["x"]
-            counts_y = self.fitting_popup.cached_counts_data[self.channel]["y"]
-            fitted_x = self.fitting_popup.cached_fitted_data[self.channel]["x"]
-            fitted_y = self.fitting_popup.cached_fitted_data[self.channel]["y"]
+            # Update mode
             if state:
                 self.fitting_popup.lin_log_modes[self.channel] = "LIN"
-                _, y_data = LinLogControl.calculate_lin_mode(counts_y) 
-                y_ticks, fitted_data = LinLogControl.calculate_lin_mode(fitted_y)  
             else:
-                self.fitting_popup.lin_log_modes[self.channel] = "LOG"  
-                y_data, __, _ = LinLogControl.calculate_log_ticks(counts_y) 
-                fitted_data, y_ticks, _ = LinLogControl.calculate_log_ticks(fitted_y)    
-            axis = plot_widget.getAxis("left")    
-            axis.setTicks([y_ticks])
-            plot_widget.clear()
-            legend = plot_widget.addLegend(offset=(0, 20))
-            legend.setParent(plot_widget)
-            # Fitted Curve
-            plot_widget.plot(
-                counts_x,
-                y_data,
-                pen=None,
-                symbol="o",
-                symbolSize=4,
-                symbolBrush="#04f7ee",
-                name="Counts",
-            )
-            plot_widget.plot(
-                fitted_x,
-                fitted_data,
-                pen=pg.mkPen("#f72828", width=2),
-                name="Fitted curve",
-            )
-            PlotsController.set_plot_y_range(plot_widget)
+                self.fitting_popup.lin_log_modes[self.channel] = "LOG"
+            
+            # Check if multi-file mode
+            # Case 1: Preloaded fitting results (direct fitting file load)
+            is_multi_file_preloaded = (self.fitting_popup.read_mode and 
+                                     self.fitting_popup.preloaded_fitting and 
+                                     len(self.fitting_popup.preloaded_fitting) > 1 and 
+                                     'file_index' in self.fitting_popup.preloaded_fitting[0])
+            
+            # Case 2: Fresh fitting results (spectroscopy -> fitting workflow)
+            is_multi_file_fresh = (hasattr(self.fitting_popup, 'fitting_results') and 
+                                 self.fitting_popup.fitting_results and 
+                                 len(self.fitting_popup.fitting_results) > 1 and
+                                 any('file_index' in r for r in self.fitting_popup.fitting_results if 'error' not in r))
+            
+            is_multi_file = is_multi_file_preloaded or is_multi_file_fresh
+            
+            if is_multi_file:
+                # Multi-file: re-call update method
+                # Use preloaded_fitting if available, otherwise use fitting_results
+                results_to_use = self.fitting_popup.preloaded_fitting if is_multi_file_preloaded else self.fitting_popup.fitting_results
+                
+                plot_widget = self.fitting_popup.plot_widgets[self.channel]
+                residuals_widget = self.fitting_popup.residuals_widgets[self.channel]
+                fitted_params_text = self.fitting_popup.fitted_params_labels[self.channel]
+                self.fitting_popup._update_plot_multiple_files(
+                    results_to_use, 
+                    self.channel, 
+                    plot_widget, 
+                    residuals_widget, 
+                    fitted_params_text
+                )
+            else:
+                # Single file: original logic
+                plot_widget = self.fitting_popup.plot_widgets[self.channel]
+                plot_widget.clear()
+                counts_x = self.fitting_popup.cached_counts_data[self.channel]["x"]
+                counts_y = self.fitting_popup.cached_counts_data[self.channel]["y"]
+                fitted_x = self.fitting_popup.cached_fitted_data[self.channel]["x"]
+                fitted_y = self.fitting_popup.cached_fitted_data[self.channel]["y"]
+                
+                # Calculate ticks based on ORIGINAL combined data (like multi-file)
+                combined_original_data = np.concatenate([counts_y, fitted_y])
+                if state:
+                    _, y_data = LinLogControl.calculate_lin_mode(counts_y) 
+                    _, fitted_data = LinLogControl.calculate_lin_mode(fitted_y)
+                    y_ticks, _ = LinLogControl.calculate_lin_mode(combined_original_data)  
+                else:
+                    y_data, _, _ = LinLogControl.calculate_log_ticks(counts_y) 
+                    fitted_data, _, _ = LinLogControl.calculate_log_ticks(fitted_y)
+                    _, y_ticks, _ = LinLogControl.calculate_log_ticks(combined_original_data)    
+                
+                axis = plot_widget.getAxis("left")    
+                axis.setTicks([y_ticks])
+                
+                # Remove existing legend before creating a new one
+                if hasattr(plot_widget.plotItem, 'legend') and plot_widget.plotItem.legend is not None:
+                    plot_widget.plotItem.legend.scene().removeItem(plot_widget.plotItem.legend)
+                    plot_widget.plotItem.legend = None
+                
+                plot_widget.clear()
+                legend = plot_widget.addLegend(offset=(0, 20), labelTextSize='11pt')
+                legend.setParent(plot_widget)
+                
+                # Add explanatory legend entries first (gray)
+                plot_widget.plot([], [], pen=None, symbol='o', symbolSize=6, symbolBrush='gray', name="Counts")
+                plot_widget.plot([], [], pen=pg.mkPen('gray', width=2), name="Fitted curve")
+                
+                # Get file info and color for legend
+                file_index = 0  # Default to 0
+                file_name = "Single File"
+                
+                # Try to get file_index and file_name from various sources
+                if hasattr(self.fitting_popup, 'fitting_results') and len(self.fitting_popup.fitting_results) > 0:
+                    # From fitting_results (after START FITTING)
+                    result = self.fitting_popup.fitting_results[0]
+                    file_index = result.get('file_index', 0)
+                    file_name = result.get('file_name', 'Single File')
+                elif hasattr(self.fitting_popup, 'data') and len(self.fitting_popup.data) > 0:
+                    # From data (spectroscopy mode)
+                    file_index = self.fitting_popup.data[0].get('file_index', 0)
+                    file_name = self.fitting_popup.data[0].get('file_name', 'Single File')
+                
+                # Try to get better file name from reader_data if needed
+                if file_name in ['File 1', 'Single File'] or file_name.startswith('File '):
+                    # Try fitting/files/fitting (JSON files)
+                    fitting_files = self.fitting_popup.app.reader_data.get("fitting", {}).get("files", {}).get("fitting", "")
+                    if fitting_files:
+                        if isinstance(fitting_files, str) and fitting_files.strip():
+                            file_name = os.path.basename(fitting_files)
+                
+                # Use the SAME color retrieval method as in _update_plot_single_file
+                from core.phasors_controller import PhasorsController
+                color = PhasorsController.get_color_for_file_index(file_index)
+                
+                # Plot Counts (points)
+                plot_widget.plot(
+                    counts_x,
+                    y_data,
+                    pen=None,
+                    symbol="o",
+                    symbolSize=6,
+                    symbolBrush=color,
+                )
+                # Plot Fitted curve (line)
+                plot_widget.plot(
+                    fitted_x,
+                    fitted_data,
+                    pen=pg.mkPen(color, width=2),
+                )
+                
+                # Add file name to legend with matching color (only in read_mode like multi-file)
+                if self.fitting_popup.read_mode:
+                    legend_item = pg.PlotDataItem(pen=pg.mkPen(color, width=10))
+                    legend.addItem(legend_item, file_name)
+                
+                PlotsController.set_plot_y_range(plot_widget)
 
     @staticmethod
     def calculate_lin_mode(y_values):

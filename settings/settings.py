@@ -41,6 +41,7 @@ SETTINGS_CPS_THRESHOLD = "cps_threshold"
 DEFAULT_CPS_THRESHOLD = 0
 SETTINGS_SHOW_SBR = "show_SBR"
 DEFAULT_SHOW_SBR = False
+SETTINGS_REPLICATES = "replicates"
 
 
 TIME_TAGGER_PROGRESS_BAR = "time_tagger_progress_bar"
@@ -139,12 +140,13 @@ READER_DATA = {
         "data": {"phasors_data": {}, "spectroscopy_data": {}},
     },
     "fitting": {
-        "files": {"spectroscopy": "", "fitting": ""},
+        "files": {"spectroscopy": "", "fitting": [], "laserblood_metadata": ""},
         "plots": [],
         "spectroscopy_metadata": {},
-        "fitting_metadata": {},
+        "fitting_metadata": [],
+        "laserblood_metadata": {},
         "metadata": {},
-        "data": {"fitting_data": {}, "spectroscopy_data": {}},
+        "data": {"fitting_data": [], "spectroscopy_data": {}},
     },
 }
 
