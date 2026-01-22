@@ -151,19 +151,70 @@ function result = fit_decay_curve(x_values, y_values, channel)
         return;
     end
 
-    % Check for τ values similarity
+    % Check for τ values similarity and remove redundant components
     num_components = (length(best_popt) - 1) / 2;
     tau_values = best_popt(2:2:end-1);
-    tau_are_similar = all(abs(tau_values - tau_values(1)) / tau_values(1) < tau_similarity_threshold);
-
-    % If τ values are similar use decay_model_1_with_B by default 
-    if tau_are_similar && num_components > 1
-        model = decay_model_1_with_B;
-        initial_guess = [1, 1, 1];
-        [best_popt, ~, residual, ~] = lsqcurvefit(model, initial_guess, t_data, y_data, [], [], opts);
-        best_fit = model(best_popt, t_data);
-        best_model = model;
-        best_chi2 = sum((y_data - best_fit).^2 ./ (best_fit + epsilon)) / (length(y_data) - length(best_popt));
+    
+    % Identify groups of similar tau values
+    similar_groups = {};
+    used_indices = [];
+    
+    for i = 1:length(tau_values)
+        if ismember(i, used_indices)
+            continue;
+        end
+        
+        group = i;
+        for j = (i+1):length(tau_values)
+            if ismember(j, used_indices)
+                continue;
+            end
+            
+            % Use max of the two values as denominator to avoid division by small numbers
+            denominator = max([abs(tau_values(i)), abs(tau_values(j)), 1e-10]);
+            relative_diff = abs(tau_values(i) - tau_values(j)) / denominator;
+            
+            if relative_diff < tau_similarity_threshold
+                group = [group, j];
+                used_indices = [used_indices, j];
+            end
+        end
+        
+        similar_groups{end+1} = group;
+        used_indices = [used_indices, i];
+    end
+    
+    % If we have redundant components, simplify the model
+    has_redundant_components = any(cellfun(@length, similar_groups) > 1);
+    unique_components = length(similar_groups);
+    
+    if has_redundant_components && unique_components < num_components
+        % Refit with the appropriate model based on unique components
+        if unique_components == 1
+            model = decay_model_1_with_B;
+            initial_guess = [1, 1, 1];
+        elseif unique_components == 2
+            model = decay_model_2_with_B;
+            initial_guess = [1, 1, 1, 1, 1];
+        elseif unique_components == 3
+            model = decay_model_3_with_B;
+            initial_guess = [1, 1, 1, 1, 1, 1, 1];
+        else
+            model = best_model;
+        end
+        
+        % Refit only if we're simplifying
+        if unique_components < num_components
+            try
+                [best_popt, ~, residual, ~] = lsqcurvefit(model, initial_guess, t_data, y_data, [], [], opts);
+                best_fit = model(best_popt, t_data);
+                best_model = model;
+                num_components = (length(best_popt) - 1) / 2;
+                best_chi2 = sum((y_data - best_fit).^2 ./ (best_fit + epsilon)) / (length(y_data) - length(best_popt));
+            catch
+                % If refit fails, keep the original best fit
+            end
+        end
     end
 
     % Prepare output data

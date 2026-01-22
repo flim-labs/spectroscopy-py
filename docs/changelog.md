@@ -1,5 +1,10 @@
 # Spectroscopy Changelog
 
+## Version 2.7
+- Added support for plotting up to 4 phasor files simultaneously in read mode.
+- Added support for plotting up to 4 fitting files or spectroscopy files in read mode.
+- Improved fitting UI: highlights the selected fitting algorithm and enhances the overall display.
+
 ## Version 2.6
 - Add 100ps toggle for Pico mode with automatic availability checks
 - Add pico_mode propagation to firmware selection and acquisition params
