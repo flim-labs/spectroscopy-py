@@ -126,6 +126,7 @@ class SpectroscopyWindow(QWidget):
         self.plots_to_show = (
             json.loads(default_plots_to_show) if default_plots_to_show else []
         )
+        self.plots_to_show_cache = json.loads(default_plots_to_show) if default_plots_to_show else []
 
         self.selected_sync = self.settings.value(s.SETTINGS_SYNC, s.DEFAULT_SYNC)
         self.sync_in_frequency_mhz = float(

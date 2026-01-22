@@ -129,7 +129,7 @@ with open(file_path, "rb") as f:
 
         for model, initial_guess in decay_models:
             try:
-                popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=500000)
+                popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=50000)
                 fitted_values = model(t_data, *popt)
                 
                 # Chi-square (χ²) calculation to find best model
@@ -151,7 +151,7 @@ with open(file_path, "rb") as f:
         if best_fit is None:
             return {"error": "Optimal parameters not found for any model."}
 
-        # Check for τ values similarity
+        # Check for τ values similarity and remove redundant components
         num_components = (len(best_popt) - 1) // 2
         tau_values = [best_popt[2 * i + 1] for i in range(num_components)]
         tau_are_similar = all(
@@ -159,16 +159,63 @@ with open(file_path, "rb") as f:
             for i in range(len(tau_values))
             for j in range(i + 1, len(tau_values))
         )
-
-        # If τ values are similar use decay_model_1_with_B by default 
-        if tau_are_similar:
-            model = decay_model_1_with_B
-            initial_guess = [1, 1, 1]
-            popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=500000)
-            best_fit = model(t_data, *popt)
-            best_model = model
-            best_popt = popt
-
+        
+        # Identify groups of similar tau values
+        similar_groups = []
+        used_indices = set()
+        
+        for i in range(len(tau_values)):
+            if i in used_indices:
+                continue
+            
+            group = [i]
+            for j in range(i + 1, len(tau_values)):
+                if j in used_indices:
+                    continue
+                
+                # Use max of the two values as denominator to avoid division by small numbers
+                denominator = max(abs(tau_values[i]), abs(tau_values[j]), 1e-10)
+                relative_diff = abs(tau_values[i] - tau_values[j]) / denominator
+                
+                if relative_diff < tau_similarity_threshold:
+                    group.append(j)
+                    used_indices.add(j)
+            
+            similar_groups.append(group)
+            used_indices.add(i)
+        
+        # If we have redundant components, simplify the model
+        has_redundant_components = any(len(group) > 1 for group in similar_groups)
+        unique_components = len(similar_groups)
+        
+        if has_redundant_components and unique_components < num_components:
+            # Refit with the appropriate model based on unique components
+            if unique_components == 1:
+                model = decay_model_1_with_B
+                initial_guess = [1, 1, 1]
+            elif unique_components == 2:
+                model = decay_model_2_with_B
+                initial_guess = [1, 1, 1, 1, 1]
+            elif unique_components == 3:
+                model = decay_model_3_with_B
+                initial_guess = [1, 1, 1, 1, 1, 1, 1]
+            else:
+                model = best_model
+            
+            # Refit only if we're simplifying
+            if unique_components < num_components:
+                try:
+                    popt, pcov = curve_fit(model, t_data, y_data, p0=initial_guess, maxfev=50000)
+                    best_fit = model(t_data, *popt)
+                    best_model = model
+                    best_popt = popt
+                    # Recalculate num_components and chi2 for the simplified model
+                    num_components = (len(best_popt) - 1) // 2
+                    epsilon = 1e-10
+                    best_chi2 = np.sum((np.array(y_data) - best_fit)**2 / (best_fit + epsilon)) / (len(y_data) - len(best_popt))
+                except:
+                    pass
+                
         output_data = {}
         fitted_params_text = 'Fitted parameters:\n'
         
