@@ -602,6 +602,8 @@ class UIController:
             layout (QLayout): The layout to add the checkboxes to.
         """
         from core.controls_controller import ControlsController
+        from utils.channel_name_utils import get_channel_name_parts
+                
         for i in range(s.MAX_CHANNELS):
             ch_wrapper = QWidget()
             ch_wrapper.setObjectName(f"ch_checkbox_wrapper")
@@ -609,12 +611,23 @@ class UIController:
             row = QHBoxLayout()
             from components.fancy_checkbox import FancyCheckbox
 
-            fancy_checkbox = FancyCheckbox(text=f"Channel {i + 1}")
+            # Get channel name parts
+            custom_part, default_part = get_channel_name_parts(i, app.channel_names)
+            
+            fancy_checkbox = FancyCheckbox(
+                label_custom_part=custom_part,
+                label_default_part=default_part,
+                label_clickable=True
+            )
             fancy_checkbox.setStyleSheet(GUIStyles.set_checkbox_style())
             if app.selected_channels:
                 fancy_checkbox.set_checked(i in app.selected_channels)
             fancy_checkbox.toggled.connect(
                 lambda checked, channel=i: ControlsController.on_channel_selected(app, checked, channel)
+            )
+            # Connect label click to open rename modal
+            fancy_checkbox.labelClicked.connect(
+                lambda channel=i: UIController.open_rename_modal(app, channel)
             )
             row.addWidget(fancy_checkbox)
             ch_wrapper.setLayout(row)
@@ -735,3 +748,32 @@ class UIController:
         ControlsController.update_pico_mode_toggle(app, ControlsController.get_current_frequency_mhz(app))
         return buttons_layout
 
+    @staticmethod
+    def open_rename_modal(app, channel_id):
+        """Open modal to rename a channel."""
+        import json
+        from components.rename_channel_modal import RenameChannelModal
+        
+        current_name = app.channel_names.get(str(channel_id), "")
+        modal = RenameChannelModal(channel_id, current_name, app)
+        modal.channelRenamed.connect(lambda cid, name: UIController.on_channel_renamed(app, cid, name))
+        modal.exec()
+    
+    @staticmethod
+    def on_channel_renamed(app, channel_id, new_name):
+        """Handle channel rename event."""
+        import json
+        from utils.channel_name_utils import get_channel_name_parts
+        
+        if new_name:
+            app.channel_names[str(channel_id)] = new_name
+        else:
+            if str(channel_id) in app.channel_names:
+                del app.channel_names[str(channel_id)]
+        
+        app.settings.setValue(s.SETTINGS_CHANNEL_NAMES, json.dumps(app.channel_names))
+        
+        if channel_id < len(app.channel_checkboxes):
+            custom_part, default_part = get_channel_name_parts(channel_id, app.channel_names)
+            checkbox = app.channel_checkboxes[channel_id]
+            checkbox.set_text_parts(custom_part, default_part)

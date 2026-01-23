@@ -143,6 +143,15 @@ class SpectroscopyWindow(QWidget):
             )
         )
         
+        # Channel custom names
+        default_channel_names = self.settings.value(
+            s.SETTINGS_CHANNEL_NAMES, s.DEFAULT_CHANNEL_NAMES
+        )
+        self.channel_names = (
+            json.loads(default_channel_names)
+            if default_channel_names
+            else {}
+        )        
 
     def _initialize_attributes(self):
         """

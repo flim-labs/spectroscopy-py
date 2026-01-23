@@ -43,6 +43,8 @@ SETTINGS_SHOW_SBR = "show_SBR"
 DEFAULT_SHOW_SBR = False
 SETTINGS_REPLICATES = "replicates"
 
+SETTINGS_CHANNEL_NAMES = "channel_names"
+DEFAULT_CHANNEL_NAMES = "{}"
 
 TIME_TAGGER_PROGRESS_BAR = "time_tagger_progress_bar"
 TIME_TAGGER_WIDGET = "time_tagger_widget"
