@@ -166,7 +166,7 @@ class SpectroscopyWindow(QWidget):
 
     def _initialize_attributes(self):
         """
-        Initializes instance attributes and data structures.
+        Initializes instance attributes and data structures, including custom channel names.
         """
         self.threadpool = QThreadPool()
         self.reader_data = s.READER_DATA
@@ -221,6 +221,13 @@ class SpectroscopyWindow(QWidget):
         self.fitting_config_popup = None
         self.phasors_harmonic_selected = 1
         self.refresh_reader_popup_plots = False
+        # Custom channel names
+        self.channel_names = {}
+        custom_names_json = self.settings.value("channel_names", "{}")
+        try:
+            self.channel_names = json.loads(custom_names_json)
+        except Exception:
+            self.channel_names = {}
 
     def _initialize_ui(self):
         """
@@ -332,7 +339,6 @@ def main():
         """
         if msg_type == QtMsgType.QtWarningMsg:
             return
-        print(f"Qt Message: {message} (Type: {msg_type})")
 
     qInstallMessageHandler(custom_message_handler)
 
