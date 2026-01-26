@@ -2,6 +2,28 @@ spectroscopy_file_path = '<SPECTROSCOPY-FILE-PATH>'
 phasors_file_path = '<PHASORS-FILE-PATH>'
 fprintf('Using data file: %s\n', phasors_file_path);
 
+% Custom channel names (if any)
+channel_names_json = '<CHANNEL-NAMES>';
+try
+    channel_names = jsondecode(channel_names_json);
+catch
+    channel_names = struct();
+end
+
+% Helper function for channel names
+function name = get_channel_name(channel_id, custom_names)
+    field_name = sprintf('x%d', channel_id);
+    if isfield(custom_names, field_name)
+        custom_name = custom_names.(field_name);
+        if length(custom_name) > 30
+            custom_name = [custom_name(1:30) '...'];
+        end
+        name = sprintf('%s (Ch%d)', custom_name, channel_id + 1);
+    else
+        name = sprintf('Channel %d', channel_id + 1);
+    end
+end
+
 % READ SPECTROSCOPY DATA
 spectroscopy_fid = fopen(spectroscopy_file_path, 'rb');
 if spectroscopy_fid == -1
@@ -133,7 +155,7 @@ for i = 1:spectro_num_channels
     sum_curve = sum(channel_curves{i}, 1);
     total_max = max(total_max, max(sum_curve));
     total_min = min(total_min, min(sum_curve));
-    plot(x_values, sum_curve, 'DisplayName', sprintf('Channel %d', spectroscopy_metadata.channels(i) + 1));
+    plot(x_values, sum_curve, 'DisplayName', get_channel_name(spectroscopy_metadata.channels(i), channel_names));
 end
 ylim([total_min * 0.99, total_max * 1.01]);
 xlim([0, laser_period_ns]);

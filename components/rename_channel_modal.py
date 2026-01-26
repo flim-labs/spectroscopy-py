@@ -53,7 +53,7 @@ class RenameChannelModal(QDialog):
                 border-color: #773344;
             }
             QPushButton {
-                background-color: #8d4ef2;
+                background-color: #11468F;
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -63,10 +63,10 @@ class RenameChannelModal(QDialog):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #9d5eff;
+                background-color: #0053a4;
             }
             QPushButton:pressed {
-                background-color: #7d3ed2;
+                background-color: #0D3A73;
             }
             QPushButton#cancelButton {
                 background-color: #444;
@@ -78,13 +78,13 @@ class RenameChannelModal(QDialog):
                 background-color: #333;
             }
             QPushButton#resetButton {
-                background-color: #FB8C00;
+                background-color: #DA1212;
             }
             QPushButton#resetButton:hover {
-                background-color: #FFA726;
+                background-color: #E23B3B;
             }
             QPushButton#resetButton:pressed {
-                background-color: #E65100;
+                background-color: #B01010;
             }
         """)
         

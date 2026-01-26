@@ -359,15 +359,23 @@ class ControlsController:
                             entry['file_name'] = file_name
             else:
                 # In FITTING READ mode without spectroscopy data, create single plot
+                from utils.channel_name_utils import get_channel_name
                 active_channels = ReadData.get_fitting_active_channels(app)
                 
                 # Create only one plot entry (will show fitting results for all channels averaged)
+                if len(active_channels) > 1:
+                    title = f"Average of {len(active_channels)} channel(s)"
+                elif len(active_channels) > 0:
+                    title = get_channel_name(active_channels[0], app.channel_names)
+                else:
+                    title = "No data"
+                
                 data.append(
                     {
                         "x": [0],
                         "y": [0],
                         "time_shift": 0,
-                        "title": f"Average of {len(active_channels)} channel(s)" if len(active_channels) > 1 else f"Channel {active_channels[0] + 1}" if len(active_channels) > 0 else "No data",
+                        "title": title,
                         "channel_index": 0,
                     }
                 )

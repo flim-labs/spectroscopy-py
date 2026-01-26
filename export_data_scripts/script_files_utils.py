@@ -44,7 +44,7 @@ class ScriptFileUtils:
     """
     
     @classmethod
-    def export_scripts(cls, bin_file_paths, file_name, directory, script_type, time_tagger=False, time_tagger_file_path=""):
+    def export_scripts(cls, bin_file_paths, file_name, directory, script_type, time_tagger=False, time_tagger_file_path="", channel_names=None):
         """
         Export analysis scripts for the specified data type and configuration.
         
@@ -55,6 +55,7 @@ class ScriptFileUtils:
             script_type (str): Type of script to export ('spectroscopy', 'phasors', 'fitting')
             time_tagger (bool, optional): Whether to include time tagger functionality. Defaults to False.
             time_tagger_file_path (str, optional): Path to time tagger data file. Defaults to "".
+            channel_names (dict, optional): Dictionary of custom channel names. Defaults to None.
             
         Returns:
             None: Creates script files in the specified directory
@@ -62,28 +63,30 @@ class ScriptFileUtils:
         Raises:
             Exception: If script generation or file writing fails
         """
+        if channel_names is None:
+            channel_names = {}
         try:
             if time_tagger:
                 python_modifier = cls.get_time_tagger_content_modifiers()
-                cls.write_new_scripts_content(python_modifier, {"time_tagger": time_tagger_file_path}, file_name, directory, "py", "time_tagger_spectroscopy")
+                cls.write_new_scripts_content(python_modifier, {"time_tagger": time_tagger_file_path}, file_name, directory, "py", "time_tagger_spectroscopy", channel_names)
             if script_type == 'spectroscopy':
                 python_modifier, matlab_modifier = cls.get_spectroscopy_content_modifiers(time_tagger)
-                cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
-                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
+                cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type, channel_names)
+                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type, channel_names)
             elif script_type == 'phasors':
                 python_modifier, matlab_modifier = cls.get_phasors_content_modifiers(time_tagger)   
-                cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
-                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)
+                cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type, channel_names)
+                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type, channel_names)
             elif script_type == 'fitting':
                 python_modifier, matlab_modifier = cls.get_fitting_content_modifiers(time_tagger)    
-                cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type)
-                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type)    
+                cls.write_new_scripts_content(python_modifier, bin_file_paths, file_name, directory, "py", script_type, channel_names)
+                cls.write_new_scripts_content(matlab_modifier, bin_file_paths, file_name, directory, "m", script_type, channel_names)    
             cls.show_success_message(file_name)                
         except Exception as e:
             cls.show_error_message(str(e))
 
     @classmethod
-    def write_new_scripts_content(cls, content_modifier, bin_file_paths, file_name, directory, file_extension, script_type):
+    def write_new_scripts_content(cls, content_modifier, bin_file_paths, file_name, directory, file_extension, script_type, channel_names=None):
         """
         Generate and write customized script content to files.
         
@@ -94,13 +97,16 @@ class ScriptFileUtils:
             directory (str): Target directory for file creation
             file_extension (str): File extension ('py' or 'm')
             script_type (str): Type of script being generated
+            channel_names (dict, optional): Dictionary of custom channel names. Defaults to None.
             
         Returns:
             None: Creates script and requirements files
         """
+        if channel_names is None:
+            channel_names = {}
         is_phasors = script_type == "phasors"
         content = cls.read_file_content(content_modifier["source_file"])
-        new_content = cls.manipulate_file_content(content, bin_file_paths, is_phasors)
+        new_content = cls.manipulate_file_content(content, bin_file_paths, is_phasors, channel_names)
         script_file_name = f"{file_name}_{script_type}_script.{file_extension}"
         script_file_path = os.path.join(directory, script_file_name)
         cls.write_file(script_file_path, new_content)
@@ -258,18 +264,23 @@ class ScriptFileUtils:
             return file.readlines()
 
     @classmethod
-    def manipulate_file_content(cls, content, file_paths, is_phasors):
+    def manipulate_file_content(cls, content, file_paths, is_phasors, channel_names=None):
         """
-        Replace placeholder patterns in file content with actual file paths.
+        Replace placeholder patterns in file content with actual file paths and channel names.
         
         Args:
             content (list): List of file content lines
             file_paths (dict): Dictionary mapping data types to file paths
             is_phasors (bool): Whether this is phasors data processing
+            channel_names (dict, optional): Dictionary of custom channel names. Defaults to None.
             
         Returns:
-            list: Modified content with file paths injected
+            list: Modified content with file paths and channel names injected
         """
+        import json
+        if channel_names is None:
+            channel_names = {}
+        channel_names_json = json.dumps(channel_names)
         manipulated_lines = []
         for line in content:
             if is_phasors:
@@ -282,6 +293,8 @@ class ScriptFileUtils:
             else:
                 # Replace placeholder for spectroscopy or fitting data
                 line = line.replace("<FILE-PATH>", file_paths['spectroscopy'].replace("\\", "/"))
+            # Replace channel names placeholder
+            line = line.replace("<CHANNEL-NAMES>", channel_names_json)
             manipulated_lines.append(line)
         return manipulated_lines
 

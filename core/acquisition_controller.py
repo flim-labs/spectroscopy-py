@@ -541,6 +541,8 @@ class AcquisitionController:
                                       data dictionaries and the time shift of
                                       the last channel.
         """
+        from utils.channel_name_utils import get_channel_name
+        
         data = []
         time_shift = 0  # Initialize time_shift before loop
         channels_shown = [
@@ -580,7 +582,7 @@ class AcquisitionController:
                 {
                     "x": x_data,
                     "y": y,
-                    "title": "Channel " + str(channel_index + 1),
+                    "title": get_channel_name(channel_index, app.channel_names),
                     "channel_index": channel_index,
                     "time_shift": time_shift,
                 }

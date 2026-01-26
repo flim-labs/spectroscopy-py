@@ -1,10 +1,27 @@
 import struct
 import matplotlib.pyplot as plt
 import numpy as np
+import json
 
 spectroscopy_file_path = "<SPECTROSCOPY-FILE-PATH>"
 phasors_file_path = "<PHASORS-FILE-PATH>"
 print("Using phasors_data file: " + phasors_file_path)
+
+# Custom channel names (if any)
+channel_names_json = '<CHANNEL-NAMES>'
+try:
+    channel_names = json.loads(channel_names_json) if channel_names_json else {}
+except:
+    channel_names = {}
+
+def get_channel_name(channel_id):
+    """Get custom channel name with channel reference, or default name."""
+    custom_name = channel_names.get(str(channel_id), None)
+    if custom_name:
+        if len(custom_name) > 30:
+            custom_name = custom_name[:30] + "..."
+        return f"{custom_name} (Ch{channel_id + 1})"
+    return f"Channel {channel_id + 1}"
 
 def ns_to_mhz(laser_period_ns):
     period_s = laser_period_ns * 1e-9
@@ -155,7 +172,7 @@ for i in range(number_of_channels):
         total_max = max_val
     if min_val < total_min:        
         total_min = min_val
-    ax.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")   
+    ax.plot(x_values, sum_curve, label=get_channel_name(metadata['channels'][i]))   
 ax.set_ylim(total_min * 0.99, total_max * 1.01)  
 ax.set_xlim(0, spectroscopy_laser_period)   
 ax.legend()

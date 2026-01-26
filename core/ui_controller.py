@@ -573,6 +573,47 @@ class UIController:
         return controls_row
 
     @staticmethod
+    def update_plot_titles_for_channel(app, channel_id):
+        """
+        Updates plot titles for a specific channel after rename.
+        
+        Args:
+            app: The main application instance.
+            channel_id (int): The channel index to update.
+        """
+        import pyqtgraph as pg
+        from utils.channel_name_utils import get_channel_name
+        
+        channel_names = getattr(app, 'channel_names', {})
+        
+        # Update intensity plot title
+        if channel_id in app.intensities_widgets:
+            wrapper = app.intensities_widgets[channel_id]
+            layout = wrapper.layout()
+            if layout:
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    if item and item.widget():
+                        widget = item.widget()
+                        if isinstance(widget, pg.PlotWidget):
+                            new_title = f"{get_channel_name(channel_id, channel_names)} intensity"
+                            widget.setTitle(new_title)
+                            break
+        
+        # Update decay plot title (only in acquire mode)
+        if channel_id in app.decay_widgets and app.acquire_read_mode == "acquire":
+            decay_widget = app.decay_widgets[channel_id]
+            new_title = f"{get_channel_name(channel_id, channel_names)} decay"
+            decay_widget.setTitle(new_title)
+        
+        # Update phasors plot title (only in acquire mode, not in read mode)
+        if channel_id in app.phasors_widgets:
+            if not (app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read"):
+                phasors_widget = app.phasors_widgets[channel_id]
+                new_title = f"{get_channel_name(channel_id, channel_names)} phasors"
+                phasors_widget.setTitle(new_title)
+    
+    @staticmethod
     def style_start_button(app):
         """
         Styles the main action button based on the application's state.
@@ -749,6 +790,47 @@ class UIController:
         return buttons_layout
 
     @staticmethod
+    def update_plot_titles_for_channel(app, channel_id):
+        """
+        Updates plot titles for a specific channel after rename.
+        
+        Args:
+            app: The main application instance.
+            channel_id (int): The channel index to update.
+        """
+        import pyqtgraph as pg
+        from utils.channel_name_utils import get_channel_name
+        
+        channel_names = getattr(app, 'channel_names', {})
+        
+        # Update intensity plot title
+        if channel_id in app.intensities_widgets:
+            wrapper = app.intensities_widgets[channel_id]
+            layout = wrapper.layout()
+            if layout:
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    if item and item.widget():
+                        widget = item.widget()
+                        if isinstance(widget, pg.PlotWidget):
+                            new_title = f"{get_channel_name(channel_id, channel_names)} intensity"
+                            widget.setTitle(new_title)
+                            break
+        
+        # Update decay plot title (only in acquire mode)
+        if channel_id in app.decay_widgets and app.acquire_read_mode == "acquire":
+            decay_widget = app.decay_widgets[channel_id]
+            new_title = f"{get_channel_name(channel_id, channel_names)} decay"
+            decay_widget.setTitle(new_title)
+        
+        # Update phasors plot title (only in acquire mode, not in read mode)
+        if channel_id in app.phasors_widgets:
+            if not (app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read"):
+                phasors_widget = app.phasors_widgets[channel_id]
+                new_title = f"{get_channel_name(channel_id, channel_names)} phasors"
+                phasors_widget.setTitle(new_title)
+
+    @staticmethod
     def open_rename_modal(app, channel_id):
         """Open modal to rename a channel."""
         import json
@@ -777,3 +859,6 @@ class UIController:
             custom_part, default_part = get_channel_name_parts(channel_id, app.channel_names)
             checkbox = app.channel_checkboxes[channel_id]
             checkbox.set_text_parts(custom_part, default_part)
+        
+        # Update plot titles immediately
+        UIController.update_plot_titles_for_channel(app, channel_id)

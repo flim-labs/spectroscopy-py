@@ -25,6 +25,7 @@ from components.input_text_control import InputTextControl
 from utils.gui_styles import GUIStyles
 from utils.helpers import extract_channel_from_label, ns_to_mhz
 from utils.layout_utilities import clear_layout, hide_layout, show_layout
+from utils.channel_name_utils import get_channel_name
 from utils.messages_utilities import MessagesUtilities
 from utils.resource_path import resource_path
 from utils.fitting_utilities import convert_json_serializable_item_into_np_fitting_result
@@ -913,6 +914,8 @@ class ReadData:
             list: List of dictionaries containing x, y, title, channel_index, time_shift, 
                   and optionally file_index and file_name for multi-file support
         """
+        from utils.channel_name_utils import get_channel_name
+        
         spectroscopy_data = app.reader_data["fitting"]["data"]["spectroscopy_data"]
         metadata = app.reader_data["fitting"]["metadata"]
         
@@ -955,11 +958,12 @@ class ReadData:
                         
                         # Use the display channel from plots_to_show
                         display_channel = app.plots_to_show[0] if app.plots_to_show else 0
+                        channel_id = channels[channel]
                         data.append(
                             {
                                 "x": x_values,
                                 "y": y_values,
-                                "title": f"Channel {channels[channel] + 1}",
+                                "title": get_channel_name(channel_id, app.channel_names),
                                 "channel_index": display_channel,
                                 "time_shift": 0,
                                 "file_index": file_idx,
@@ -990,7 +994,7 @@ class ReadData:
                     data_entry = {
                         "x": x_values,
                         "y": y_values,
-                        "title": "Channel " + str(channels[channel]  + 1),
+                        "title": get_channel_name(channels[channel], app.channel_names),
                         "channel_index": channels[channel],
                         "time_shift": 0
                     }
@@ -1923,7 +1927,8 @@ class ReaderPopup(QWidget):
             desc.setStyleSheet("font-size: 16px; font-family: 'Montserrat'")
             grid = QGridLayout()
             for ch in selected_channels:
-                checkbox, checkbox_wrapper = self.set_checkboxes(f"Channel {ch + 1}")
+                channel_name = get_channel_name(ch, self.app.channel_names)
+                checkbox, checkbox_wrapper = self.set_checkboxes(channel_name)
                 isChecked = ch in plots_to_show
                 checkbox.setChecked(isChecked)
                 if len(plots_to_show) >= 4 and ch not in plots_to_show:
@@ -2645,7 +2650,7 @@ class ReaderMetadataPopup(QWidget):
                         metadata_value = str(metadata[key])
                         if key == "channels":
                             metadata_value = ", ".join(
-                                ["Channel " + str(ch + 1) for ch in metadata[key]]
+                                [get_channel_name(ch, self.app.channel_names) for ch in metadata[key]]
                             )
                         if key == "acquisition_time_millis":
                             metadata_value = str(metadata[key] / 1000)
@@ -2706,7 +2711,7 @@ class ReaderMetadataPopup(QWidget):
                         metadata_value = str(metadata[key])
                         if key == "channels":
                             metadata_value = ", ".join(
-                                ["Channel " + str(ch + 1) for ch in metadata[key]]
+                                [get_channel_name(ch, self.app.channel_names) for ch in metadata[key]]
                             )
                         if key == "acquisition_time_millis":
                             metadata_value = str(metadata[key] / 1000)
