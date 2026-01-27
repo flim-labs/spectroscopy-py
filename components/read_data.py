@@ -65,6 +65,22 @@ class ReadData:
         app.reader_data[active_tab]["plots"] = []
         app.reader_data[active_tab]["metadata"] = metadata
         app.reader_data[active_tab]["files"][file_type] = file_name
+        
+        # Auto-load laserblood_metadata if exists
+        try:
+            import os, glob, json
+            bin_dir = os.path.dirname(file_name)
+            timestamp = os.path.basename(file_name).split('_')[0]
+            pattern = os.path.join(bin_dir, f"{timestamp}_*_laserblood_metadata.json")
+            matches = glob.glob(pattern)
+            
+            if matches:
+                with open(matches[0], 'r', encoding='utf-8') as f:
+                    laserblood_data = json.load(f)
+                    app.reader_data[active_tab]["laserblood_metadata"] = laserblood_data
+                    app.reader_data[active_tab]["files"]["laserblood_metadata"] = matches[0]
+        except Exception:
+            pass
 
         # Clear decay widgets when loading new data
         for channel in list(app.decay_widgets.keys()):
@@ -2198,12 +2214,20 @@ class ReaderPopup(QWidget):
             self.app.settings.setValue(
                 s.SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
             )
+            
+            # Extract channel_names from metadata and create labels
+            from utils.channel_name_utils import extract_channel_names_from_metadata, get_channel_name
+            channel_names = extract_channel_names_from_metadata(
+                self.app.reader_data[self.data_type].get("laserblood_metadata", [])
+            )
+            
             channels_layout = QVBoxLayout()
             desc = QLabel("CHOOSE MAX 4 PLOTS TO DISPLAY:")
             desc.setStyleSheet("font-size: 16px; font-family: 'Montserrat'")
             grid = QGridLayout()
             for ch in selected_channels:
-                checkbox, checkbox_wrapper = self.set_checkboxes(f"Channel {ch + 1}")
+                label = get_channel_name(ch, channel_names)
+                checkbox, checkbox_wrapper = self.set_checkboxes(label)
                 isChecked = ch in plots_to_show
                 checkbox.setChecked(isChecked)
                 if len(plots_to_show) >= 4 and ch not in plots_to_show:
@@ -3424,30 +3448,26 @@ class ReaderMetadataPopup(QWidget):
             "File", file_display, "#DA1212", "#DA1212"
         )
         v_box.addLayout(file_info_row)
-        if laserblood_metadata:
-            parsed_laserblood_metadata = self.parse_laserblood_metadata(
-                laserblood_metadata
-            )
-            for key, value in parsed_laserblood_metadata.items():
-                metadata_row = self.create_compact_label_row(
-                    key, str(value), "#11468F", "#11468F"
-                )
-                v_box.addLayout(metadata_row)
-        else:
-            if metadata:
-                for key, value in metadata_keys.items():
-                    if key in metadata:
-                        metadata_value = str(metadata[key])
-                        if key == "channels":
-                            metadata_value = ", ".join(
-                                ["Channel " + str(ch + 1) for ch in metadata[key]]
-                            )
-                        if key == "acquisition_time_millis":
-                            metadata_value = str(metadata[key] / 1000)
-                        metadata_row = self.create_compact_label_row(
-                            value, metadata_value, "#11468F", "#11468F"
-                        )
-                        v_box.addLayout(metadata_row)
+        
+        # Extract channel_names from laserblood_metadata if available
+        from utils.channel_name_utils import extract_channel_names_from_metadata
+        channel_names_dict = extract_channel_names_from_metadata(laserblood_metadata)
+        
+        # Show standard metadata from the .bin file
+        if metadata:
+            for key, value in metadata_keys.items():
+                if key in metadata:
+                    metadata_value = str(metadata[key])
+                    if key == "channels":
+                        # Use custom channel names if available
+                        from utils.channel_name_utils import format_channel_list
+                        metadata_value = format_channel_list(metadata[key], channel_names_dict)
+                    if key == "acquisition_time_millis":
+                        metadata_value = str(metadata[key] / 1000)
+                    metadata_row = self.create_compact_label_row(
+                        value, metadata_value, "#11468F", "#11468F"
+                    )
+                    v_box.addLayout(metadata_row)
 
     def center_window(self):
         """Centers the popup window on the primary screen."""

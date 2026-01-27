@@ -38,3 +38,25 @@ def sanitize_channel_name(name: str) -> str:
     name = re.sub(r'[/\\:*?"<>|]', '-', name)
     name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
     return name
+
+
+def extract_channel_names_from_metadata(laserblood_metadata) -> dict:
+    """Extract channel_names from laserblood metadata."""
+    if laserblood_metadata and isinstance(laserblood_metadata, list):
+        for item in laserblood_metadata:
+            if isinstance(item, dict) and item.get("id") == "channel_names":
+                return item.get("value", {})
+    return {}
+
+
+def format_channel_list(channels: list, custom_names: dict) -> str:
+    """Format a list of channel indices with custom names.
+    
+    Args:
+        channels: List of channel indices (0-based)
+        custom_names: Dictionary mapping channel indices (as strings) to custom names
+        
+    Returns:
+        str: Formatted string like "test123 (Ch4), Channel 5"
+    """
+    return ", ".join([get_channel_name(ch, custom_names) for ch in channels])
