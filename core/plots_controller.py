@@ -8,6 +8,7 @@ from utils.gui_styles import GUIStyles
 from utils.helpers import get_realtime_adjustment_value
 from components.lin_log_control import LinLogControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
+from utils.channel_name_utils import get_channel_name
 import settings.settings as s
 
 from PyQt6.QtCore import Qt
@@ -157,7 +158,9 @@ class PlotsController:
         intensity_widget = pg.PlotWidget()
         intensity_widget.setLabel("left", ("AVG. Photon counts" if len(app.plots_to_show) < 4 else "AVG. Photons"), units="")
         intensity_widget.setLabel("bottom", "Time", units="s")
-        intensity_widget.setTitle(f"Channel {channel + 1} intensity")
+        # Use custom channel name if available
+        channel_title = get_channel_name(channel, app.channel_names)
+        intensity_widget.setTitle(f"{channel_title} intensity")
         intensity_widget.setBackground("#141414")
         intensity_widget.plotItem.setContentsMargins(0, 0, 0, 0)
         x, y = PlotsController.initialize_intensity_plot_data(app, channel)
@@ -175,6 +178,7 @@ class PlotsController:
         
         intensity_widget_wrapper.setLayout(h_layout)
         app.intensities_widgets[channel] = intensity_widget_wrapper
+        app.intensity_plot_widgets[channel] = intensity_widget
         return intensity_widget_wrapper
 
     @staticmethod
@@ -205,7 +209,9 @@ class PlotsController:
             curve_widget.setLabel("bottom", "Time", units="ns")
         # Show channel title only in ACQUIRE mode, hide in READ mode
         if app.acquire_read_mode == "acquire":
-            curve_widget.setTitle(f"Channel {channel + 1} decay")
+            # Use custom channel name if available
+            channel_title = get_channel_name(channel, app.channel_names)
+            curve_widget.setTitle(f"{channel_title} decay")
         elif app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
             curve_widget.setTitle(f"Decay")
         else:
@@ -350,7 +356,9 @@ class PlotsController:
         if app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
            phasors_widget.setTitle(f"Phasors") 
         else:
-           phasors_widget.setTitle(f"Channel {channel + 1} phasors")
+           # Use custom channel name if available
+           channel_title = get_channel_name(channel, app.channel_names)
+           phasors_widget.setTitle(f"{channel_title} phasors")
         PhasorsController.draw_semi_circle(phasors_widget)
         app.phasors_charts[channel] = phasors_widget.plot([], [], pen=None, symbol="o", symbolPen="#1E90FF", symbolSize=1, symbolBrush="#1E90FF")
         app.phasors_widgets[channel] = phasors_widget
@@ -587,6 +595,7 @@ class PlotsController:
         app.phasors_lifetime_points.clear()
         app.phasors_lifetime_texts.clear()
         app.intensities_widgets.clear()
+        app.intensity_plot_widgets.clear()
         app.phasors_charts.clear()
         app.phasors_widgets.clear()
         app.decay_widgets.clear()

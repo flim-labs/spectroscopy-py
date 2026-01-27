@@ -661,12 +661,28 @@ class UIController:
                 current_name = custom_names.get(str(channel_idx), "")
                 modal = RenameChannelModal(channel_idx, current_name, app)
                 def on_renamed(idx, new_name):
+                    from utils.channel_name_utils import get_channel_name
                     # Update custom_names dict and settings
                     custom_names[str(idx)] = new_name if new_name else ""
                     app.settings.setValue("channel_names", json.dumps(custom_names))
+                    # Update app.channel_names as well
+                    app.channel_names[str(idx)] = new_name if new_name else ""
                     # Update label
                     custom_part, default_part = get_channel_name_parts(idx, custom_names)
                     checkbox.set_text_parts(custom_part, default_part)
+                    
+                    # Update plot titles immediately when channel is visible
+                    if idx in app.plots_to_show:
+                        # Update intensity plot title
+                        if idx in app.intensity_plot_widgets:
+                            title = get_channel_name(idx, custom_names)
+                            app.intensity_plot_widgets[idx].setTitle(f"{title} intensity")
+                        
+                        # Update decay plot title (only in ACQUIRE mode)
+                        if app.acquire_read_mode == "acquire" and idx in app.decay_widgets:
+                            title = get_channel_name(idx, custom_names)
+                            app.decay_widgets[idx].setTitle(f"{title} decay")
+                            
                 modal.channelRenamed.connect(on_renamed)
                 modal.exec()
             fancy_checkbox.labelClicked.connect(open_rename_modal)

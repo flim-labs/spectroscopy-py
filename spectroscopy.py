@@ -201,6 +201,7 @@ class SpectroscopyWindow(QWidget):
         self.acquisition_time_countdown_widgets = {}
         self.decay_curves = s.DECAY_CURVES
         self.decay_widgets = {}
+        self.intensity_plot_widgets = {}
         self.all_cps_counts = []
         self.all_SBR_counts = []
         self.cached_decay_x_values = np.array([])
