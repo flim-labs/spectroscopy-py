@@ -1553,12 +1553,17 @@ class ReadData:
             app: The main application instance.
 
         Returns:
-            tuple: A tuple containing channels_curves, times, and metadata.
+            tuple: A tuple containing channels_curves, times, metadata, and channel_names.
         """
+        from utils.channel_name_utils import extract_channel_names_from_metadata
+        
         metadata = app.reader_data["spectroscopy"]["metadata"]
         channels_curves = app.reader_data["spectroscopy"]["data"]["channels_curves"]
         times = app.reader_data["spectroscopy"]["data"]["times"]
-        return channels_curves, times, metadata
+        laserblood_metadata = app.reader_data["spectroscopy"].get("laserblood_metadata", [])
+        channel_names = extract_channel_names_from_metadata(laserblood_metadata)
+        
+        return channels_curves, times, metadata, channel_names
 
     @staticmethod
     def prepare_phasors_data_for_export_img(app):

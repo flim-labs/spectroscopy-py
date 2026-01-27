@@ -470,18 +470,21 @@ def plot_phasors_data(
     return fig
 
 
-def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
+def plot_spectroscopy_data(channel_curves, times, metadata, channel_names=None, show_plot=True):
     """Generates and displays a plot of summed spectroscopy decay curves.
 
     Args:
         channel_curves (list): A list of lists, where each inner list contains decay curves for a channel.
         times (list): A list of timestamps for the acquisitions.
         metadata (dict): Metadata dictionary containing 'laser_period_ns' and 'channels'.
+        channel_names (dict, optional): Dictionary mapping channel indices to custom names.
         show_plot (bool, optional): If True, displays the plot. Defaults to True.
 
     Returns:
         matplotlib.figure.Figure: The generated figure object.
     """
+    from utils.channel_name_utils import get_channel_name
+    
     fig, ax = plt.subplots()
     ax.set_xlabel(f"Time (ns, Laser period = {metadata['laser_period_ns']} ns)")
     ax.set_ylabel("Intensity")
@@ -498,6 +501,7 @@ def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
     # plot all channels summed up
     total_max = 0
     total_min = float("inf")
+    channel_names = channel_names or {}
     for i in range(len(channel_curves)):
         sum_curve = np.sum(channel_curves[i], axis=0)
         max_value = np.max(sum_curve)
@@ -506,7 +510,9 @@ def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
             total_max = max_value
         if min_value < total_min:
             total_min = min_value
-        ax.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")
+        # Use custom channel name if available
+        label = get_channel_name(metadata['channels'][i], channel_names)
+        ax.plot(x_values, sum_curve, label=label)
         ax.legend()
     ax.set_ylim(total_min * 0.99, total_max * 1.01)
     ax.set_xlim(0, metadata["laser_period_ns"])
