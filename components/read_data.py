@@ -2581,6 +2581,7 @@ class ReaderPopup(QWidget):
         # Clear previous spectroscopy data
         self.app.reader_data["fitting"]["files"]["spectroscopy"] = []
         self.app.reader_data["fitting"]["spectroscopy_metadata"] = []
+        self.app.reader_data["fitting"]["laserblood_metadata"] = []  # Reset auto-loaded metadata
         self.app.reader_data["fitting"]["data"]["spectroscopy_data"] = {
             "files_data": []
         }
@@ -2622,6 +2623,42 @@ class ReaderPopup(QWidget):
                             self.app.reader_data["fitting"][
                                 "spectroscopy_metadata"
                             ].append(metadata)
+                            
+                            # Auto-load laserblood_metadata if exists (for spectroscopy files)
+                            import glob
+                            file_dir = os.path.dirname(file_path)
+                            file_base = os.path.basename(file_path).replace('.bin', '')
+                            # Extract timestamp (format: YYYYMMDD_HHMMSS)
+                            timestamp = '_'.join(file_base.split('_')[:2])
+                            
+                            # Search for matching metadata file
+                            metadata_pattern = os.path.join(file_dir, f"{timestamp}_*_laserblood_metadata.json")
+                            metadata_files = glob.glob(metadata_pattern)
+                            
+                            if metadata_files:
+                                metadata_file = metadata_files[0]
+                                try:
+                                    import json
+                                    with open(metadata_file, 'r') as mf:
+                                        auto_loaded_metadata = json.load(mf)
+                                        
+                                        # Initialize laserblood_metadata list if not exists or convert dict to list
+                                        if "laserblood_metadata" not in self.app.reader_data["fitting"]:
+                                            self.app.reader_data["fitting"]["laserblood_metadata"] = []
+                                        elif not isinstance(self.app.reader_data["fitting"]["laserblood_metadata"], list):
+                                            self.app.reader_data["fitting"]["laserblood_metadata"] = []
+                                        
+                                        # Append metadata to list (only for internal use, not shown in UI)
+                                        self.app.reader_data["fitting"]["laserblood_metadata"].append(auto_loaded_metadata)
+                                        
+                                        # Extract and update channel_names in app.channel_names
+                                        from utils.channel_name_utils import extract_channel_names_from_metadata
+                                        channel_names = extract_channel_names_from_metadata(auto_loaded_metadata)
+                                        if channel_names:
+                                            # Update app.channel_names with custom names from metadata
+                                            self.app.channel_names.update(channel_names)
+                                except Exception as e:
+                                    pass
 
                             # Store per-file data
                             if (
@@ -3372,6 +3409,11 @@ class ReaderMetadataPopup(QWidget):
                     v_box.addWidget(spectroscopy_title)
                     v_box.addSpacing(10)
 
+                    # Get laserblood_metadata if available
+                    laserblood_metadata = self.app.reader_data["fitting"].get(
+                        "laserblood_metadata", []
+                    )
+
                     # Create grid layout (2 columns)
                     grid_layout = QGridLayout()
                     grid_layout.setSpacing(12)
@@ -3405,18 +3447,25 @@ class ReaderMetadataPopup(QWidget):
                         )
                         file_layout.addLayout(file_info_row)
 
+                        # Extract channel_names from laserblood_metadata if available (but don't display it)
+                        channel_names = {}
+                        if (
+                            isinstance(laserblood_metadata, list)
+                            and file_idx < len(laserblood_metadata)
+                            and laserblood_metadata[file_idx]
+                        ):
+                            from utils.channel_name_utils import extract_channel_names_from_metadata
+                            channel_names = extract_channel_names_from_metadata(laserblood_metadata[file_idx])
+
                         # Add metadata for this file
                         metadata = spectroscopy_metadata[file_idx]
                         for key, label in metadata_keys.items():
                             if key in metadata:
                                 metadata_value = str(metadata[key])
                                 if key == "channels":
-                                    metadata_value = ", ".join(
-                                        [
-                                            "Channel " + str(ch + 1)
-                                            for ch in metadata[key]
-                                        ]
-                                    )
+                                    # Use custom channel names if available
+                                    from utils.channel_name_utils import format_channel_list
+                                    metadata_value = format_channel_list(metadata[key], channel_names)
                                 if key == "acquisition_time_millis":
                                     metadata_value = str(metadata[key] / 1000)
                                 metadata_row = self.create_compact_label_row(
