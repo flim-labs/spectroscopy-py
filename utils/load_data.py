@@ -176,8 +176,10 @@ def plot_phasors_data(
     num_channels = len(phasors_data)
     ncol = 3 if num_channels > 2 else num_channels
     nrow = int(np.ceil(num_channels / ncol))
+    # Total rows = 1 (spectroscopy) + nrow (phasors)
+    total_rows = 1 + nrow
     # Make figure slightly larger to improve readability
-    fig, axs = plt.subplots(nrow + 1, ncol, figsize=(24, (nrow + 1) * 7), squeeze=False)
+    fig, axs = plt.subplots(total_rows, ncol, figsize=(24, total_rows * 7), squeeze=False)
     num_bins = 256
     x_values = np.linspace(0, laser_period if laser_period else 1, num_bins)
     ax = axs[0, 0]
