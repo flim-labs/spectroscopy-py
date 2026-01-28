@@ -2041,8 +2041,8 @@ class ReaderPopup(QWidget):
 
         files = self.app.reader_data[self.data_type]["files"]
         for file_type, file_path in files.items():
-            # Include laserblood_metadata in PHASORS mode
-            if file_type == "laserblood_metadata" and self.data_type != "phasors":
+            # Exclude laserblood_metadata from all modes (auto-loaded only)
+            if file_type == "laserblood_metadata":
                 continue
 
             # Create container for this input row
