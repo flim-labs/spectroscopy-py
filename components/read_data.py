@@ -733,6 +733,16 @@ class ReadData:
                     laser_period_ns,
                     channels,
                 )
+                
+                # SPECTROSCOPY READ: Set plot titles from metadata file (if exists) or default
+                if app.tab_selected == s.TAB_SPECTROSCOPY and app.acquire_read_mode == "read":
+                    from utils.channel_name_utils import extract_channel_names_from_metadata, get_channel_name
+                    laserblood_metadata = app.reader_data.get("spectroscopy", {}).get("laserblood_metadata", [])
+                    # Use names from metadata file only, empty dict = default names
+                    names_for_read = extract_channel_names_from_metadata(laserblood_metadata) or {}
+                    for ch in app.decay_widgets:
+                        title = get_channel_name(ch, names_for_read)
+                        app.decay_widgets[ch].setTitle(title)
 
         phasors_metadata = app.reader_data["phasors"]["phasors_metadata"]
         if data_type == "phasors" and len(phasors_metadata) > 0:
