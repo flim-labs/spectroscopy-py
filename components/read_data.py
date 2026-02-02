@@ -3537,9 +3537,8 @@ class ReaderMetadataPopup(QWidget):
         )
         v_box.addLayout(file_info_row)
         
-        # Extract channel_names from laserblood_metadata if available
-        from utils.channel_name_utils import extract_channel_names_from_metadata
-        channel_names_dict = extract_channel_names_from_metadata(laserblood_metadata)
+        # Extract channel_names from binary metadata instead of laserblood JSON
+        channel_names_dict = metadata.get("channels_name", {}) if isinstance(metadata, dict) else {}
         
         # Show standard metadata from the .bin file
         if metadata:
