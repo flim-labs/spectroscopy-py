@@ -205,12 +205,12 @@ class AcquisitionController:
             ].value()
 
 
-        # Prepare channels_name as a dict {channel_number (1-based, as shown in UI): name}
+        # Prepare channels_name as a dict {channel_index (0-based): name} matching channels array
         channels_name_dict = {}
         if hasattr(app, 'channel_names') and app.channel_names:
             for channel in sorted(app.selected_channels):
                 name = app.channel_names.get(str(channel), "")
-                channels_name_dict[channel + 1] = name
+                channels_name_dict[channel] = name
         
 
         params = {

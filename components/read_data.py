@@ -734,12 +734,12 @@ class ReadData:
                     channels,
                 )
                 
-                # SPECTROSCOPY READ: Set plot titles from metadata file (if exists) or default
+                # SPECTROSCOPY READ: Set plot titles from binary metadata instead of JSON
                 if app.tab_selected == s.TAB_SPECTROSCOPY and app.acquire_read_mode == "read":
-                    from utils.channel_name_utils import extract_channel_names_from_metadata, get_channel_name
-                    laserblood_metadata = app.reader_data.get("spectroscopy", {}).get("laserblood_metadata", [])
-                    # Use names from metadata file only, empty dict = default names
-                    names_for_read = extract_channel_names_from_metadata(laserblood_metadata) or {}
+                    from utils.channel_name_utils import get_channel_name
+                    # Get channel_names from binary metadata
+                    binary_metadata = app.reader_data.get("spectroscopy", {}).get("metadata", {})
+                    names_for_read = binary_metadata.get("channels_name", {}) if isinstance(binary_metadata, dict) else {}
                     for ch in app.decay_widgets:
                         title = get_channel_name(ch, names_for_read)
                         app.decay_widgets[ch].setTitle(title)
@@ -1565,13 +1565,12 @@ class ReadData:
         Returns:
             tuple: A tuple containing channels_curves, times, metadata, and channel_names.
         """
-        from utils.channel_name_utils import extract_channel_names_from_metadata
-        
         metadata = app.reader_data["spectroscopy"]["metadata"]
         channels_curves = app.reader_data["spectroscopy"]["data"]["channels_curves"]
         times = app.reader_data["spectroscopy"]["data"]["times"]
-        laserblood_metadata = app.reader_data["spectroscopy"].get("laserblood_metadata", [])
-        channel_names = extract_channel_names_from_metadata(laserblood_metadata)
+        
+        # Extract channel_names from binary metadata instead of laserblood JSON
+        channel_names = metadata.get("channels_name", {}) if isinstance(metadata, dict) else {}
         
         return channels_curves, times, metadata, channel_names
 
@@ -2230,11 +2229,10 @@ class ReaderPopup(QWidget):
                 s.SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
             )
             
-            # Extract channel_names from metadata and create labels
-            from utils.channel_name_utils import extract_channel_names_from_metadata, get_channel_name
-            channel_names = extract_channel_names_from_metadata(
-                self.app.reader_data[self.data_type].get("laserblood_metadata", [])
-            )
+            # Extract channel_names from binary metadata instead of laserblood JSON
+            from utils.channel_name_utils import get_channel_name
+            binary_metadata = self.app.reader_data[self.data_type].get("metadata", {})
+            channel_names = binary_metadata.get("channels_name", {}) if isinstance(binary_metadata, dict) else {}
             
             channels_layout = QVBoxLayout()
             desc = QLabel("CHOOSE MAX 4 PLOTS TO DISPLAY:")
@@ -3341,15 +3339,11 @@ class ReaderMetadataPopup(QWidget):
                     )
                     file_layout.addLayout(file_info_row)
 
-                    # Extract channel_names from laserblood_metadata if available (but don't display it)
+                    # Extract channel_names from binary metadata instead of laserblood JSON
                     channel_names = {}
-                    if (
-                        isinstance(laserblood_metadata, list)
-                        and file_idx < len(laserblood_metadata)
-                        and laserblood_metadata[file_idx]
-                    ):
-                        from utils.channel_name_utils import extract_channel_names_from_metadata
-                        channel_names = extract_channel_names_from_metadata(laserblood_metadata[file_idx])
+                    if file_idx < len(spectroscopy_metadata):
+                        metadata = spectroscopy_metadata[file_idx]
+                        channel_names = metadata.get("channels_name", {}) if isinstance(metadata, dict) else {}
 
                     # Standard metadata (only if spectroscopy metadata exists for this index)
                     if file_idx < len(spectroscopy_metadata):
