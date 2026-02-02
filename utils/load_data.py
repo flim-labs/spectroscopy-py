@@ -157,6 +157,7 @@ def plot_phasors_data(
     per_file_spectroscopy=False,
     spectroscopy_files_info=None,
     show_file_legend=True,
+    channel_names=None,
 ):
     """Creates a comprehensive plot showing both spectroscopy and phasor data.
 
@@ -238,6 +239,8 @@ def plot_phasors_data(
         # to avoid overlapping with the spectroscopy title
     else:
         # Legacy aggregated behaviour (one curve per active channel)
+        from utils.channel_name_utils import get_channel_name
+        channel_names = channel_names or {}
         for i in range(len(active_channels)):
             if i >= len(spectroscopy_curves):
                 continue
@@ -248,7 +251,9 @@ def plot_phasors_data(
                 total_max = max_val
             if min_val < total_min:
                 total_min = min_val
-            ax.plot(x_values, sum_curve, label=f"Channel {active_channels[i] + 1}")
+            # Use custom channel name if available
+            label = get_channel_name(active_channels[i], channel_names)
+            ax.plot(x_values, sum_curve, label=label)
         # Legend will be created at figure level after all plotting is complete
 
     if total_min == float("inf") or total_max == 0:

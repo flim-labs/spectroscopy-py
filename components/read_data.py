@@ -1623,12 +1623,16 @@ class ReadData:
                 else None
             )
 
+        # Extract channel_names from binary metadata instead of laserblood JSON
+        channel_names = meta.get("channels_name", {}) if isinstance(meta, dict) else {}
+
         return (
             phasors_data,
             laser_period,
             active_channels,
             spectroscopy_times,
             spectroscopy_curves,
+            channel_names,
         )
 
 
@@ -2659,11 +2663,10 @@ class ReaderPopup(QWidget):
                                         # Append metadata to list (only for internal use, not shown in UI)
                                         self.app.reader_data["fitting"]["laserblood_metadata"].append(auto_loaded_metadata)
                                         
-                                        # Extract and update channel_names in app.channel_names
-                                        from utils.channel_name_utils import extract_channel_names_from_metadata
-                                        channel_names = extract_channel_names_from_metadata(auto_loaded_metadata)
+                                        # Extract and update channel_names from binary metadata instead of JSON
+                                        channel_names = metadata.get("channels_name", {}) if isinstance(metadata, dict) else {}
                                         if channel_names:
-                                            # Update app.channel_names with custom names from metadata
+                                            # Update app.channel_names with custom names from binary metadata
                                             self.app.channel_names.update(channel_names)
                                 except Exception as e:
                                     pass
@@ -2933,11 +2936,10 @@ class ReaderPopup(QWidget):
                                             # Append metadata to list (only for internal use, not shown in UI)
                                             self.app.reader_data[self.data_type]["laserblood_metadata"].append(auto_loaded_metadata)
                                             
-                                            # Extract and update channel_names in app.channel_names
-                                            from utils.channel_name_utils import extract_channel_names_from_metadata
-                                            channel_names = extract_channel_names_from_metadata(auto_loaded_metadata)
+                                            # Extract and update channel_names from binary metadata instead of JSON
+                                            channel_names = metadata.get("channels_name", {}) if isinstance(metadata, dict) else {}
                                             if channel_names:
-                                                # Update app.channel_names with custom names from metadata
+                                                # Update app.channel_names with custom names from binary metadata
                                                 self.app.channel_names.update(channel_names)
                                     except Exception as e:
                                         pass
@@ -3451,15 +3453,11 @@ class ReaderMetadataPopup(QWidget):
                         )
                         file_layout.addLayout(file_info_row)
 
-                        # Extract channel_names from laserblood_metadata if available (but don't display it)
+                        # Extract channel_names from binary metadata instead of laserblood JSON
                         channel_names = {}
-                        if (
-                            isinstance(laserblood_metadata, list)
-                            and file_idx < len(laserblood_metadata)
-                            and laserblood_metadata[file_idx]
-                        ):
-                            from utils.channel_name_utils import extract_channel_names_from_metadata
-                            channel_names = extract_channel_names_from_metadata(laserblood_metadata[file_idx])
+                        if file_idx < len(spectroscopy_metadata):
+                            metadata = spectroscopy_metadata[file_idx]
+                            channel_names = metadata.get("channels_name", {}) if isinstance(metadata, dict) else {}
 
                         # Add metadata for this file
                         metadata = spectroscopy_metadata[file_idx]

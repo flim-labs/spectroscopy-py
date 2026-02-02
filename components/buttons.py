@@ -425,6 +425,7 @@ class ExportPlotImageButton(QWidget):
                 active_channels,
                 spectroscopy_times,
                 spectroscopy_curves,
+                channel_names,
             ) = ReadData.prepare_phasors_data_for_export_img(self.app)
             spectroscopy_files_info = None
             ph_spectroscopy_data = self.app.reader_data.get("phasors", {}).get("data", {}).get("spectroscopy_data", {})
@@ -442,6 +443,7 @@ class ExportPlotImageButton(QWidget):
                 per_file_spectroscopy=bool(spectroscopy_files_info),
                 spectroscopy_files_info=spectroscopy_files_info,
                 show_file_legend=True,
+                channel_names=channel_names,
             )
             ReadData.save_plot_image(plot)
         if self.app.tab_selected == s.TAB_FITTING:
