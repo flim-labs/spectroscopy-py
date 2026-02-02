@@ -204,6 +204,15 @@ class AcquisitionController:
                 s.SETTINGS_HARMONIC
             ].value()
 
+
+        # Prepare channels_name as a dict {channel_number (1-based, as shown in UI): name}
+        channels_name_dict = {}
+        if hasattr(app, 'channel_names') and app.channel_names:
+            for channel in sorted(app.selected_channels):
+                name = app.channel_names.get(str(channel), "")
+                channels_name_dict[channel + 1] = name
+        
+
         params = {
             "enabled_channels": app.selected_channels,
             "bin_width_micros": int(
@@ -222,6 +231,7 @@ class AcquisitionController:
             and app.write_data_gui
             and app.tab_selected != s.TAB_PHASORS,
             "pico_mode": app.pico_mode,
+            "channels_name": channels_name_dict,
         }
         return params
 

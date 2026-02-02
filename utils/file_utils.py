@@ -278,10 +278,12 @@ class FileUtils:
         
         # Add channel_names to metadata if available
         if hasattr(app, 'channel_names') and app.channel_names:
-            filtered_channel_names = {
-                k: v for k, v in app.channel_names.items() 
-                if int(k) in app.selected_channels and v
-            }
+            # Build a dict with 1-based keys (as shown in UI) only for enabled channels
+            filtered_channel_names = {}
+            for channel in app.selected_channels:
+                name = app.channel_names.get(str(channel), "")
+                if name:
+                    filtered_channel_names[str(channel + 1)] = name
             if filtered_channel_names:
                 parsed_data.append({"id": "channel_names", "value": filtered_channel_names, "label": "Channel Names", "unit": ""})
         
