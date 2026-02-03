@@ -7,22 +7,6 @@ spectroscopy_file_path = "<SPECTROSCOPY-FILE-PATH>"
 phasors_file_path = "<PHASORS-FILE-PATH>"
 print("Using phasors_data file: " + phasors_file_path)
 
-# Custom channel names (if any)
-channel_names_json = '<CHANNEL-NAMES>'
-try:
-    channel_names = json.loads(channel_names_json) if channel_names_json else {}
-except:
-    channel_names = {}
-
-def get_channel_name(channel_id):
-    """Get custom channel name with channel reference, or default name."""
-    custom_name = channel_names.get(str(channel_id), None)
-    if custom_name:
-        if len(custom_name) > 30:
-            custom_name = custom_name[:30] + "..."
-        return f"{custom_name} (Ch{channel_id + 1})"
-    return f"Channel {channel_id + 1}"
-
 def ns_to_mhz(laser_period_ns):
     period_s = laser_period_ns * 1e-9
     frequency_hz = 1 / period_s
@@ -78,6 +62,28 @@ with open(phasors_file_path, "rb") as f:
     tau_ns = metadata.get("tau_ns")
     if tau_ns is not None:
         print("Tau: " + str(tau_ns) + "ns")
+    
+    # Extract channel names from binary metadata
+    channel_names = metadata.get("channels_name", {})
+    
+    def get_channel_label(channel_index, channel_names_dict):
+        """Get channel label with custom name if available.
+        
+        Args:
+            channel_index: 0-based channel index
+            channel_names_dict: dict with channel names (keys as strings, 0-based)
+        """
+        # The channel_names_dict uses string keys with 0-based indices
+        custom_name = channel_names_dict.get(str(channel_index), None)
+        
+        # If not found with 0-based, try 1-based (for backward compatibility)
+        if not custom_name:
+            custom_name = channel_names_dict.get(str(channel_index + 1), None)
+        
+        if custom_name:
+            return f"{custom_name} (Ch{channel_index + 1})"
+        return f"Channel {channel_index + 1}"
+    
     try:
         while True:
             bytes_read = f.read(32)
@@ -172,7 +178,8 @@ for i in range(number_of_channels):
         total_max = max_val
     if min_val < total_min:        
         total_min = min_val
-    ax.plot(x_values, sum_curve, label=get_channel_name(metadata['channels'][i]))   
+    label = get_channel_label(metadata['channels'][i], channel_names)
+    ax.plot(x_values, sum_curve, label=label)   
 ax.set_ylim(total_min * 0.99, total_max * 1.01)  
 ax.set_xlim(0, spectroscopy_laser_period)   
 ax.legend()
@@ -230,7 +237,8 @@ for i, (channel, harmonics) in enumerate(phasors_data.items(), start=1):
             )
 
     ax.legend(fontsize="small")
-    ax.set_title(f"Phasor - Channel {channel + 1}")
+    channel_label = get_channel_label(channel, channel_names)
+    ax.set_title(f"Phasor - {channel_label}")
     ax.set_xlabel("G")
     ax.set_ylabel("S")
     ax.grid(True)

@@ -129,6 +129,14 @@ class AcquisitionController:
         else:
              app.harmonic_selector_value = app.control_inputs[s.SETTINGS_HARMONIC].value()
 
+        # Build channels_name dictionary with 0-based integer keys
+        channels_name_dict = {}
+        if hasattr(app, 'channel_names') and app.channel_names:
+            for channel in sorted(app.selected_channels):
+                # app.channel_names uses string keys, so convert channel to string
+                name = app.channel_names.get(str(channel), str(channel + 1))
+                channels_name_dict[channel] = name
+
         params = {
             "enabled_channels": app.selected_channels,
             "bin_width_micros": int(app.settings.value(s.SETTINGS_BIN_WIDTH, s.DEFAULT_BIN_WIDTH)),
@@ -141,6 +149,7 @@ class AcquisitionController:
             "write_bin": False,
             "time_tagger": app.time_tagger and app.write_data_gui and app.tab_selected != s.TAB_PHASORS,
             "pico_mode": app.pico_mode,
+            "channels_name": channels_name_dict,
         }
         return params
 

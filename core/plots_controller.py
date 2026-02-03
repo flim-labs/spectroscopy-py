@@ -205,12 +205,23 @@ class PlotsController:
             curve_widget.setLabel("bottom", "Bin", units="")
         else:
             curve_widget.setLabel("bottom", "Time", units="ns")
-        # Show channel title only in ACQUIRE mode, hide in READ mode
+        # Set channel title
         if app.acquire_read_mode == "acquire":
+            # ACQUIRE mode: use session channel names
             channel_names = getattr(app, 'channel_names', {})
             curve_widget.setTitle(f"{get_channel_name(channel, channel_names)} decay")
-        elif app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
-            curve_widget.setTitle(f"Decay")
+        elif app.acquire_read_mode == "read":
+            # READ mode: use channel names from binary metadata
+            if app.tab_selected == s.TAB_SPECTROSCOPY:
+                binary_metadata = app.reader_data.get("spectroscopy", {}).get("metadata", {})
+                metadata_channel_names = binary_metadata.get("channels_name", {}) if isinstance(binary_metadata, dict) else {}
+                if not isinstance(metadata_channel_names, dict):
+                    metadata_channel_names = {}
+                curve_widget.setTitle(f"{get_channel_name(channel, metadata_channel_names)} decay")
+            elif app.tab_selected == s.TAB_PHASORS:
+                curve_widget.setTitle(f"Decay")
+            else:
+                curve_widget.setTitle("")
         else:
             curve_widget.setTitle("")
         curve_widget.setBackground("#0a0a0a")
