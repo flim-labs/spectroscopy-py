@@ -3,6 +3,6 @@ PyQt6==6.7.0
 PyQt6-Qt6==6.7.0
 PyQt6-sip==13.6.0
 pyqtgraph==0.13.4
-flim-labs==1.0.70
+flim-labs==1.0.74
 matplotlib
 scipy
