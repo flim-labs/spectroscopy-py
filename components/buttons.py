@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 import os
 from PyQt6.QtCore import QPropertyAnimation
 from PyQt6.QtWidgets import (
@@ -232,14 +233,64 @@ class ReadAcquireModeButton(QWidget):
         from core.plots_controller import PlotsController
         from core.phasors_controller import PhasorsController
         from core.controls_controller import ControlsController  
+        
+        # Close fitting popup if open when changing mode
+        if hasattr(self.app, 'fitting_config_popup') and self.app.fitting_config_popup is not None:
+            try:
+                self.app.fitting_config_popup.close()
+                self.app.fitting_config_popup.deleteLater()
+                self.app.fitting_config_popup = None
+            except:
+                pass
+        
         self.app.control_inputs[s.ACQUIRE_BUTTON].setChecked(checked)
         self.app.control_inputs[s.READ_BUTTON].setChecked(not checked)
         self.app.acquire_read_mode = "acquire" if checked else "read"
+        
         self.app.settings.setValue(
             s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
         )
+        
+        # Restore selected_channels from saved state when returning to ACQUIRE mode
+        if hasattr(self.app, 'acquire_mode_selected_channels'):
+            self.app.selected_channels = self.app.acquire_mode_selected_channels[:]
+            
+            # Update checkbox visual state to match restored selected_channels
+            for i, checkbox in enumerate(self.app.channel_checkboxes):
+                checkbox.set_checked(i in self.app.selected_channels)
+            
+            # Clear the saved state so next READ->ACQUIRE cycle uses fresh state
+            delattr(self.app, 'acquire_mode_selected_channels')
+        
+        # Restore plots_to_show from selected_channels for all tabs in acquire mode
+        if self.app.tab_selected == s.TAB_PHASORS:          
+            channels = self.app.selected_channels or []
+            self.app.plots_to_show = channels[:4]
+        else:
+            # For SPECTROSCOPY and FITTING tabs, restore all selected channels
+            channels = self.app.selected_channels or []
+            self.app.plots_to_show = channels[:4]
+        
+        self.app.settings.setValue(
+            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
+        )
+        
         self.set_buttons_styles()
         self.app.reader_data = deepcopy(s.DEFAULT_READER_DATA)
+        
+        # Clear phasors read mode data completely when switching to acquire
+        if self.app.tab_selected == s.TAB_PHASORS:
+            PhasorsController.clear_phasors_file_scatters(self.app)
+            PhasorsController.clear_phasors_files_legend(self.app)
+            # Reset all phasors data
+            self.app.all_phasors_points = PhasorsController.get_empty_phasors_points()
+            # Clear loaded harmonics count so selector resets
+            if hasattr(self.app, 'loaded_phasors_harmonics'):
+                delattr(self.app, 'loaded_phasors_harmonics')
+            # Hide harmonic selector
+            ControlsController.hide_harmonic_selector(self.app)
+            self.app.harmonic_selector_shown = False
+        
         PlotsController.clear_plots(self.app)
         PlotsController.generate_plots(self.app)
         PhasorsController.initialize_phasor_feature(self.app)
@@ -247,6 +298,8 @@ class ReadAcquireModeButton(QWidget):
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
+        if self.app.tab_selected == s.TAB_PHASORS:
+            ControlsController._handle_phasors_tab_selection(self.app)
 
     def on_read_btn_pressed(self, checked):
         """
@@ -256,12 +309,36 @@ class ReadAcquireModeButton(QWidget):
             checked (bool): The new checked state of the button.
         """
         from core.plots_controller import PlotsController
-        from core.controls_controller import ControlsController      
+        from core.controls_controller import ControlsController
+        
+        # Close fitting popup if open when changing mode
+        if hasattr(self.app, 'fitting_config_popup') and self.app.fitting_config_popup is not None:
+            try:
+                self.app.fitting_config_popup.close()
+                self.app.fitting_config_popup.deleteLater()
+                self.app.fitting_config_popup = None
+            except:
+                pass
+              
         self.app.control_inputs[s.ACQUIRE_BUTTON].setChecked(not checked)
         self.app.control_inputs[s.READ_BUTTON].setChecked(checked)
+        
+        # Save current selected_channels state ONLY when entering READ mode from ACQUIRE
+        if self.app.acquire_read_mode == "acquire":
+            self.app.acquire_mode_selected_channels = self.app.selected_channels[:]
+        
         self.app.acquire_read_mode = "read" if checked else "acquire"
+
+        
+        self.app.acquire_read_mode = "read" if checked else "acquire"
+        
         self.app.settings.setValue(
             s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
+        )
+        if self.app.tab_selected == s.TAB_PHASORS:
+            self.app.plots_to_show = [0]
+            self.app.settings.setValue(
+            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
         )
         self.set_buttons_styles()
         PlotsController.clear_plots(self.app)
@@ -270,11 +347,13 @@ class ReadAcquireModeButton(QWidget):
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
+        if self.app.tab_selected == s.TAB_PHASORS:
+            ControlsController._handle_phasors_tab_selection(self.app)
 
 
 class ExportPlotImageButton(QWidget):
     """A button to export the current plot as an image."""
-    def __init__(self, app, show=True, parent=None):
+    def __init__(self, app, show=True, parent=None,  height=55):
         """
         Initializes the ExportPlotImageButton.
 
@@ -287,14 +366,14 @@ class ExportPlotImageButton(QWidget):
         self.app = app
         self.show = show
         self.data = None
-        self.export_img_button = self.create_button()
+        self.export_img_button = self.create_button(height=height)
         layout = QVBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.export_img_button)
         self.setLayout(layout)
 
-    def create_button(self):
+    def create_button(self, height=55):
         """
         Creates the export image button.
 
@@ -303,9 +382,9 @@ class ExportPlotImageButton(QWidget):
         """
         export_img_button = QPushButton()
         export_img_button.setIcon(QIcon(resource_path("assets/save-img-icon.png")))
-        export_img_button.setIconSize(QSize(30, 30))
+        export_img_button.setIconSize(QSize(25, 25))
         export_img_button.setStyleSheet("background-color: #1e90ff; padding: 0 14px;")
-        export_img_button.setFixedHeight(55)
+        export_img_button.setFixedHeight(height)
         export_img_button.setCursor(Qt.CursorShape.PointingHandCursor)
         export_img_button.clicked.connect(self.on_export_plot_image)
         button_visible = (
@@ -332,11 +411,11 @@ class ExportPlotImageButton(QWidget):
         Generates a plot based on the currently selected tab and saves it as an image.
         """
         if self.app.tab_selected == s.TAB_SPECTROSCOPY:
-            channels_curves, times, metadata = (
+            channels_curves, times, metadata, channel_names = (
                 ReadData.prepare_spectroscopy_data_for_export_img(self.app)
             )
             plot = plot_spectroscopy_data(
-                channels_curves, times, metadata, show_plot=False
+                channels_curves, times, metadata, channel_names=channel_names, show_plot=False
             )
             ReadData.save_plot_image(plot)
         if self.app.tab_selected == s.TAB_PHASORS:
@@ -346,7 +425,13 @@ class ExportPlotImageButton(QWidget):
                 active_channels,
                 spectroscopy_times,
                 spectroscopy_curves,
+                channel_names,
             ) = ReadData.prepare_phasors_data_for_export_img(self.app)
+            spectroscopy_files_info = None
+            ph_spectroscopy_data = self.app.reader_data.get("phasors", {}).get("data", {}).get("spectroscopy_data", {})
+            if isinstance(ph_spectroscopy_data, dict) and "files_data" in ph_spectroscopy_data:
+                spectroscopy_files_info = ph_spectroscopy_data.get("files_data", [])
+
             plot = plot_phasors_data(
                 phasors_data,
                 laser_period,
@@ -355,6 +440,10 @@ class ExportPlotImageButton(QWidget):
                 spectroscopy_curves,
                 self.app.phasors_harmonic_selected,
                 show_plot=False,
+                per_file_spectroscopy=bool(spectroscopy_files_info),
+                spectroscopy_files_info=spectroscopy_files_info,
+                show_file_legend=True,
+                channel_names=channel_names,
             )
             ReadData.save_plot_image(plot)
         if self.app.tab_selected == s.TAB_FITTING:

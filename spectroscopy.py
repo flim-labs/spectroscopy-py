@@ -126,6 +126,7 @@ class SpectroscopyWindow(QWidget):
         self.plots_to_show = (
             json.loads(default_plots_to_show) if default_plots_to_show else []
         )
+        self.plots_to_show_cache = json.loads(default_plots_to_show) if default_plots_to_show else []
 
         self.selected_sync = self.settings.value(s.SETTINGS_SYNC, s.DEFAULT_SYNC)
         self.sync_in_frequency_mhz = float(
@@ -165,7 +166,7 @@ class SpectroscopyWindow(QWidget):
 
     def _initialize_attributes(self):
         """
-        Initializes instance attributes and data structures.
+        Initializes instance attributes and data structures, including custom channel names.
         """
         self.threadpool = QThreadPool()
         self.reader_data = s.READER_DATA
@@ -200,6 +201,7 @@ class SpectroscopyWindow(QWidget):
         self.acquisition_time_countdown_widgets = {}
         self.decay_curves = s.DECAY_CURVES
         self.decay_widgets = {}
+        self.intensity_plot_widgets = {}
         self.all_cps_counts = []
         self.all_SBR_counts = []
         self.cached_decay_x_values = np.array([])
@@ -220,6 +222,13 @@ class SpectroscopyWindow(QWidget):
         self.fitting_config_popup = None
         self.phasors_harmonic_selected = 1
         self.refresh_reader_popup_plots = False
+        # Custom channel names
+        self.channel_names = {}
+        custom_names_json = self.settings.value("channel_names", "{}")
+        try:
+            self.channel_names = json.loads(custom_names_json)
+        except Exception:
+            self.channel_names = {}
 
     def _initialize_ui(self):
         """
@@ -331,7 +340,6 @@ def main():
         """
         if msg_type == QtMsgType.QtWarningMsg:
             return
-        print(f"Qt Message: {message} (Type: {msg_type})")
 
     qInstallMessageHandler(custom_message_handler)
 

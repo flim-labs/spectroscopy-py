@@ -275,6 +275,18 @@ class FileUtils:
 
         map_values(metadata_settings)
         map_values(custom_fields_settings)
+        
+        # Add channel_names to metadata if available
+        if hasattr(app, 'channel_names') and app.channel_names:
+            # Build a dict with 1-based keys (as shown in UI) only for enabled channels
+            filtered_channel_names = {}
+            for channel in app.selected_channels:
+                name = app.channel_names.get(str(channel), "")
+                if name:
+                    filtered_channel_names[str(channel + 1)] = name
+            if filtered_channel_names:
+                parsed_data.append({"id": "channel_names", "value": filtered_channel_names, "label": "Channel Names", "unit": ""})
+        
         return parsed_data
 
     @staticmethod

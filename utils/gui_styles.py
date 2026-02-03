@@ -600,3 +600,18 @@ class GUIStyles:
             }}              
         """
 
+
+    @staticmethod
+    def fitting_algorithm_label_style():
+        return """
+            font-size: 14px;
+            font-weight: bold;
+            color: #1E90FF;
+            font-family: Montserrat, sans-serif;
+            background: rgba(30,144,255,0.10);
+            border: 1.5px solid #1E90FF;
+            border-radius: 18px;
+            padding: 6px 18px;
+            margin-left: 10px;
+            letter-spacing: 0.5px;
+            """

@@ -408,7 +408,7 @@ class UIController:
         quantize_phasors_switch_control.addSpacing(8)
         quantize_phasors_switch_control.addWidget(inp_quantize)
         app.control_inputs["quantize_phasors_container"] = quantize_phasors_switch_control
-        (show_layout(quantize_phasors_switch_control) if app.tab_selected == s.TAB_PHASORS else hide_layout(quantize_phasors_switch_control))
+        (show_layout(quantize_phasors_switch_control) if app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode != "read" else hide_layout(quantize_phasors_switch_control))
         layout.addLayout(quantize_phasors_switch_control)
         layout.addSpacing(20)
 
@@ -417,7 +417,7 @@ class UIController:
             partial(ControlsController.on_phasors_resolution_changed, app), width=70,
         )
         inp.setStyleSheet(GUIStyles.set_input_select_style())
-        (show_layout(phasors_resolution_container) if (app.tab_selected == s.TAB_PHASORS and app.quantized_phasors) else hide_layout(phasors_resolution_container))
+        (show_layout(phasors_resolution_container) if (app.tab_selected == s.TAB_PHASORS and app.quantized_phasors and app.acquire_read_mode != "read") else hide_layout(phasors_resolution_container))
         app.control_inputs[s.SETTINGS_PHASORS_RESOLUTION] = inp
         app.control_inputs["phasors_resolution_container"] = phasors_resolution_container
 
@@ -623,27 +623,69 @@ class UIController:
     @staticmethod
     def _create_channel_checkboxes(app, layout):
         """
-        Creates and adds channel selection checkboxes to the given layout.
-
-        Args:
-            app: The main application instance.
-            layout (QLayout): The layout to add the checkboxes to.
+        Creates and adds channel selection checkboxes to the given layout, supporting custom names and rename modal.
         """
+        import json
         from core.controls_controller import ControlsController
+        from components.rename_channel_modal import RenameChannelModal
+        from utils.channel_name_utils import get_channel_name_parts
+        app.channel_checkboxes.clear()
+        # Load custom channel names from settings
+        custom_names = {}
+        if hasattr(app, 'settings'):
+            custom_names_json = app.settings.value("channel_names", "{}")
+            try:
+                custom_names = json.loads(custom_names_json)
+            except Exception:
+                custom_names = {}
         for i in range(s.MAX_CHANNELS):
             ch_wrapper = QWidget()
             ch_wrapper.setObjectName(f"ch_checkbox_wrapper")
             ch_wrapper.setFixedHeight(40)
             row = QHBoxLayout()
             from components.fancy_checkbox import FancyCheckbox
-
-            fancy_checkbox = FancyCheckbox(text=f"Channel {i + 1}")
+            custom_part, default_part = get_channel_name_parts(i, custom_names)
+            fancy_checkbox = FancyCheckbox(
+                text=f"Channel {i + 1}",
+                label_custom_part=custom_part,
+                label_default_part=default_part,
+                label_clickable=True
+            )
             fancy_checkbox.setStyleSheet(GUIStyles.set_checkbox_style())
             if app.selected_channels:
                 fancy_checkbox.set_checked(i in app.selected_channels)
             fancy_checkbox.toggled.connect(
                 lambda checked, channel=i: ControlsController.on_channel_selected(app, checked, channel)
             )
+            def open_rename_modal(channel_idx=i, checkbox=fancy_checkbox):
+                current_name = custom_names.get(str(channel_idx), "")
+                modal = RenameChannelModal(channel_idx, current_name, app)
+                def on_renamed(idx, new_name):
+                    from utils.channel_name_utils import get_channel_name
+                    # Update custom_names dict and settings
+                    custom_names[str(idx)] = new_name if new_name else ""
+                    app.settings.setValue("channel_names", json.dumps(custom_names))
+                    # Update app.channel_names as well
+                    app.channel_names[str(idx)] = new_name if new_name else ""
+                    # Update label
+                    custom_part, default_part = get_channel_name_parts(idx, custom_names)
+                    checkbox.set_text_parts(custom_part, default_part)
+                    
+                    # Update plot titles immediately when channel is visible
+                    if idx in app.plots_to_show:
+                        # Update intensity plot title
+                        if idx in app.intensity_plot_widgets:
+                            title = get_channel_name(idx, custom_names)
+                            app.intensity_plot_widgets[idx].setTitle(f"{title} intensity")
+                        
+                        # Update decay plot title (only in ACQUIRE mode)
+                        if app.acquire_read_mode == "acquire" and idx in app.decay_widgets:
+                            title = get_channel_name(idx, custom_names)
+                            app.decay_widgets[idx].setTitle(f"{title} decay")
+                            
+                modal.channelRenamed.connect(on_renamed)
+                modal.exec()
+            fancy_checkbox.labelClicked.connect(open_rename_modal)
             row.addWidget(fancy_checkbox)
             ch_wrapper.setLayout(row)
             ch_wrapper.setStyleSheet(GUIStyles.checkbox_wrapper_style())

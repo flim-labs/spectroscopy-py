@@ -32,7 +32,83 @@ class PhasorsController:
         for i in range(8):
             empty.append({1: [], 2: [], 3: [], 4: []})
         return empty
-
+    
+    @staticmethod
+    def get_color_for_file_index(index):
+        """
+        Returns a color based on the file index (0, 1, 2, 3...).
+        Uses 4 distinct colors cycling through them: red, bright green, orange, yellow.
+        
+        Args:
+            index (int): The index of the file (0-based).
+            
+        Returns:
+            str: Hex color code for the file.
+        """
+        colors = [
+            "#FF0000",  # Red (rosso)
+            "#00FF00",  # Bright green (verde brillante)
+            "#FF8C00",  # Orange (arancione)
+            "#FFFF00",  # Yellow (giallo)
+        ]
+        
+        return colors[index % len(colors)]
+    
+    @staticmethod
+    def create_phasors_files_legend(app, channel, file_order):
+        """
+        Creates a legend showing the loaded files with their colors.
+        
+        Args:
+            app: The main application instance.
+            channel (int): The channel index.
+            file_order (list): List of file names in order.
+        """
+        import os
+        
+        # Get the plot item
+        plot_item = app.phasors_widgets[channel].getPlotItem()
+        
+        existing_legend = plot_item.legend
+        
+        if existing_legend is not None:
+            # Remove the legend item from the plot completely
+            plot_item.removeItem(existing_legend)
+            plot_item.legend = None
+        
+        if not file_order:
+            return
+        
+        # Create legend items
+        legend_items = []
+        for idx, file_path in enumerate(file_order):
+            # Extract just the filename from the full path
+            file_name = os.path.basename(file_path) if file_path else "Unknown"
+            color = PhasorsController.get_color_for_file_index(idx)
+            
+            # Create a small scatter for the legend symbol
+            symbol_scatter = pg.ScatterPlotItem(
+                x=[0], y=[0], size=10,
+                pen=None, brush=pg.mkBrush(color), symbol="o"
+            )
+            legend_items.append((symbol_scatter, file_name))
+        
+        # Create and position the legend
+        legend = app.phasors_widgets[channel].addLegend(
+            offset=(10, 10),
+            brush=pg.mkBrush(0, 0, 0, 180),
+            labelTextColor='w'
+        )
+        
+        # Add items to legend
+        for symbol, name in legend_items:
+            legend.addItem(symbol, name)
+        
+        # Store reference for cleanup
+        if not hasattr(app, 'phasors_files_legend'):
+            app.phasors_files_legend = {}
+        app.phasors_files_legend[channel] = legend
+    
     @staticmethod
     def draw_semi_circle(widget):
         """
@@ -50,24 +126,78 @@ class PhasorsController:
     def draw_points_in_phasors(app, channel, harmonic, phasors):
         """
         Draws a set of phasor points on the specified channel's plot.
+        Points are colored based on their source file when in phasors read mode.
 
         Args:
             app: The main application instance.
             channel (int): The channel index to draw the points on.
             harmonic (int): The harmonic number of the phasor points.
-            phasors (list[tuple[float, float]]): A list of (g, s) coordinates to plot.
+            phasors (list[tuple]): A list of (g, s) or (g, s, file_name) tuples to plot.
         """
         if channel in app.plots_to_show:
-            x, y = app.phasors_charts[channel].getData()
-            if x is None:
-                x = np.array([])
-                y = np.array([])
-            new_x = [p[0] for p in phasors]
-            new_y = [p[1] for p in phasors]
-            x = np.concatenate((x, new_x))
-            y = np.concatenate((y, new_y))
-            app.phasors_charts[channel].setData(x, y)
-            pass
+            # Check if we are in phasors read mode
+            import settings.settings as settings
+            is_phasors_read_mode = (app.tab_selected == settings.TAB_PHASORS and 
+                                   app.acquire_read_mode == "read")
+            
+            if is_phasors_read_mode:
+                # Clear existing scatter plots for this channel before adding new ones
+                if hasattr(app, 'phasors_file_scatters') and channel in app.phasors_file_scatters:
+                    for scatter in app.phasors_file_scatters[channel]:
+                        app.phasors_widgets[channel].removeItem(scatter)
+                    app.phasors_file_scatters[channel] = []
+                
+                # New behavior for phasors read mode: Group points by file name and use different colors
+                points_by_file = {}
+                file_order = []  # Keep track of file order
+                for point in phasors:
+                    g, s = point[0], point[1]
+                    file_name = point[2] if len(point) >= 3 else ""
+                    if file_name not in points_by_file:
+                        points_by_file[file_name] = {"x": [], "y": []}
+                        file_order.append(file_name)  # Add to order list
+                    points_by_file[file_name]["x"].append(g)
+                    points_by_file[file_name]["y"].append(s)
+                
+                # Draw each file's points with its own color based on order
+                for idx, file_name in enumerate(file_order):
+                    coords = points_by_file[file_name]
+                    color = PhasorsController.get_color_for_file_index(idx)
+                    x_array = np.array(coords["x"])
+                    y_array = np.array(coords["y"])
+                    
+                    # Create a scatter plot item with the file-specific color
+                    scatter = pg.ScatterPlotItem(
+                        x=x_array,
+                        y=y_array,
+                        size=5,
+                        pen=None,
+                        brush=pg.mkBrush(color),
+                        symbol="o"
+                    )
+                    scatter.setZValue(1)
+                    app.phasors_widgets[channel].addItem(scatter)
+                    
+                    # Store reference for potential cleanup
+                    if not hasattr(app, 'phasors_file_scatters'):
+                        app.phasors_file_scatters = {}
+                    if channel not in app.phasors_file_scatters:
+                        app.phasors_file_scatters[channel] = []
+                    app.phasors_file_scatters[channel].append(scatter)
+                
+                # Create legend with file names and colors
+                PhasorsController.create_phasors_files_legend(app, channel, file_order)
+            else:
+                # Original behavior for acquisition mode or other tabs
+                x, y = app.phasors_charts[channel].getData()
+                if x is None:
+                    x = np.array([])
+                    y = np.array([])
+                new_x = [p[0] for p in phasors]
+                new_y = [p[1] for p in phasors]
+                x = np.concatenate((x, new_x))
+                y = np.concatenate((y, new_y))
+                app.phasors_charts[channel].setData(x, y)
 
     @staticmethod
     def draw_lifetime_points_in_phasors(
@@ -114,6 +244,8 @@ class PhasorsController:
                 additional_tau = np.arange(10e-9, 26e-9, 5e-9)
                 tau_m = np.concatenate((tau_m, additional_tau))
             tau_phi = tau_m
+            if laser_period_ns == 0 or laser_period_ns is None:
+                return
             fex = (1 / laser_period_ns) * 10e8
             k = 1 / (2 * np.pi * harmonic * fex)
             phi = np.arctan(tau_phi / k)
@@ -199,8 +331,38 @@ class PhasorsController:
         """
         for ch in feature:
             if ch in app.phasors_widgets:
-                app.phasors_widgets[ch].removeItem(feature[ch])
+                item = feature[ch]
+                if isinstance(item, list):
+                    for single_item in item:
+                        app.phasors_widgets[ch].removeItem(single_item)
+                else:
+                    app.phasors_widgets[ch].removeItem(item)
 
+    @staticmethod
+    def clear_phasors_file_scatters(app):
+        """Removes scatter items associated with file-specific phasor points."""
+        if hasattr(app, "phasors_file_scatters"):
+            for channel, scatter_list in list(app.phasors_file_scatters.items()):
+                if channel in app.phasors_widgets:
+                    for scatter in scatter_list:
+                        app.phasors_widgets[channel].removeItem(scatter)
+            app.phasors_file_scatters.clear()
+
+
+    @staticmethod
+    def clear_phasors_files_legend(app):
+        """Removes legends that display file information for phasor plots."""
+        if hasattr(app, "phasors_files_legend"):
+            for channel, legend in list(app.phasors_files_legend.items()):
+                if legend is None:
+                    continue
+                if channel in app.phasors_widgets:
+                    try:
+                        app.phasors_widgets[channel].removeItem(legend)
+                    except Exception:
+                        pass
+            app.phasors_files_legend.clear()
+    
     @staticmethod
     def calculate_phasors_points_mean(app, channel_index, harmonic):
         """
@@ -242,13 +404,67 @@ class PhasorsController:
             app: The main application instance.
             harmonic (int): The harmonic number to use for the calculation.
         """
+        import settings.settings as settings
+        is_phasors_read_mode = (app.tab_selected == settings.TAB_PHASORS and 
+                               app.acquire_read_mode == "read")
+        
         for i, channel_index in enumerate(app.plots_to_show):
-            if channel_index in app.phasors_widgets:
-                cluster_center_in_list = channel_index in app.phasors_clusters_center
-                if cluster_center_in_list:
-                    app.phasors_widgets[channel_index].removeItem(
-                        app.phasors_clusters_center[channel_index]
+            if channel_index not in app.phasors_widgets:
+                continue
+                
+            # Remove old cluster centers
+            if channel_index in app.phasors_clusters_center:
+                old_centers = app.phasors_clusters_center[channel_index]
+                if isinstance(old_centers, list):
+                    # Multiple centers (new behavior)
+                    for scatter in old_centers:
+                        app.phasors_widgets[channel_index].removeItem(scatter)
+                else:
+                    # Single center (old behavior)
+                    app.phasors_widgets[channel_index].removeItem(old_centers)
+            
+            if is_phasors_read_mode:
+                # New behavior: Create one center (blue cross) per file
+                points_by_file = {}
+                for point in app.all_phasors_points[channel_index][harmonic]:
+                    g, s = point[0], point[1]
+                    file_name = point[2] if len(point) >= 3 else ""
+                    if file_name not in points_by_file:
+                        points_by_file[file_name] = {"g": [], "s": []}
+                    points_by_file[file_name]["g"].append(g)
+                    points_by_file[file_name]["s"].append(s)
+                
+                # Create a blue cross for each file's mean
+                cluster_centers = []
+                for file_name, coords in points_by_file.items():
+                    g_values = np.array(coords["g"])
+                    s_values = np.array(coords["s"])
+                    
+                    if g_values.size == 0 or s_values.size == 0:
+                        continue
+                    if np.all(np.isnan(g_values)) or np.all(np.isnan(s_values)):
+                        continue
+                    
+                    mean_g = np.nanmean(g_values)
+                    mean_s = np.nanmean(s_values)
+                    
+                    scatter = pg.ScatterPlotItem(
+                        [mean_g],
+                        [mean_s],
+                        size=20,
+                        pen={
+                            "color": "#0066CC",
+                            "width": 4,
+                        },
+                        symbol="x",
                     )
+                    scatter.setZValue(3)
+                    app.phasors_widgets[channel_index].addItem(scatter)
+                    cluster_centers.append(scatter)
+                
+                app.phasors_clusters_center[channel_index] = cluster_centers
+                
+            else:
                 mean_g, mean_s = PhasorsController.calculate_phasors_points_mean(
                     app, channel_index, harmonic
                 )
@@ -278,48 +494,132 @@ class PhasorsController:
             harmonic (int): The harmonic number for which to calculate the values.
         """
         from core.controls_controller import ControlsController
-
+        import settings.settings as settings
+        import os
+        
+        is_phasors_read_mode = (app.tab_selected == settings.TAB_PHASORS and 
+                               app.acquire_read_mode == "read")
+        
         for i, channel_index in enumerate(app.plots_to_show):
-            # Use the fixed legend label if available, otherwise fall back to plot-based legend
-            if (
-                hasattr(app, "phasors_legend_labels")
-                and channel_index in app.phasors_legend_labels
-            ):
+            # Use the fixed legend label if available
+            if hasattr(app, 'phasors_legend_labels') and channel_index in app.phasors_legend_labels:
                 legend_label = app.phasors_legend_labels[channel_index]
-
-                mean_g, mean_s = PhasorsController.calculate_phasors_points_mean(
-                    app, channel_index, harmonic
-                )
-                if mean_g is None or mean_s is None:
-                    legend_label.setVisible(False)
-                    continue
-
-                freq_mhz = ControlsController.get_frequency_mhz(app)
-                tau_phi, tau_m, tau_n = PhasorsController.calculate_tau(
-                    mean_g, mean_s, freq_mhz, harmonic
-                )
-                if tau_phi is None:
-                    legend_label.setVisible(False)
-                    continue
-
-                if tau_m is None:
-                    legend_text = (
-                        f"G (mean)={round(mean_g, 3)}; "
-                        f"S (mean)={round(mean_s, 3)}; "
-                        f"𝜏ϕ={round(tau_phi, 2)} ns; "
-                        f"𝜏n={round(tau_n, 2)} ns"
-                    )
+                
+                if is_phasors_read_mode:
+                    # Multi-file mode: Create colored legend for each file
+                    points_by_file = {}
+                    file_order = []
+                    
+                    for point in app.all_phasors_points[channel_index][harmonic]:
+                        g, s = point[0], point[1]
+                        file_name = point[2] if len(point) >= 3 else ""
+                        if file_name not in points_by_file:
+                            points_by_file[file_name] = {"g": [], "s": []}
+                            file_order.append(file_name)
+                        points_by_file[file_name]["g"].append(g)
+                        points_by_file[file_name]["s"].append(s)
+                    
+                    if not points_by_file:
+                        legend_label.setVisible(False)
+                        continue
+                    
+                    freq_mhz = ControlsController.get_frequency_mhz(app)
+                    
+                    # If frequency is 0, try to get it from metadata directly
+                    if freq_mhz == 0.0 and hasattr(app, 'reader_data'):
+                        if 'phasors' in app.reader_data and 'phasors_metadata' in app.reader_data['phasors']:
+                            metadata = app.reader_data['phasors']['phasors_metadata']
+                            # metadata is a list of dicts, get laser_period_ns from first file
+                            if isinstance(metadata, list) and len(metadata) > 0:
+                                if 'laser_period_ns' in metadata[0]:
+                                    from utils.helpers import ns_to_mhz
+                                    freq_mhz = ns_to_mhz(metadata[0]['laser_period_ns'])
+                    
+                    html_parts = []
+                    
+                    for idx, file_name in enumerate(file_order):
+                        coords = points_by_file[file_name]
+                        g_values = np.array(coords["g"])
+                        s_values = np.array(coords["s"])
+                        
+                        if g_values.size == 0 or s_values.size == 0:
+                            continue
+                        if np.all(np.isnan(g_values)) or np.all(np.isnan(s_values)):
+                            continue
+                        
+                        mean_g = np.nanmean(g_values)
+                        mean_s = np.nanmean(s_values)
+                        color = PhasorsController.get_color_for_file_index(idx)
+                        
+                        # Try to calculate tau values if frequency is available
+                        if freq_mhz != 0.0:
+                            tau_phi, tau_m, tau_n = PhasorsController.calculate_tau(mean_g, mean_s, freq_mhz, harmonic)
+                            
+                            # Always show all tau values, use 1.0 as placeholder if tau_m is None
+                            tau_m_display = round(tau_m, 2) if tau_m is not None else 1.0
+                            
+                            file_legend = (
+                                f"<span style='color: {color};'>"
+                                f"G (mean)={round(mean_g, 3)}; S (mean)={round(mean_s, 3)}; "
+                                f"τϕ={round(tau_phi, 2)} ns; τn={round(tau_n, 2)} ns; "
+                                f"τm={tau_m_display} ns</span>"
+                            )
+                        else:
+                            # Show only G and S when frequency is not set
+                            file_legend = (
+                                f"<span style='color: {color};'>"
+                                f"G (mean)={round(mean_g, 3)}; S (mean)={round(mean_s, 3)}</span>"
+                            )
+                        
+                        html_parts.append(file_legend)
+                    
+                    if html_parts:
+                        # Organize in grid: 2 items per row
+                        rows = []
+                        for j in range(0, len(html_parts), 2):
+                            row_items = html_parts[j:j+2]
+                            row_html = " &nbsp;|&nbsp; ".join(row_items)
+                            rows.append(row_html)
+                        html_text = "<br>".join(rows)
+                        legend_label.setText(html_text)
+                        legend_label.setVisible(True)
+                    else:
+                        legend_label.setVisible(False)
+                    
                 else:
-                    legend_text = (
-                        f"G (mean)={round(mean_g, 3)}; "
-                        f"S (mean)={round(mean_s, 3)}; "
-                        f"𝜏ϕ={round(tau_phi, 2)} ns; "
-                        f"𝜏n={round(tau_n, 2)} ns; "
-                        f"𝜏m={round(tau_m, 2)} ns"
+                    # Single file mode (acquire): Original behavior
+                    mean_g, mean_s = PhasorsController.calculate_phasors_points_mean(
+                        app, channel_index, harmonic
                     )
-
-                legend_label.setText(legend_text)
-                legend_label.setVisible(True)
+                
+                    if mean_g is None or mean_s is None:
+                        legend_label.setVisible(False)
+                        continue
+                        
+                    freq_mhz = ControlsController.get_frequency_mhz(app)
+                    tau_phi, tau_m, tau_n = PhasorsController.calculate_tau(mean_g, mean_s, freq_mhz, harmonic)
+                    if tau_phi is None:
+                        legend_label.setVisible(False)
+                        continue
+                        
+                    if tau_m is None:
+                        legend_text = (
+                            f"G (mean)={round(mean_g, 3)}; "
+                            f"S (mean)={round(mean_s, 3)}; "
+                            f"𝜏ϕ={round(tau_phi, 2)} ns; "
+                            f"𝜏n={round(tau_n, 2)} ns"
+                        )
+                    else:
+                        legend_text = (
+                            f"G (mean)={round(mean_g, 3)}; "
+                            f"S (mean)={round(mean_s, 3)}; "
+                            f"𝜏ϕ={round(tau_phi, 2)} ns; "
+                            f"𝜏n={round(tau_n, 2)} ns; "
+                            f"𝜏m={round(tau_m, 2)} ns"
+                        )
+                    
+                    legend_label.setText(legend_text)
+                    legend_label.setVisible(True)
 
     @staticmethod
     def hide_phasors_legends(app):
@@ -332,6 +632,7 @@ class PhasorsController:
         # Hide fixed legend labels
         if hasattr(app, "phasors_legend_labels"):
             for channel_index, legend_label in app.phasors_legend_labels.items():
+                legend_label.setText("")  # Clear the HTML content
                 legend_label.setVisible(False)
 
         # Hide plot-based legends
