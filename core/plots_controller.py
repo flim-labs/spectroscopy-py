@@ -8,6 +8,7 @@ from utils.gui_styles import GUIStyles
 from utils.helpers import get_realtime_adjustment_value
 from components.lin_log_control import LinLogControl
 from components.spectroscopy_curve_time_shift import SpectroscopyTimeShift
+from utils.channel_name_utils import get_channel_name
 import settings.settings as s
 
 from PyQt6.QtCore import Qt
@@ -157,7 +158,8 @@ class PlotsController:
         intensity_widget = pg.PlotWidget()
         intensity_widget.setLabel("left", ("AVG. Photon counts" if len(app.plots_to_show) < 4 else "AVG. Photons"), units="")
         intensity_widget.setLabel("bottom", "Time", units="s")
-        intensity_widget.setTitle(f"Channel {channel + 1} intensity")
+        channel_names = getattr(app, 'channel_names', {})
+        intensity_widget.setTitle(f"{get_channel_name(channel, channel_names)} intensity")
         intensity_widget.setBackground("#141414")
         intensity_widget.plotItem.setContentsMargins(0, 0, 0, 0)
         x, y = PlotsController.initialize_intensity_plot_data(app, channel)
@@ -203,11 +205,23 @@ class PlotsController:
             curve_widget.setLabel("bottom", "Bin", units="")
         else:
             curve_widget.setLabel("bottom", "Time", units="ns")
-        # Show channel title only in ACQUIRE mode, hide in READ mode
+        # Set channel title
         if app.acquire_read_mode == "acquire":
-            curve_widget.setTitle(f"Channel {channel + 1} decay")
-        elif app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
-            curve_widget.setTitle(f"Decay")
+            # ACQUIRE mode: use session channel names
+            channel_names = getattr(app, 'channel_names', {})
+            curve_widget.setTitle(f"{get_channel_name(channel, channel_names)} decay")
+        elif app.acquire_read_mode == "read":
+            # READ mode: use channel names from binary metadata
+            if app.tab_selected == s.TAB_SPECTROSCOPY:
+                binary_metadata = app.reader_data.get("spectroscopy", {}).get("metadata", {})
+                metadata_channel_names = binary_metadata.get("channels_name", {}) if isinstance(binary_metadata, dict) else {}
+                if not isinstance(metadata_channel_names, dict):
+                    metadata_channel_names = {}
+                curve_widget.setTitle(f"{get_channel_name(channel, metadata_channel_names)} decay")
+            elif app.tab_selected == s.TAB_PHASORS:
+                curve_widget.setTitle(f"Decay")
+            else:
+                curve_widget.setTitle("")
         else:
             curve_widget.setTitle("")
         curve_widget.setBackground("#0a0a0a")
@@ -349,7 +363,8 @@ class PlotsController:
         if app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
            phasors_widget.setTitle(f"Phasors") 
         else:
-           phasors_widget.setTitle(f"Channel {channel + 1} phasors")
+           channel_names = getattr(app, 'channel_names', {})
+           phasors_widget.setTitle(f"{get_channel_name(channel, channel_names)} phasors")
         PhasorsController.draw_semi_circle(phasors_widget)
         app.phasors_charts[channel] = phasors_widget.plot([], [], pen=None, symbol="o", symbolPen="#1E90FF", symbolSize=1, symbolBrush="#1E90FF")
         app.phasors_widgets[channel] = phasors_widget

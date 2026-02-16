@@ -1,7 +1,25 @@
 import struct
 import matplotlib.pyplot as plt
 import numpy as np
+import json
+
 file_path = "<FILE-PATH>"
+
+# Custom channel names (if any)
+channel_names_json = '<CHANNEL-NAMES>'
+try:
+    channel_names = json.loads(channel_names_json) if channel_names_json else {}
+except:
+    channel_names = {}
+
+def get_channel_name(channel_id):
+    """Get custom channel name with channel reference, or default name."""
+    custom_name = channel_names.get(str(channel_id), None)
+    if custom_name:
+        if len(custom_name) > 30:
+            custom_name = custom_name[:30] + "..."
+        return f"{custom_name} (Ch{channel_id + 1})"
+    return f"Channel {channel_id + 1}"
 
 with open(file_path, 'rb') as f:
     # first 4 bytes must be SP01
@@ -80,7 +98,7 @@ with open(file_path, 'rb') as f:
             total_max = max
         if min < total_min:    
             total_min = min
-        plt.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")  
+        plt.plot(x_values, sum_curve, label=get_channel_name(metadata['channels'][i]))  
         plt.legend()  
     plt.ylim(total_min * 0.99, total_max * 1.01) 
     plt.xlim(0, laser_period_ns)

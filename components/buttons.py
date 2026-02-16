@@ -365,8 +365,13 @@ class ExportPlotImageButton(QWidget):
             channels_curves, times, metadata = (
                 ReadData.prepare_spectroscopy_data_for_export_img(self.app)
             )
+            # Use channel names from binary metadata (not from session)
+            binary_metadata = self.app.reader_data.get("spectroscopy", {}).get("metadata", {})
+            metadata_channel_names = binary_metadata.get("channels_name", {}) if isinstance(binary_metadata, dict) else {}
+            if not isinstance(metadata_channel_names, dict):
+                metadata_channel_names = {}
             plot = plot_spectroscopy_data(
-                channels_curves, times, metadata, show_plot=False
+                channels_curves, times, metadata, show_plot=False, channel_names=metadata_channel_names
             )
             ReadData.save_plot_image(plot)
         if self.app.tab_selected == s.TAB_PHASORS:
@@ -393,6 +398,7 @@ class ExportPlotImageButton(QWidget):
                 per_file_spectroscopy=bool(spectroscopy_files_info),
                 spectroscopy_files_info=spectroscopy_files_info,
                 show_file_legend=True,
+                channel_names=self.app.channel_names,
             )
             ReadData.save_plot_image(plot)
         if self.app.tab_selected == s.TAB_FITTING:

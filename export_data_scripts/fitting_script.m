@@ -2,6 +2,28 @@
 
 file_path = '<FILE-PATH>';
 
+% Custom channel names (if any)
+channel_names_json = '<CHANNEL-NAMES>';
+try
+    channel_names = jsondecode(channel_names_json);
+catch
+    channel_names = struct();
+end
+
+% Helper function for channel names
+function name = get_channel_name(channel_id, custom_names)
+    field_name = sprintf('x%d', channel_id);
+    if isfield(custom_names, field_name)
+        custom_name = custom_names.(field_name);
+        if length(custom_name) > 30
+            custom_name = [custom_name(1:30) '...'];
+        end
+        name = sprintf('%s (Ch%d)', custom_name, channel_id + 1);
+    else
+        name = sprintf('Channel %d', channel_id + 1);
+    end
+end
+
 % Open the file            
 fid = fopen(file_path, 'rb');
 if fid == -1
@@ -335,7 +357,7 @@ for row = 1:num_rows
         % Set axis properties
         xlabel('Time', 'Color', white_color);
         ylabel('Counts', 'Color', white_color);
-        title(sprintf('Channel %d', result.channel + 1), 'Color', white_color);
+        title(get_channel_name(result.channel, channel_names), 'Color', white_color);
         set(gca, 'Color', black_color, 'XColor', white_color, 'YColor', white_color);
         grid on;
         set(gca, 'GridColor', white_color, 'GridLineStyle', '--', 'GridAlpha', 0.5);

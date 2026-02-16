@@ -25,6 +25,7 @@ from components.input_text_control import InputTextControl
 from utils.gui_styles import GUIStyles
 from utils.helpers import extract_channel_from_label, ns_to_mhz
 from utils.layout_utilities import clear_layout, hide_layout, show_layout
+from utils.channel_name_utils import get_channel_name
 from utils.messages_utilities import MessagesUtilities
 from utils.resource_path import resource_path
 from utils.fitting_utilities import convert_json_serializable_item_into_np_fitting_result
@@ -913,6 +914,8 @@ class ReadData:
             list: List of dictionaries containing x, y, title, channel_index, time_shift, 
                   and optionally file_index and file_name for multi-file support
         """
+        from utils.channel_name_utils import get_channel_name
+        
         spectroscopy_data = app.reader_data["fitting"]["data"]["spectroscopy_data"]
         metadata = app.reader_data["fitting"]["metadata"]
         
@@ -955,11 +958,12 @@ class ReadData:
                         
                         # Use the display channel from plots_to_show
                         display_channel = app.plots_to_show[0] if app.plots_to_show else 0
+                        channel_id = channels[channel]
                         data.append(
                             {
                                 "x": x_values,
                                 "y": y_values,
-                                "title": f"Channel {channels[channel] + 1}",
+                                "title": get_channel_name(channel_id, app.channel_names),
                                 "channel_index": display_channel,
                                 "time_shift": 0,
                                 "file_index": file_idx,
@@ -990,7 +994,7 @@ class ReadData:
                     data_entry = {
                         "x": x_values,
                         "y": y_values,
-                        "title": "Channel " + str(channels[channel]  + 1),
+                        "title": get_channel_name(channels[channel], app.channel_names),
                         "channel_index": channels[channel],
                         "time_shift": 0
                     }
@@ -1922,8 +1926,17 @@ class ReaderPopup(QWidget):
             desc = QLabel("CHOOSE MAX 4 PLOTS TO DISPLAY:")
             desc.setStyleSheet("font-size: 16px; font-family: 'Montserrat'")
             grid = QGridLayout()
+            
+            # Get channel names from binary metadata (not from session)
+            binary_metadata = self.app.reader_data.get(self.data_type, {}).get("metadata", {})
+            metadata_channel_names = binary_metadata.get("channels_name", {}) if isinstance(binary_metadata, dict) else {}
+            # Ensure it's always a dict, never None
+            if not isinstance(metadata_channel_names, dict):
+                metadata_channel_names = {}
+            
             for ch in selected_channels:
-                checkbox, checkbox_wrapper = self.set_checkboxes(f"Channel {ch + 1}")
+                channel_name = get_channel_name(ch, metadata_channel_names)
+                checkbox, checkbox_wrapper = self.set_checkboxes(channel_name)
                 isChecked = ch in plots_to_show
                 checkbox.setChecked(isChecked)
                 if len(plots_to_show) >= 4 and ch not in plots_to_show:
@@ -1960,8 +1973,17 @@ class ReaderPopup(QWidget):
         GUIStyles.set_stop_btn_style(plot_btn)
         plot_btn.setFixedHeight(40)
         plot_btn.setFixedWidth(200)
-        plots_to_show = self.app.reader_data[self.data_type]["plots"]
-        plot_btn.setEnabled(len(plots_to_show) > 0)
+        
+        # Enable button based on data type
+        if self.data_type == "phasors":
+            phasors_files = self.app.reader_data["phasors"]["files"]["phasors"]
+            spectroscopy_files = self.app.reader_data["phasors"]["files"]["spectroscopy"]
+            both_files_present = len(phasors_files) > 0 and len(spectroscopy_files) > 0
+            plot_btn.setEnabled(both_files_present)
+        else:
+            plots_to_show = self.app.reader_data[self.data_type]["plots"]
+            plot_btn.setEnabled(len(plots_to_show) > 0)
+        
         plot_btn.clicked.connect(self.on_plot_data_btn_clicked)
         self.widgets["plot_btn"] = plot_btn
         row_btn.addStretch(1)
@@ -2644,8 +2666,12 @@ class ReaderMetadataPopup(QWidget):
                     if key in metadata:
                         metadata_value = str(metadata[key])
                         if key == "channels":
+                            # Get channel names from this file's metadata
+                            file_channel_names = metadata.get("channels_name", {}) if isinstance(metadata, dict) else {}
+                            if not isinstance(file_channel_names, dict):
+                                file_channel_names = {}
                             metadata_value = ", ".join(
-                                ["Channel " + str(ch + 1) for ch in metadata[key]]
+                                [get_channel_name(ch, file_channel_names) for ch in metadata[key]]
                             )
                         if key == "acquisition_time_millis":
                             metadata_value = str(metadata[key] / 1000)
@@ -2705,8 +2731,12 @@ class ReaderMetadataPopup(QWidget):
                     if key in metadata:
                         metadata_value = str(metadata[key])
                         if key == "channels":
+                            # Get channel names from binary metadata
+                            metadata_channel_names = metadata.get("channels_name", {}) if isinstance(metadata, dict) else {}
+                            if not isinstance(metadata_channel_names, dict):
+                                metadata_channel_names = {}
                             metadata_value = ", ".join(
-                                ["Channel " + str(ch + 1) for ch in metadata[key]]
+                                [get_channel_name(ch, metadata_channel_names) for ch in metadata[key]]
                             )
                         if key == "acquisition_time_millis":
                             metadata_value = str(metadata[key] / 1000)

@@ -3,8 +3,26 @@ from scipy.optimize import curve_fit
 from scipy.special import wofz
 import struct
 import matplotlib.pyplot as plt
+import json
 
 file_path = "<FILE-PATH>"
+
+# Custom channel names (if any)
+channel_names_json = '<CHANNEL-NAMES>'
+try:
+    channel_names = json.loads(channel_names_json) if channel_names_json else {}
+except:
+    channel_names = {}
+
+def get_channel_name(channel_id):
+    """Get custom channel name with channel reference, or default name."""
+    custom_name = channel_names.get(str(channel_id), None)
+    if custom_name:
+        if len(custom_name) > 30:
+            custom_name = custom_name[:30] + "..."
+        return f"{custom_name} (Ch{channel_id + 1})"
+    return f"Channel {channel_id + 1}"
+
 with open(file_path, "rb") as f:
     # first 4 bytes must be SP01
     # 'SP01' is an identifier for spectroscopy bin files
@@ -293,7 +311,7 @@ with open(file_path, "rb") as f:
         )
         axes[row, col].set_xlabel("Time", color="white")
         axes[row, col].set_ylabel("Counts", color="white")
-        axes[row, col].set_title(f"Channel {result['channel'] + 1}", color="white")
+        axes[row, col].set_title(get_channel_name(result['channel']), color="white")
         axes[row, col].legend(facecolor="grey", edgecolor="white")
         axes[row, col].set_facecolor("black")
         axes[row, col].grid(color="white", linestyle="--", linewidth=0.5)

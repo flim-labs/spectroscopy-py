@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from utils.helpers import ns_to_mhz
+from utils.channel_name_utils import get_channel_name
 
 
 def extract_metadata(file_path, magic_number):
@@ -157,6 +158,7 @@ def plot_phasors_data(
     per_file_spectroscopy=False,
     spectroscopy_files_info=None,
     show_file_legend=True,
+    channel_names=None,
 ):
     """Creates a comprehensive plot showing both spectroscopy and phasor data.
 
@@ -168,6 +170,7 @@ def plot_phasors_data(
         spectroscopy_curves (list): List of spectroscopy decay curves.
         selected_harmonic (int): The specific harmonic to plot in the phasor plots.
         show_plot (bool, optional): If True, displays the plot. Defaults to True.
+        channel_names (dict, optional): Dictionary mapping channel indices to custom names.
 
     Returns:
         matplotlib.figure.Figure: The generated figure object.
@@ -248,7 +251,9 @@ def plot_phasors_data(
                 total_max = max_val
             if min_val < total_min:
                 total_min = min_val
-            ax.plot(x_values, sum_curve, label=f"Channel {active_channels[i] + 1}")
+            # Use custom channel name if available
+            channel_label = get_channel_name(active_channels[i], channel_names)
+            ax.plot(x_values, sum_curve, label=channel_label)
         # Legend will be created at figure level after all plotting is complete
 
     if total_min == float("inf") or total_max == 0:
@@ -471,7 +476,7 @@ def plot_phasors_data(
     return fig
 
 
-def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
+def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True, channel_names=None):
     """Generates and displays a plot of summed spectroscopy decay curves.
 
     Args:
@@ -479,6 +484,7 @@ def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
         times (list): A list of timestamps for the acquisitions.
         metadata (dict): Metadata dictionary containing 'laser_period_ns' and 'channels'.
         show_plot (bool, optional): If True, displays the plot. Defaults to True.
+        channel_names (dict, optional): Dictionary mapping channel indices to custom names.
 
     Returns:
         matplotlib.figure.Figure: The generated figure object.
@@ -507,7 +513,9 @@ def plot_spectroscopy_data(channel_curves, times, metadata, show_plot=True):
             total_max = max_value
         if min_value < total_min:
             total_min = min_value
-        ax.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")
+        # Use custom channel name if available
+        channel_label = get_channel_name(metadata['channels'][i], channel_names)
+        ax.plot(x_values, sum_curve, label=channel_label)
         ax.legend()
     ax.set_ylim(total_min * 0.99, total_max * 1.01)
     ax.set_xlim(0, metadata["laser_period_ns"])
