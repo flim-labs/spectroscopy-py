@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 import os
 from PyQt6.QtCore import QPropertyAnimation
 from PyQt6.QtWidgets import (
@@ -238,8 +239,28 @@ class ReadAcquireModeButton(QWidget):
         self.app.settings.setValue(
             s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
         )
+        if self.app.tab_selected == s.TAB_PHASORS:          
+            channels = self.app.selected_channels or []
+            self.app.plots_to_show = channels[:4]
+            self.app.settings.setValue(
+                s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
+            )
         self.set_buttons_styles()
         self.app.reader_data = deepcopy(s.DEFAULT_READER_DATA)
+        
+        # Clear phasors read mode data completely when switching to acquire
+        if self.app.tab_selected == s.TAB_PHASORS:
+            PhasorsController.clear_phasors_file_scatters(self.app)
+            PhasorsController.clear_phasors_files_legend(self.app)
+            # Reset all phasors data
+            self.app.all_phasors_points = PhasorsController.get_empty_phasors_points()
+            # Clear loaded harmonics count so selector resets
+            if hasattr(self.app, 'loaded_phasors_harmonics'):
+                delattr(self.app, 'loaded_phasors_harmonics')
+            # Hide harmonic selector
+            ControlsController.hide_harmonic_selector(self.app)
+            self.app.harmonic_selector_shown = False
+        
         PlotsController.clear_plots(self.app)
         PlotsController.generate_plots(self.app)
         PhasorsController.initialize_phasor_feature(self.app)
@@ -247,6 +268,8 @@ class ReadAcquireModeButton(QWidget):
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
+        if self.app.tab_selected == s.TAB_PHASORS:
+            ControlsController._handle_phasors_tab_selection(self.app)
 
     def on_read_btn_pressed(self, checked):
         """
@@ -263,6 +286,11 @@ class ReadAcquireModeButton(QWidget):
         self.app.settings.setValue(
             s.SETTINGS_ACQUIRE_READ_MODE, self.app.acquire_read_mode
         )
+        if self.app.tab_selected == s.TAB_PHASORS:
+            self.app.plots_to_show = [0]
+            self.app.settings.setValue(
+            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
+        )
         self.set_buttons_styles()
         PlotsController.clear_plots(self.app)
         PlotsController.generate_plots(self.app)
@@ -270,6 +298,8 @@ class ReadAcquireModeButton(QWidget):
         ReadDataControls.handle_widgets_visibility(
             self.app, self.app.acquire_read_mode == "read"
         )
+        if self.app.tab_selected == s.TAB_PHASORS:
+            ControlsController._handle_phasors_tab_selection(self.app)
 
 
 class ExportPlotImageButton(QWidget):
@@ -347,6 +377,11 @@ class ExportPlotImageButton(QWidget):
                 spectroscopy_times,
                 spectroscopy_curves,
             ) = ReadData.prepare_phasors_data_for_export_img(self.app)
+            spectroscopy_files_info = None
+            ph_spectroscopy_data = self.app.reader_data.get("phasors", {}).get("data", {}).get("spectroscopy_data", {})
+            if isinstance(ph_spectroscopy_data, dict) and "files_data" in ph_spectroscopy_data:
+                spectroscopy_files_info = ph_spectroscopy_data.get("files_data", [])
+
             plot = plot_phasors_data(
                 phasors_data,
                 laser_period,
@@ -355,6 +390,9 @@ class ExportPlotImageButton(QWidget):
                 spectroscopy_curves,
                 self.app.phasors_harmonic_selected,
                 show_plot=False,
+                per_file_spectroscopy=bool(spectroscopy_files_info),
+                spectroscopy_files_info=spectroscopy_files_info,
+                show_file_legend=True,
             )
             ReadData.save_plot_image(plot)
         if self.app.tab_selected == s.TAB_FITTING:

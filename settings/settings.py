@@ -41,6 +41,7 @@ SETTINGS_CPS_THRESHOLD = "cps_threshold"
 DEFAULT_CPS_THRESHOLD = 0
 SETTINGS_SHOW_SBR = "show_SBR"
 DEFAULT_SHOW_SBR = False
+SETTINGS_REPLICATES = "replicates"
 
 
 TIME_TAGGER_PROGRESS_BAR = "time_tagger_progress_bar"
@@ -123,7 +124,6 @@ CHECK_CARD_MESSAGE = "check_card_message"
 
 CHANNELS_DETECTION_BUTTON = "channels_detection_button"
 
-
 READER_DATA = {
     "spectroscopy": {
         "files": {"spectroscopy": ""},
@@ -132,20 +132,21 @@ READER_DATA = {
         "data": {},
     },
     "phasors": {
-        "files": {"spectroscopy": "", "phasors": ""},
-        "spectroscopy_metadata": {},
-        "phasors_metadata": {},
+        "files": {"spectroscopy": [], "phasors": []},
+        "spectroscopy_metadata": [],
+        "phasors_metadata": [],
         "plots": [],
-        "metadata": {},
+        "metadata": [],
         "data": {"phasors_data": {}, "spectroscopy_data": {}},
     },
     "fitting": {
-        "files": {"spectroscopy": "", "fitting": ""},
+        "files": {"spectroscopy": "", "fitting": [], "laserblood_metadata": ""},
         "plots": [],
         "spectroscopy_metadata": {},
-        "fitting_metadata": {},
+        "fitting_metadata": [],
+        "laserblood_metadata": {},
         "metadata": {},
-        "data": {"fitting_data": {}, "spectroscopy_data": {}},
+        "data": {"fitting_data": [], "spectroscopy_data": {}},
     },
 }
 

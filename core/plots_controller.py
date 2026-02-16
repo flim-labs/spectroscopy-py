@@ -77,9 +77,17 @@ class PlotsController:
             tuple[np.ndarray, np.ndarray]: A tuple containing the x and y numpy arrays for the plot.
         """
         def get_default_x():
+            # Use bin indices for FITTING READ mode only if data has been loaded
+            if (app.tab_selected == s.TAB_FITTING and 
+                app.acquire_read_mode == "read" and
+                hasattr(app, 'reader_data') and 
+                app.reader_data.get("fitting", {}).get("data", {}).get("spectroscopy_data")):
+                return np.arange(256)
+            # Use time values for other modes when frequency is available
             if frequency_mhz != 0.0:
                 period = 1_000 / frequency_mhz
                 return np.linspace(0, period, 256)
+            # For SPECTROSCOPY/other modes with no frequency, return minimal array
             return np.arange(1)
 
         decay_curves = app.decay_curves[app.tab_selected]
@@ -94,19 +102,15 @@ class PlotsController:
                     channel not in app.lin_log_mode
                     or app.lin_log_mode[channel] == "LIN"
                 ):
-                    y = x * 0
+                    y = np.zeros(len(x))
                 else:
-                    y = (
-                        np.linspace(0, 100_000_000, 256)
-                        if frequency_mhz != 0.0
-                        else np.array([0])
-                    )
+                    y = np.linspace(0, 100_000_000, len(x))
         else:
             if channel in decay_curves:
                 x, y = decay_curves[channel].getData()
             else:
                 x = get_default_x()
-                y = x * 0
+                y = np.zeros(len(x))
         return x, y
     
     
@@ -191,8 +195,21 @@ class PlotsController:
         """
         curve_widget = pg.PlotWidget()
         curve_widget.setLabel("left", "Photon counts", units="")
-        curve_widget.setLabel("bottom", "Time", units="ns")
-        curve_widget.setTitle(f"Channel {channel + 1} decay")
+        # Use "Bin" label for FITTING in READ mode with data loaded, "Time (ns)" for others
+        if (app.tab_selected == s.TAB_FITTING and 
+            app.acquire_read_mode == "read" and
+            hasattr(app, 'reader_data') and 
+            app.reader_data.get("fitting", {}).get("data", {}).get("spectroscopy_data")):
+            curve_widget.setLabel("bottom", "Bin", units="")
+        else:
+            curve_widget.setLabel("bottom", "Time", units="ns")
+        # Show channel title only in ACQUIRE mode, hide in READ mode
+        if app.acquire_read_mode == "acquire":
+            curve_widget.setTitle(f"Channel {channel + 1} decay")
+        elif app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
+            curve_widget.setTitle(f"Decay")
+        else:
+            curve_widget.setTitle("")
         curve_widget.setBackground("#0a0a0a")
         
         x, y = PlotsController.initialize_decay_curves(app, channel, frequency_mhz)
@@ -329,7 +346,10 @@ class PlotsController:
         phasors_widget.setAspectLocked(True)
         phasors_widget.setLabel("left", "s", units="")
         phasors_widget.setLabel("bottom", "g", units="")
-        phasors_widget.setTitle(f"Channel {channel + 1} phasors")
+        if app.tab_selected == s.TAB_PHASORS and app.acquire_read_mode == "read":
+           phasors_widget.setTitle(f"Phasors") 
+        else:
+           phasors_widget.setTitle(f"Channel {channel + 1} phasors")
         PhasorsController.draw_semi_circle(phasors_widget)
         app.phasors_charts[channel] = phasors_widget.plot([], [], pen=None, symbol="o", symbolPen="#1E90FF", symbolSize=1, symbolBrush="#1E90FF")
         app.phasors_widgets[channel] = phasors_widget
@@ -372,7 +392,14 @@ class PlotsController:
             app.grid_layout.addWidget(QWidget(), 0, 0)
             return
 
-        for i, channel in enumerate(app.plots_to_show):
+        plots_to_show = app.plots_to_show
+        
+        # In FITTING READ mode, force only first channel to be shown
+        if app.tab_selected == s.TAB_FITTING and app.acquire_read_mode == "read":
+            if len(plots_to_show) > 0:
+                plots_to_show = [plots_to_show[0]]
+              
+        for i, channel in enumerate(plots_to_show):
             plot_widget = None
             if app.tab_selected in [s.TAB_SPECTROSCOPY, s.TAB_FITTING]:
                 plot_widget = PlotsController._create_spectroscopy_plot_widget(app, channel, frequency_mhz)
@@ -381,7 +408,7 @@ class PlotsController:
 
             if plot_widget:
                 col_map = {1: 1, 2: 2, 3: 3}
-                col_length = col_map.get(len(app.plots_to_show), 2)
+                col_length = col_map.get(len(plots_to_show), 2)
                 plot_widget.setStyleSheet(GUIStyles.chart_wrapper_style())
                 app.grid_layout.addWidget(plot_widget, i // col_length, i % col_length)
             
@@ -445,11 +472,17 @@ class PlotsController:
             channel_index (int): The channel to update.
             decay_curve (pg.PlotDataItem): The plot item to update.
         """
+        # Apply time_shift in both ACQUIRE and READ modes
         time_shift = (
                 0
                 if channel_index not in app.time_shifts
                 else app.time_shifts[channel_index]
-            ) if app.acquire_read_mode == "acquire" else 0     
+            )
+        
+        # Check if decay_widget exists for this channel
+        if channel_index not in app.decay_widgets:
+            return
+            
         # Handle linear/logarithmic mode
         decay_widget = app.decay_widgets[channel_index]
         if (
@@ -489,11 +522,18 @@ class PlotsController:
         if not reader_mode:
             # Update intensity plots
             PlotsController.update_intensity_plots(app, channel_index, time_ns, curve)
-        decay_curve = app.decay_curves[app.tab_selected][channel_index]
-        if decay_curve is not None:
+        
+        # Get decay_curve if it exists, but don't fail if it doesn't (especially in reader_mode)
+        decay_curve = None
+        if (app.tab_selected in app.decay_curves and 
+            channel_index in app.decay_curves[app.tab_selected]):
+            decay_curve = app.decay_curves[app.tab_selected][channel_index]
+        
+        # In reader_mode with fitting data, we can proceed without decay_curve
+        if decay_curve is not None or (reader_mode and app.tab_selected == s.TAB_FITTING):
             if reader_mode:
                 x, y = time_ns, curve
-            else:
+            elif decay_curve is not None:
                 x, y = decay_curve.getData()
                 if app.tab_selected == s.TAB_PHASORS:
                     decay_curve.setData(x, curve + y)
@@ -532,6 +572,8 @@ class PlotsController:
         PhasorsController.clear_phasors_features(app, app.phasors_clusters_center)
         PhasorsController.clear_phasors_features(app, app.phasors_legends)
         PhasorsController.clear_phasors_features(app, app.phasors_lifetime_points)
+        PhasorsController.clear_phasors_file_scatters(app)
+        PhasorsController.clear_phasors_files_legend(app)
         for ch in app.phasors_lifetime_texts:
             for _, item in enumerate(app.phasors_lifetime_texts[ch]):
                 app.phasors_widgets[ch].removeItem(item)
