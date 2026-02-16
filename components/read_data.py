@@ -1788,10 +1788,9 @@ class ReaderPopup(QWidget):
             ):
                 input_desc = QLabel(f"LOAD RELATED {file_type.upper()} FILE:")
             else:
-                input_desc = QLabel(f"LOAD A {file_type.upper()} FILE:")
-            # Modifica: aggiungi "S" a "FILE" solo per PHASORS-READ
-            if self.data_type == "phasors":
-                input_desc.setText(input_desc.text().replace("FILE", "FILES"))
+                input_desc = QLabel(f"LOAD {file_type.upper()} FILE:")
+            if self.data_type == "phasors" or self.data_type == "fitting":
+                input_desc.setText(input_desc.text().replace("FILE", "FILES (MAX 4)"))
             input_desc.setStyleSheet("font-size: 16px; font-family: 'Montserrat'")
             control_row = QHBoxLayout()
 

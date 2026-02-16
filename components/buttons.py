@@ -304,7 +304,7 @@ class ReadAcquireModeButton(QWidget):
 
 class ExportPlotImageButton(QWidget):
     """A button to export the current plot as an image."""
-    def __init__(self, app, show=True, parent=None):
+    def __init__(self, app, show=True, parent=None, height=55):
         """
         Initializes the ExportPlotImageButton.
 
@@ -317,14 +317,14 @@ class ExportPlotImageButton(QWidget):
         self.app = app
         self.show = show
         self.data = None
-        self.export_img_button = self.create_button()
+        self.export_img_button = self.create_button(height=height)
         layout = QVBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.export_img_button)
         self.setLayout(layout)
 
-    def create_button(self):
+    def create_button(self, height=55):
         """
         Creates the export image button.
 
@@ -333,9 +333,9 @@ class ExportPlotImageButton(QWidget):
         """
         export_img_button = QPushButton()
         export_img_button.setIcon(QIcon(resource_path("assets/save-img-icon.png")))
-        export_img_button.setIconSize(QSize(30, 30))
+        export_img_button.setIconSize(QSize(25, 25))
         export_img_button.setStyleSheet("background-color: #1e90ff; padding: 0 14px;")
-        export_img_button.setFixedHeight(55)
+        export_img_button.setFixedHeight(height)
         export_img_button.setCursor(Qt.CursorShape.PointingHandCursor)
         export_img_button.clicked.connect(self.on_export_plot_image)
         button_visible = (

@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 
-VERSION = "2.6"
+VERSION = "2.7"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
 TOP_BAR_HEIGHT = 250
@@ -83,12 +83,11 @@ DEFAULT_ROI = "{}"
 CHANNELS_GRID = "channels_grid"
 
 
-
 UNICODE_SUP = {
     "0": "\u2070",
-    "1": "\u00B9",
-    "2": "\u00B2",
-    "3": "\u00B3",
+    "1": "\u00b9",
+    "2": "\u00b2",
+    "3": "\u00b3",
     "4": "\u2074",
     "5": "\u2075",
     "6": "\u2076",
@@ -108,7 +107,6 @@ SETTINGS_PHASORS_RESOLUTION = "phasors_resolution"
 DEFAULT_PHASORS_RESOLUTION = 2
 SETTINGS_QUANTIZE_PHASORS = "quantize_phasors"
 DEFAULT_QUANTIZE_PHASORS = True
-
 
 READER_POPUP = "reader_popup"
 READER_METADATA_POPUP = "reader_metadata_popup"

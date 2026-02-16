@@ -4,6 +4,7 @@ This module serves as the main entry point for the Spectroscopy application.
 It initializes the main window, settings, UI components, and controllers.
 It also handles the application's main event loop.
 """
+
 from functools import partial
 import json
 import os
@@ -14,7 +15,14 @@ import settings.settings as s
 from utils.settings_utilities import check_and_update_ini
 import numpy as np
 
-from PyQt6.QtCore import QTimer, QSettings, QEvent, QThreadPool, QtMsgType, qInstallMessageHandler
+from PyQt6.QtCore import (
+    QTimer,
+    QSettings,
+    QEvent,
+    QThreadPool,
+    QtMsgType,
+    qInstallMessageHandler,
+)
 from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
@@ -42,6 +50,7 @@ class SpectroscopyWindow(QWidget):
     This class is responsible for initializing the application's state,
     UI, and connecting all the components.
     """
+
     def __init__(self):
         """
         Initializes the SpectroscopyWindow instance.
@@ -59,42 +68,81 @@ class SpectroscopyWindow(QWidget):
         self.settings = QSettings("settings.ini", QSettings.Format.IniFormat)
 
         # General Application Settings
-        default_time_shifts = self.settings.value(s.SETTINGS_TIME_SHIFTS, s.DEFAULT_TIME_SHIFTS)
-        self.time_shifts = {int(k): v for k, v in json.loads(default_time_shifts).items()} if default_time_shifts else {}
+        default_time_shifts = self.settings.value(
+            s.SETTINGS_TIME_SHIFTS, s.DEFAULT_TIME_SHIFTS
+        )
+        self.time_shifts = (
+            {int(k): v for k, v in json.loads(default_time_shifts).items()}
+            if default_time_shifts
+            else {}
+        )
 
-        default_lin_log_mode = self.settings.value(s.SETTINGS_LIN_LOG_MODE, s.DEFAULT_LIN_LOG_MODE)
-        self.lin_log_mode = {int(k): v for k, v in json.loads(default_lin_log_mode).items()} if default_lin_log_mode else {}
+        default_lin_log_mode = self.settings.value(
+            s.SETTINGS_LIN_LOG_MODE, s.DEFAULT_LIN_LOG_MODE
+        )
+        self.lin_log_mode = (
+            {int(k): v for k, v in json.loads(default_lin_log_mode).items()}
+            if default_lin_log_mode
+            else {}
+        )
 
         default_roi = self.settings.value(s.SETTINGS_ROI, s.DEFAULT_ROI)
-        self.roi = {int(k): v for k, v in json.loads(default_roi).items()} if default_roi else {}
+        self.roi = (
+            {int(k): v for k, v in json.loads(default_roi).items()}
+            if default_roi
+            else {}
+        )
 
-        self.harmonic_selector_value = int(self.settings.value(s.SETTINGS_HARMONIC, s.SETTINGS_HARMONIC_DEFAULT))
-        
-        default_plots_to_show = self.settings.value(s.SETTINGS_PLOTS_TO_SHOW, s.DEFAULT_PLOTS_TO_SHOW)
-        self.plots_to_show = json.loads(default_plots_to_show) if default_plots_to_show else []
-        self.plots_to_show_cache = json.loads(default_plots_to_show) if default_plots_to_show else []
+        self.harmonic_selector_value = int(
+            self.settings.value(s.SETTINGS_HARMONIC, s.SETTINGS_HARMONIC_DEFAULT)
+        )
+
+        default_plots_to_show = self.settings.value(
+            s.SETTINGS_PLOTS_TO_SHOW, s.DEFAULT_PLOTS_TO_SHOW
+        )
+        self.plots_to_show = (
+            json.loads(default_plots_to_show) if default_plots_to_show else []
+        )
+        self.plots_to_show_cache = (
+            json.loads(default_plots_to_show) if default_plots_to_show else []
+        )
 
         self.selected_sync = self.settings.value(s.SETTINGS_SYNC, s.DEFAULT_SYNC)
-        self.sync_in_frequency_mhz = float(self.settings.value(s.SETTINGS_SYNC_IN_FREQUENCY_MHZ, s.DEFAULT_SYNC_IN_FREQUENCY_MHZ))
-        
-        write_data_gui = self.settings.value(s.SETTINGS_WRITE_DATA, s.DEFAULT_WRITE_DATA)
+        self.sync_in_frequency_mhz = float(
+            self.settings.value(
+                s.SETTINGS_SYNC_IN_FREQUENCY_MHZ, s.DEFAULT_SYNC_IN_FREQUENCY_MHZ
+            )
+        )
+
+        write_data_gui = self.settings.value(
+            s.SETTINGS_WRITE_DATA, s.DEFAULT_WRITE_DATA
+        )
         self.write_data_gui = str(write_data_gui).lower() == "true"
 
         pico_mode_value = self.settings.value(s.SETTINGS_PICO_MODE, s.DEFAULT_PICO_MODE)
         self.pico_mode = str(pico_mode_value).lower() == "true"
-        
+
         time_tagger = self.settings.value(s.SETTINGS_TIME_TAGGER, s.DEFAULT_TIME_TAGGER)
         self.time_tagger = str(time_tagger).lower() == "true"
 
         show_SBR = self.settings.value(s.SETTINGS_SHOW_SBR, s.DEFAULT_SHOW_SBR)
         self.show_SBR = str(show_SBR).lower() == "true"
 
-        self.acquire_read_mode = self.settings.value(s.SETTINGS_ACQUIRE_READ_MODE, s.DEFAULT_ACQUIRE_READ_MODE)
-        
-        quantized_phasors = self.settings.value(s.SETTINGS_QUANTIZE_PHASORS, s.DEFAULT_QUANTIZE_PHASORS)
+        self.acquire_read_mode = self.settings.value(
+            s.SETTINGS_ACQUIRE_READ_MODE, s.DEFAULT_ACQUIRE_READ_MODE
+        )
+
+        quantized_phasors = self.settings.value(
+            s.SETTINGS_QUANTIZE_PHASORS, s.DEFAULT_QUANTIZE_PHASORS
+        )
         self.quantized_phasors = str(quantized_phasors).lower() == "true"
+
+        self.phasors_resolution = int(
+            self.settings.value(
+                s.SETTINGS_PHASORS_RESOLUTION, s.DEFAULT_PHASORS_RESOLUTION
+            )
+        )
         
-        self.phasors_resolution = int(self.settings.value(s.SETTINGS_PHASORS_RESOLUTION, s.DEFAULT_PHASORS_RESOLUTION))
 
     def _initialize_attributes(self):
         """
@@ -121,7 +169,7 @@ class SpectroscopyWindow(QWidget):
         self.phasors_lifetime_texts = {}
         self.phasors_colorbars = {}
         self.phasors_legends = {}
-        self.phasors_legend_labels = {} 
+        self.phasors_legend_labels = {}
         self.phasors_clusters_center = {}
         self.phasors_crosshairs = {}
         self.quantization_images = {}
@@ -169,12 +217,16 @@ class SpectroscopyWindow(QWidget):
         ControlsController.update_pico_mode_toggle(self)
         ControlsController.on_tab_selected(self, s.TAB_SPECTROSCOPY)
         self.all_phasors_points = PhasorsController.get_empty_phasors_points()
-        
+
         self.pull_from_queue_timer = QTimer()
-        self.pull_from_queue_timer.timeout.connect(partial(AcquisitionController.pull_from_queue, self))
-        
+        self.pull_from_queue_timer.timeout.connect(
+            partial(AcquisitionController.pull_from_queue, self)
+        )
+
         ExportData.calc_exported_file_size(self)
-        ReadDataControls.handle_widgets_visibility(self, self.acquire_read_mode == "read")
+        ReadDataControls.handle_widgets_visibility(
+            self, self.acquire_read_mode == "read"
+        )
         ControlsController.toggle_intensities_widgets_visibility(self)
         AcquisitionController.check_card_connection(self)
 
@@ -189,7 +241,7 @@ class SpectroscopyWindow(QWidget):
         """
         self.settings.setValue("size", self.size())
         self.settings.setValue("pos", self.pos())
-        
+
         popups_to_close = [
             s.PLOTS_CONFIG_POPUP,
             s.READER_POPUP,
@@ -251,17 +303,20 @@ def main():
         """
         Custom handler for Qt messages to suppress specific warnings.
         """
-        if msg_type == QtMsgType.QtWarningMsg and "QWindowsWindow::setGeometry" in message:
+        if (
+            msg_type == QtMsgType.QtWarningMsg
+            and "QWindowsWindow::setGeometry" in message
+        ):
             return
         print(f"Qt Message: {message} (Type: {msg_type})")
 
     qInstallMessageHandler(custom_message_handler)
-    
+
     exit_code = app.exec()
-    
+
     if window.pull_from_queue_timer.isActive():
         window.pull_from_queue_timer.stop()
-        
+
     sys.exit(exit_code)
 
 
