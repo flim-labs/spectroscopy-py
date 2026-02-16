@@ -301,8 +301,8 @@ class ReadData:
                 with open(file_name, "r") as f:
                     data = json.load(f)
                     if data:
-                        valid_data.append({"file": file_name, "data": data, "channels": [item["channel"] for item in data]})
-                        all_channels.extend([item["channel"] for item in data])
+                        valid_data.append({"file": file_name, "data": data, "channels": [item["channel_index"] for item in data]})
+                        all_channels.extend([item["channel_index"] for item in data])
             except:
                 pass
         
@@ -331,10 +331,10 @@ class ReadData:
             if isinstance(data, list) and len(data) > 0:
                 all_channels = []
                 for file_data in data:
-                    all_channels.extend([item["channel"] for item in file_data])
+                    all_channels.extend([item["channel_index"] for item in file_data])
                 return list(set(all_channels))
             elif isinstance(data, dict):
-                return [item["channel"] for item in data]
+                return [item["channel_index"] for item in data]
         return []
 
     @staticmethod
@@ -1414,6 +1414,7 @@ class ReadDataControls:
             None: Updates widget visibility states
         """
         from core.controls_controller import ControlsController
+        from core.ui_controller import UIController
         if not read_mode:
             ControlsController.fit_button_hide(app)
         else:
@@ -1429,12 +1430,19 @@ class ReadDataControls:
             bin_metadata_btn_visible and app.tab_selected != s.TAB_FITTING
         )
         
-        # Handle N° Replicate visibility for fitting tab
         if app.tab_selected == s.TAB_FITTING:
-            if s.SETTINGS_REPLICATES in app.control_inputs:
-                app.control_inputs[s.SETTINGS_REPLICATES].setVisible(not read_mode)
-            if "replicates_label" in app.control_inputs:
-                app.control_inputs["replicates_label"].setVisible(not read_mode)
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD IRF")
+            app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode and app.use_deconvolution)
+            if read_mode:
+                app.control_inputs[s.LOAD_REF_BTN].hide()
+                hide_layout(app.control_inputs["use_deconv_container"]) 
+                if  UIController.show_ref_info_banner(app) == False:
+                    hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
+            else:
+                show_layout(app.control_inputs["use_deconv_container"])
+                if UIController.show_ref_info_banner(app):
+                    UIController.update_reference_info_banner_label(app) 
+                    show_layout(app.widgets[s.REFERENCE_INFO_BANNER])
          
         app.widgets[s.TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
         app.widgets["collapse_button"].setVisible(not read_mode)
@@ -1447,15 +1455,21 @@ class ReadDataControls:
         app.control_inputs[s.SETTINGS_TIME_SPAN].setEnabled(not read_mode)
         app.control_inputs[s.SETTINGS_HARMONIC].setEnabled(not read_mode)
         if app.tab_selected == s.TAB_PHASORS:
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
             app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode)
             if read_mode : 
                 app.control_inputs[s.LOAD_REF_BTN].hide()
+                if UIController.show_ref_info_banner(app) == False:
+                    hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
                 hide_layout(app.control_inputs["phasors_resolution_container"])
                 hide_layout(app.control_inputs["quantize_phasors_container"])
                 ControlsController.on_quantize_phasors_changed(app, False)
                 app.settings.setValue(s.SETTINGS_QUANTIZE_PHASORS, False)
             else : 
                 show_layout(app.control_inputs["quantize_phasors_container"])
+                if UIController.show_ref_info_banner(app):
+                    UIController.update_reference_info_banner_label(app)
+                    show_layout(app.widgets[s.REFERENCE_INFO_BANNER])
                 if app.quantized_phasors :
                     show_layout(app.control_inputs["phasors_resolution_container"])  
 

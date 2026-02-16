@@ -64,6 +64,10 @@ class FittingDecayConfigPopup(QWidget):
         save_plot_img=False,
         y_data_shift=0,
         laser_period_ns=0,
+        use_deconvolution=False,
+        irfs=[],
+        raw_signals=[],
+        irfs_tau_ns=None,
     ):
         """
         Initializes the FittingDecayConfigPopup.
@@ -76,15 +80,21 @@ class FittingDecayConfigPopup(QWidget):
             save_plot_img (bool, optional): If True, shows a button to save the plot as an image. Defaults to False.
             y_data_shift (int, optional): A global time shift to apply to the y-data. Defaults to 0.
             laser_period_ns (float, optional): The laser period in nanoseconds, used for plot limits. Defaults to 0.
+            use_deconvolution (bool, optional): If True, deconvolution will be applied. Defaults to False.
+            irfs (list, optional): A list of IRFs to use for deconvolution. Defaults to an empty list.
         """
         super().__init__()
         self.app = window
         self.data = data
+        self.use_deconvolution = use_deconvolution
+        self.irfs = irfs
+        self.raw_signals = raw_signals
         self.preloaded_spectroscopy = (
             self.data
         )  # Use self.data as preloaded_spectroscopy for multi-file display
         self.y_data_shift = y_data_shift
         self.laser_period_ns = laser_period_ns
+        self.irfs_tau_ns = irfs_tau_ns
         self.preloaded_fitting = preloaded_fitting
         self.read_mode = read_mode
         self.save_plot_img = save_plot_img
@@ -333,7 +343,7 @@ class FittingDecayConfigPopup(QWidget):
         self.start_fitting_btn = QPushButton("START FITTING")
         self.start_fitting_btn.setObjectName("btn")
         GUIStyles.set_start_btn_style(self.start_fitting_btn)
-        self.start_fitting_btn.setFixedHeight(36)  
+        self.start_fitting_btn.setFixedHeight(36)
         self.start_fitting_btn.setFixedWidth(150)
         self.start_fitting_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.start_fitting_btn.clicked.connect(self.start_fitting)
@@ -343,7 +353,7 @@ class FittingDecayConfigPopup(QWidget):
         reset_btn = QPushButton("RESET")
         reset_btn.setObjectName("btn")
         GUIStyles.set_stop_btn_style(reset_btn)
-        reset_btn.setFixedHeight(36) 
+        reset_btn.setFixedHeight(36)
         reset_btn.setFixedWidth(150)
         reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         reset_btn.clicked.connect(self.reset)
@@ -430,8 +440,8 @@ class FittingDecayConfigPopup(QWidget):
         for result in results:
             if "error" in result:
                 title = (
-                    "Channel " + str(result["channel"] + 1)
-                    if "channel" in result
+                    "Channel " + str(result["channel_index"] + 1)
+                    if "channel_index" in result
                     else ""
                 )
                 self.display_error(result["error"], title)
@@ -496,7 +506,7 @@ class FittingDecayConfigPopup(QWidget):
                                 (
                                     item["channel_index"]
                                     for item in self.data
-                                    if item["channel_index"] == result.get("channel", 0)
+                                    if item["channel_index"] == result.get("channel_index", 0)
                                 ),
                                 None,
                             )
@@ -507,8 +517,8 @@ class FittingDecayConfigPopup(QWidget):
             for result in results:
                 if "error" in result:
                     title = (
-                        "Channel " + str(result["channel"] + 1)
-                        if "channel" in result
+                        "Channel " + str(result["channel_index"] + 1)
+                        if "channel_index" in result
                         else ""
                     )
                     self.display_error(result["error"], title)
@@ -517,14 +527,14 @@ class FittingDecayConfigPopup(QWidget):
                         (
                             item["channel_index"]
                             for item in self.data
-                            if item["channel_index"] == result["channel"]
+                            if item["channel_index"] == result["channel_index"]
                         ),
                         None,
                     )
                     # If channel not found in data (e.g., fitting only without spectroscopy),
                     # use the channel from result directly if plot exists
                     if channel is None:
-                        channel = result.get("channel", 0)
+                        channel = result.get("channel_index", 0)
 
                     if channel is not None and channel in self.plot_widgets:
                         self.update_plot(result, channel)
@@ -572,8 +582,7 @@ class FittingDecayConfigPopup(QWidget):
 
     def display_spectroscopy_curve(self, plot_widget, channel):
         """
-        Displays the initial raw spectroscopy curve on a plot.
-
+        Displays the initial spectroscopy curve on a plot (raw or deconvolved).
         Args:
             plot_widget (pg.PlotWidget): The widget to plot on.
             channel (int): The channel index of the data to display.
@@ -582,6 +591,7 @@ class FittingDecayConfigPopup(QWidget):
             tuple: A tuple containing the x and y data arrays that were plotted.
         """
         data = [d for d in self.data if d["channel_index"] == channel]
+
         if len(data) == 0:
             return np.array([]), np.array([])
 
@@ -651,8 +661,14 @@ class FittingDecayConfigPopup(QWidget):
                     ):
                         file_name = os.path.basename(spectroscopy_files[0])
 
-        # Don't show filename in legend here - it will be added as a separate legend entry
-        plot_widget.plot(x_data, y, pen=pg.mkPen("#f72828", width=2))
+        # Plot the signal (deconvolved or raw)
+        plot_widget.plot(
+            x_data,
+            y,
+            pen=pg.mkPen("#f72828", width=2),
+            name="Deconvolved Signal" if self.use_deconvolution else "Raw Signal",
+        )
+
         return x_data, y
 
     def display_plot(self, title, channel, index):
@@ -1626,7 +1642,7 @@ class FittingDecayConfigPopup(QWidget):
             "fitted_params_text": fitted_params_text,
             "scale_factor": np.mean([r["scale_factor"] for r in results]),
             "decay_start": first["decay_start"],
-            "channel": 0,
+            "channel_index": 0,
             "chi2": avg_chi2,
             "r2": avg_r2,
             "file_index": first.get("file_index", 0),
@@ -1823,7 +1839,12 @@ class FittingDecayConfigPopup(QWidget):
     def export_fitting_data(self):
         """Exports the fitting results to files."""
         parsed_fitting_results = convert_fitting_result_into_json_serializable_item(
-            self.fitting_results
+            self.fitting_results,
+            self.raw_signals,
+            self.use_deconvolution,
+            self.irfs,
+            self.laser_period_ns,
+            self.irfs_tau_ns,
         )
         ExportData.save_fitting_data(parsed_fitting_results, self, self.app)
 

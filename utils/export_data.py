@@ -47,7 +47,7 @@ class ExportData:
             app: The main application instance.
         """
         try:
-            timestamp  = calc_timestamp()
+            timestamp = calc_timestamp()
             time_tagger = app.time_tagger
             # Spectroscopy reference file (.bin)
             spectroscopy_file = FileUtils.get_recent_spectroscopy_file()
@@ -63,10 +63,17 @@ class ExportData:
             )
             if not new_spectroscopy_file_path:
                 return
-            
+
             # Fitting file (.json)
-            ExportData.save_fitting_config_json(fitting_data, save_dir, save_name, app, timestamp)
-            
+            ExportData.save_fitting_config_json(
+                fitting_data, save_dir, save_name, app, timestamp
+            )
+
+            new_fitting_file_path = os.path.join(
+                save_dir,
+                f"{FileUtils.clean_filename(save_name)}_{timestamp}_fitting_result.json",
+            )
+
             # Time Tagger file (.bin)
             if time_tagger:
                 time_tagger_file = FileUtils.get_recent_time_tagger_file()
@@ -84,8 +91,11 @@ class ExportData:
                 else new_time_tagger_path
             )
 
-            file_paths = {"spectroscopy": new_spectroscopy_file_path}
-            channel_names = getattr(app, 'channel_names', {})
+            file_paths = {
+                "spectroscopy": new_spectroscopy_file_path,
+                "fitting": new_fitting_file_path,
+            }
+            channel_names = getattr(app, "channel_names", {})
             ExportData.download_scripts(
                 file_paths,
                 save_name,
@@ -99,7 +109,6 @@ class ExportData:
             )
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
-            
 
     @staticmethod
     def save_fitting_config_json(fitting_data, save_dir, save_name, app, timestamp):
@@ -114,7 +123,9 @@ class ExportData:
             timestamp (str): The timestamp for the filename.
         """
         try:
-            file_name = FileUtils.clean_filename(f"{save_name}_{timestamp}_fitting_result")
+            file_name = FileUtils.clean_filename(
+                f"{save_name}_{timestamp}_fitting_result"
+            )
             file_name = f"{file_name}.json"
             save_path = os.path.join(save_dir, file_name)
             with open(save_path, "w") as file:
@@ -156,7 +167,7 @@ class ExportData:
             if not new_spectroscopy_file_path:
                 return
 
-          # Time tagger file (.bin)
+            # Time tagger file (.bin)
             if time_tagger:
                 time_tagger_file = FileUtils.get_recent_time_tagger_file()
                 new_time_tagger_path = ExportData.copy_file(
@@ -172,12 +183,23 @@ class ExportData:
                 if not time_tagger or not new_time_tagger_path
                 else new_time_tagger_path
             )
-            
+
             # Spectroscopy Calibration reference file (.json)
-            if app.control_inputs["calibration"].currentIndex() == 1:
-                ExportData.save_spectroscopy_reference(app, save_name, save_dir, timestamp)
+            calibration_active_index = [
+                1,
+                2,
+                3,
+            ]  # 1 = Phasors Ref., 2 = IRF Ref., 3 = BIRFI Ref.
+            selected_calibration_index = app.control_inputs[
+                "calibration"
+            ].currentIndex()
+            if selected_calibration_index in calibration_active_index:
+                ExportData.save_spectroscopy_reference(
+                    app, save_name, save_dir, timestamp, selected_calibration_index
+                )
             file_paths = {"spectroscopy": new_spectroscopy_file_path}
-            channel_names = getattr(app, 'channel_names', {})       
+            channel_names = getattr(app, "channel_names", {})
+            # Save scripts files (.py and .m)
             ExportData.download_scripts(
                 file_paths,
                 save_name,
@@ -191,10 +213,11 @@ class ExportData:
             )
         except Exception as e:
             ScriptFileUtils.show_error_message(e)
-    
 
     @staticmethod
-    def save_spectroscopy_reference(app, file_name, directory, timestamp):
+    def save_spectroscopy_reference(
+        app, file_name, directory, timestamp, calibration_type
+    ):
         """
         Saves the spectroscopy reference file used for calibration.
         Args:
@@ -202,19 +225,21 @@ class ExportData:
             directory (str): The directory to save the file in.
             app: The main application instance.
             timestamp (str): The timestamp for the filename.
+            calibration_type (int): The type of calibration reference (1 = Phasors Ref., 2 = IRF Ref., 3 = BIRFI Ref.).
         """
         # read all lines from .pid file
         with open(".pid", "r") as f:
             lines = f.readlines()
             reference_file = lines[0].split("=")[1].strip()
-        file_name = FileUtils.clean_filename(f"{file_name}_{timestamp}_spectroscopy_reference")
+        ref_suffix = {1: "phasors_reference", 2: "irf_reference", 3: "birfi_reference"}
+        file_name = FileUtils.clean_filename(
+            f"{file_name}_{timestamp}_{ref_suffix[calibration_type]}"
+        )
         full_path = os.path.join(directory, f"{file_name}.json")
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(reference_file, "r") as f:
             with open(full_path, "w") as f2:
                 f2.write(f.read())
-
-  
 
     @staticmethod
     def save_phasors_data(app):
@@ -230,42 +255,52 @@ class ExportData:
         try:
             timestamp = calc_timestamp()
             time_tagger = app.time_tagger
-            
+
             spectroscopy_file_ref = FileUtils.get_recent_spectroscopy_file()
             phasors_file = FileUtils.get_recent_phasors_file()
-            
+
             # Phasors file (.bin)
             new_phasors_file_path, save_dir, save_name = (
-                ExportData.rename_and_move_file(app, phasors_file, "phasors", "Save Phasors Files", timestamp, app)
+                ExportData.rename_and_move_file(
+                    app, phasors_file, "phasors", "Save Phasors Files", timestamp, app
+                )
             )
             if not new_phasors_file_path:
                 return
-            
+
             # Spectroscopy reference file (.bin)
             new_spectroscopy_ref_path = ExportData.copy_file(
                 app,
-                spectroscopy_file_ref, save_name, save_dir, "phasors_spectroscopy", timestamp
+                spectroscopy_file_ref,
+                save_name,
+                save_dir,
+                "phasors_spectroscopy",
+                timestamp,
             )
-            
+
             # Time Tagger file (.bin)
             if time_tagger:
                 time_tagger_file = FileUtils.get_recent_time_tagger_file()
                 new_time_tagger_path = ExportData.copy_file(
                     app,
-                    time_tagger_file, save_name, save_dir, "time_tagger_spectroscopy", timestamp
+                    time_tagger_file,
+                    save_name,
+                    save_dir,
+                    "time_tagger_spectroscopy",
+                    timestamp,
                 )
-                
+
             new_time_tagger_path = (
                 ""
                 if not time_tagger or not new_time_tagger_path
                 else new_time_tagger_path
             )
-            
+
             file_paths = {
                 "spectroscopy_phasors_ref": new_spectroscopy_ref_path,
                 "phasors": new_phasors_file_path,
             }
-            channel_names = getattr(app, 'channel_names', {})
+            channel_names = getattr(app, "channel_names", {})
             ExportData.download_scripts(
                 file_paths,
                 save_name,
@@ -322,7 +357,15 @@ class ExportData:
         )
 
     @staticmethod
-    def copy_file(app, origin_file_path, save_name, save_dir, file_type, timestamp, file_extension="bin"):
+    def copy_file(
+        app,
+        origin_file_path,
+        save_name,
+        save_dir,
+        file_type,
+        timestamp,
+        file_extension="bin",
+    ):
         """
         Copies a file to a new location with a standardized filename.
 
@@ -343,10 +386,17 @@ class ExportData:
         new_file_path = os.path.join(save_dir, new_filename)
         shutil.copyfile(origin_file_path, new_file_path)
         return new_file_path
-    
 
     @staticmethod
-    def rename_and_move_file(app, original_file_path, file_type, file_dialog_prompt, timestamp, window, file_extension="bin"):
+    def rename_and_move_file(
+        app,
+        original_file_path,
+        file_type,
+        file_dialog_prompt,
+        timestamp,
+        window,
+        file_extension="bin",
+    ):
         """
         Opens a save dialog, then copies and renames a file to the chosen location.
 
@@ -382,9 +432,6 @@ class ExportData:
         else:
             return None, None, None
 
-        
-        
-    
     @staticmethod
     def calc_exported_file_size(app):
         """
@@ -396,7 +443,9 @@ class ExportData:
         Args:
             app: The main application instance.
         """
-        free_running = app.settings.value(s.SETTINGS_FREE_RUNNING, s.DEFAULT_FREE_RUNNING)
+        free_running = app.settings.value(
+            s.SETTINGS_FREE_RUNNING, s.DEFAULT_FREE_RUNNING
+        )
         acquisition_time = app.settings.value(
             s.SETTINGS_ACQUISITION_TIME, s.DEFAULT_ACQUISITION_TIME
         )

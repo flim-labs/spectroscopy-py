@@ -1,6 +1,7 @@
 % ⚠ WARNING: To run this script you need the "optim" package or the Optimization Toolbox installed ⚠
 
-file_path = '<FILE-PATH>';
+spectroscopy_file_path = '<SPECTROSCOPY-FILE-PATH>';
+fitting_file_path = '<FITTING-FILE-PATH>';
 
 % Custom channel names (if any)
 channel_names_json = '<CHANNEL-NAMES>';
@@ -25,7 +26,7 @@ function name = get_channel_name(channel_id, custom_names)
 end
 
 % Open the file            
-fid = fopen(file_path, 'rb');
+fid = fopen(spectroscopy_file_path, 'rb');
 if fid == -1
     error('Could not open file');
 end

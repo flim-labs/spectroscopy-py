@@ -14,6 +14,7 @@ SETTINGS_TIME_SPAN = "time_span"
 DEFAULT_TIME_SPAN = 10
 SETTINGS_CONNECTION_TYPE = "connection_type"
 SETTINGS_CALIBRATION_TYPE = "calibration"
+CALIBRATION_TYPES =   ["None", "Phasors Ref.", "IRF Ref.", "BIRFI Ref."]  
 DEFAULT_SETTINGS_CALIBRATION_TYPE = 0
 DEFAULT_CONNECTION_TYPE = "1"
 SETTINGS_FREE_RUNNING = "free_running"
@@ -32,6 +33,8 @@ SETTINGS_SYNC_IN_FREQUENCY_MHZ = "sync_in_frequency_mhz"
 DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
 SETTINGS_WRITE_DATA = "write_data"
 DEFAULT_WRITE_DATA = True
+SETTINGS_USE_DECONVOLUTION = "use_deconvolution"
+DEFAULT_USE_DECONVOLUTION = False
 SETTINGS_PICO_MODE = "pico_mode"
 DEFAULT_PICO_MODE = False
 SETTINGS_TIME_TAGGER = "time_tagger"
@@ -41,7 +44,6 @@ SETTINGS_CPS_THRESHOLD = "cps_threshold"
 DEFAULT_CPS_THRESHOLD = 0
 SETTINGS_SHOW_SBR = "show_SBR"
 DEFAULT_SHOW_SBR = False
-SETTINGS_REPLICATES = "replicates"
 
 SETTINGS_CHANNEL_NAMES = "channel_names"
 DEFAULT_CHANNEL_NAMES = "{}"
@@ -123,6 +125,8 @@ CHECK_CARD_BUTTON = "check_card_button"
 CHECK_CARD_MESSAGE = "check_card_message"
 
 CHANNELS_DETECTION_BUTTON = "channels_detection_button"
+
+REFERENCE_INFO_BANNER = "reference_info_banner"
 
 READER_DATA = {
     "spectroscopy": {

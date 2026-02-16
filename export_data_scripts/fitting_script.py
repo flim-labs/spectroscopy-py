@@ -5,7 +5,8 @@ import struct
 import matplotlib.pyplot as plt
 import json
 
-file_path = "<FILE-PATH>"
+spectroscopy_file_path = "<SPECTROSCOPY-FILE-PATH>"
+fitting_file_path = "<FITTING-FILE-PATH>"
 
 # Custom channel names (if any)
 channel_names_json = '<CHANNEL-NAMES>'
@@ -23,7 +24,7 @@ def get_channel_name(channel_id):
         return f"{custom_name} (Ch{channel_id + 1})"
     return f"Channel {channel_id + 1}"
 
-with open(file_path, "rb") as f:
+with open(spectroscopy_file_path, "rb") as f:
     # first 4 bytes must be SP01
     # 'SP01' is an identifier for spectroscopy bin files
     if f.read(4) != b"SP01":

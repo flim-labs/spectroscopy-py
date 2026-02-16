@@ -118,6 +118,11 @@ class SpectroscopyWindow(QWidget):
             s.SETTINGS_WRITE_DATA, s.DEFAULT_WRITE_DATA
         )
         self.write_data_gui = str(write_data_gui).lower() == "true"
+        
+        use_deconvolution = self.settings.value(
+            s.SETTINGS_USE_DECONVOLUTION, s.DEFAULT_USE_DECONVOLUTION
+        )
+        self.use_deconvolution = str(use_deconvolution).lower() == "true"
 
         pico_mode_value = self.settings.value(s.SETTINGS_PICO_MODE, s.DEFAULT_PICO_MODE)
         self.pico_mode = str(pico_mode_value).lower() == "true"
@@ -166,7 +171,10 @@ class SpectroscopyWindow(QWidget):
         self.control_inputs = {}
         self.mode = s.MODE_STOPPED
         self.tab_selected = s.TAB_SPECTROSCOPY
-        self.reference_file = None
+        self.phasors_reference_file = None
+        self.irf_reference_file = None
+        self.irf_reference_data = {}
+        self.birfi_reference_data = {}
         self.overlay2 = None
         self.acquisition_stopped = False
         self.intensities_widgets = {}
@@ -203,7 +211,7 @@ class SpectroscopyWindow(QWidget):
         self.show_bin_file_size_helper = self.write_data_gui
         self.bin_file_size = ""
         self.bin_file_size_label = QLabel("")
-        self.saved_spectroscopy_reference = None
+        self.saved_phasors_reference_file = None
         self.harmonic_selector_shown = False
         self.fitting_config_popup = None
         self.phasors_harmonic_selected = 1
