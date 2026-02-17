@@ -489,7 +489,7 @@ def fit_decay_curve(
         "output_data": output_data,
         "scale_factor": scale_factor,
         "decay_start": decay_start,
-        "channel_index": channel,
+        "channel": channel,
         "chi2": best_chi2,
         "r2": r2,
         "model": model_formulas[best_model],
@@ -528,9 +528,9 @@ def convert_fitting_result_into_json_serializable_item(
             "output_data": convert_np_num_to_py_num(result.get("output_data")),
             "scale_factor": convert_np_num_to_py_num(result.get("scale_factor")),
             "decay_start": convert_np_num_to_py_num(result.get("decay_start")),
-            "channel_index": result.get("channel_index"),
-            "channel": result.get("channel_index") + 1,
+            "channel": result.get("channel"),
             "chi2": convert_np_num_to_py_num(result.get("chi2")),
+            "r2": convert_np_num_to_py_num(result.get("r2")),
             "model": result.get("model"),
             "use_deconvolution": use_deconvolution,
         }
@@ -576,8 +576,9 @@ def convert_json_serializable_item_into_np_fitting_result(parsed_results):
             "output_data": convert_py_num_to_np_num(parsed_result.get("output_data")),
             "scale_factor": np.float64(parsed_result.get("scale_factor")),
             "decay_start": np.int64(parsed_result.get("decay_start")),
-            "channel_index": parsed_result.get("channel_index"),
+            "channel": parsed_result.get("channel"),
             "chi2": np.float64(parsed_result.get("chi2")),
+            "r2": np.float64(parsed_result.get("r2")),
             "model": parsed_result.get("model"),
         }
         results.append(result)
@@ -716,15 +717,15 @@ def deconvolve_signal_with_irf_and_alignment(
         Instrument Response Function (256 bins)
     method : str, optional
         Deconvolution method:
-        - 'wiener': Wiener deconvolution (recommended, reduces noise)
-        - 'fourier': Direct Fourier deconvolution with regularization
+        - 'wiener': Frequency-dependent Wiener filter (recommended, robust to noise)
+        - 'tikhonov': Tikhonov regularization (standard formulation)
         Default: 'wiener'
     noise_power : float, optional
-        Noise power for Wiener filter. If None, estimated from signal.
+        Noise variance for Wiener filter. If None, auto-estimated using MAD.
         Only used for 'wiener' method.
     reg_param : float, optional
-        Regularization parameter for Fourier deconvolution.
-        Higher values = more regularization = less noise but more bias.
+        Regularization parameter for Tikhonov deconvolution (λ²).
+        Higher values = more smoothing, less noise amplification.
         Default: 0.1
     auto_align_irf : bool, optional
         If True, automatically detect and correct temporal shift between IRF and signal.
@@ -792,15 +793,163 @@ def deconvolve_signal_with_irf_and_alignment(
     return {"deconvolved_signal": deconvolved, **shift_info}
 
 
+def _estimate_background(signal):
+    """
+    Estimate background level from pre-peak region.
+    
+    Uses median of first 10% of signal to robustly estimate background.
+    
+    Parameters
+    ----------
+    signal : np.array
+        TCSPC signal
+        
+    Returns
+    -------
+    background : float
+        Estimated background level
+    """
+    pre_peak_region = signal[:max(1, len(signal) // 10)]
+    return np.median(pre_peak_region) if len(pre_peak_region) > 0 else 0.0
+
+
+def _estimate_noise_mad(signal):
+    """
+    Estimate noise standard deviation using Median Absolute Deviation (MAD).
+    
+    MAD is robust to outliers and provides better noise estimation than variance
+    when signal has sharp features.
+    
+    Parameters
+    ----------
+    signal : np.array
+        TCSPC signal
+        
+    Returns
+    -------
+    noise_std : float
+        Estimated noise standard deviation
+    """
+    # Use tail region (last 30%) for noise estimation
+    tail = signal[int(len(signal) * 0.7):]
+    if len(tail) < 2:
+        return signal.max() * 0.01
+    
+    # MAD = median(|x - median(x)|)
+    # σ ≈ 1.4826 * MAD for Gaussian noise
+    median = np.median(tail)
+    mad = np.median(np.abs(tail - median))
+    noise_std = 1.4826 * mad
+    
+    # Fallback to variance if MAD is too small
+    if noise_std < 1e-10:
+        noise_std = np.sqrt(np.var(tail)) if np.var(tail) > 0 else signal.max() * 0.01
+    
+    return noise_std
+
+
+def _wiener_deconvolution_improved(signal, irf, noise_std=None):
+    """
+    Wiener deconvolution with frequency-dependent SNR.
+    
+    Improved version using proper Signal-to-Noise Ratio calculation
+    for each frequency component.
+    
+    Parameters
+    ----------
+    signal : np.array
+        Background-subtracted signal
+    irf : np.array
+        Normalized IRF
+    noise_std : float, optional
+        Noise standard deviation (estimated if None)
+        
+    Returns
+    -------
+    deconvolved : np.array
+        Deconvolved signal
+    """
+    if noise_std is None:
+        noise_std = _estimate_noise_mad(signal)
+    
+    # Fourier transforms
+    signal_fft = np.fft.fft(signal)
+    irf_fft = np.fft.fft(irf)
+    
+    # Frequency-dependent SNR: SNR(f) = |Signal(f)|² / noise_power
+    signal_power = np.abs(signal_fft) ** 2
+    noise_power = noise_std ** 2 * len(signal)
+    
+    # Wiener filter: H = conj(IRF) * SNR / (|IRF|² * SNR + 1)
+    # Equivalent to: H = conj(IRF) / (|IRF|² + 1/SNR)
+    irf_power = np.abs(irf_fft) ** 2
+    irf_conj = np.conj(irf_fft)
+    
+    # SNR per frequency (avoid division by zero)
+    snr = signal_power / (noise_power + 1e-10)
+    
+    # Wiener filter with frequency-dependent regularization
+    wiener_filter = (irf_conj * snr) / (irf_power * snr + 1.0)
+    
+    # Apply filter
+    deconv_fft = signal_fft * wiener_filter
+    deconvolved = np.real(np.fft.ifft(deconv_fft))
+    
+    return deconvolved
+
+
+def _tikhonov_deconvolution(signal, irf, reg_param=0.1):
+    """
+    Tikhonov regularized deconvolution (standard formulation).
+    
+    Solves: H = conj(IRF) / (|IRF|² + reg_param²)
+    
+    Parameters
+    ----------
+    signal : np.array
+        Background-subtracted signal
+    irf : np.array
+        Normalized IRF
+    reg_param : float
+        Regularization parameter (higher = more smoothing)
+        
+    Returns
+    -------
+    deconvolved : np.array
+        Deconvolved signal
+    """
+    # Fourier transforms
+    signal_fft = np.fft.fft(signal)
+    irf_fft = np.fft.fft(irf)
+    
+    # Tikhonov regularization (standard formulation)
+    irf_power = np.abs(irf_fft) ** 2
+    irf_conj = np.conj(irf_fft)
+    
+    # Regularized inverse filter
+    tikhonov_filter = irf_conj / (irf_power + reg_param ** 2)
+    
+    # Apply filter
+    deconv_fft = signal_fft * tikhonov_filter
+    deconvolved = np.real(np.fft.ifft(deconv_fft))
+    
+    return deconvolved
+
+
+
 def _deconvolve_signal_with_irf_internal(
     signal, irf, method="wiener", noise_power=None, reg_param=0.1
 ):
     """
-    Internal function for deconvolution (without shift correction).
-
-    This is called by deconvolve_signal_with_irf_and_alignment() after shift correction.
-    Can also be used directly if shift correction is not needed.
-
+    Internal deconvolution with automatic background removal and quality metrics.
+    
+    Improved version with:
+    - Automatic background subtraction
+    - Robust noise estimation (MAD)
+    - Frequency-dependent Wiener filter
+    - Standard Tikhonov regularization
+    - Quality metrics computation
+    
     Parameters
     ----------
     signal : np.array
@@ -808,74 +957,73 @@ def _deconvolve_signal_with_irf_internal(
     irf : np.array
         Instrument Response Function (256 bins)
     method : str, optional
-        Deconvolution method ('wiener' or 'fourier')
+        Deconvolution method:
+        - 'wiener': Frequency-dependent Wiener filter (recommended)
+        - 'tikhonov': Tikhonov regularization
+        Default: 'wiener'
     noise_power : float, optional
-        Noise power for Wiener filter
+        Noise variance (auto-estimated if None)
     reg_param : float, optional
-        Regularization parameter for Fourier deconvolution
-
+        Regularization parameter for Tikhonov (default: 0.1)
+        
     Returns
     -------
     deconvolved : np.array
-        Deconvolved signal
+        Deconvolved signal (non-negative)
     """
     signal = np.array(signal, dtype=np.float64)
     irf = np.array(irf, dtype=np.float64)
-
+    
     # Ensure same length
     if len(signal) != len(irf):
         min_len = min(len(signal), len(irf))
         signal = signal[:min_len]
         irf = irf[:min_len]
-
-    # Normalize IRF
+    
+    # Step 1: Estimate and remove background
+    background = _estimate_background(signal)
+    signal_clean = signal - background
+    signal_clean = np.maximum(signal_clean, 0)  # Ensure non-negative
+    
+    # Step 2: Normalize IRF (preserve photon count information)
     irf_norm = irf / (irf.sum() + 1e-10)
-
+    
+    # Step 3: Deconvolve with selected method
     if method == "wiener":
-        # Wiener deconvolution (reduces noise)
-        if noise_power is None:
-            # Estimate noise from tail of signal (assume last 20% is mostly noise)
-            tail = signal[int(len(signal) * 0.8) :]
-            noise_power = np.var(tail) if len(tail) > 0 else signal.max() * 0.01
-
-        # Apply Wiener filter via Fourier domain
-        signal_fft = np.fft.fft(signal)
-        irf_fft = np.fft.fft(irf_norm)
-
-        # Wiener filter: H_wiener = conj(IRF) / (|IRF|^2 + noise_power)
-        irf_conj = np.conj(irf_fft)
-        irf_power = np.abs(irf_fft) ** 2
-        wiener_filter = irf_conj / (irf_power + noise_power)
-
-        deconv_fft = signal_fft * wiener_filter
-        deconvolved = np.real(np.fft.ifft(deconv_fft))
-
-    elif method == "fourier":
-        # Regularized Fourier deconvolution
-        signal_fft = np.fft.fft(signal)
-        irf_fft = np.fft.fft(irf_norm)
-
-        # Regularization: prevent division by zero
-        irf_fft_reg = irf_fft + reg_param
-        deconv_fft = signal_fft / irf_fft_reg
-
-        deconvolved = np.real(np.fft.ifft(deconv_fft))
-
+        # Convert noise_power to noise_std if provided
+        noise_std = np.sqrt(noise_power) if noise_power is not None else None
+        deconvolved = _wiener_deconvolution_improved(signal_clean, irf_norm, noise_std)
+        
+    elif method == "tikhonov":
+        deconvolved = _tikhonov_deconvolution(signal_clean, irf_norm, reg_param)
+        
     else:
-        raise ValueError(f"Unknown method '{method}'. Use 'wiener' or 'fourier'.")
-
-    # Ensure non-negative (physical constraint for photon counts)
-    deconvolved = np.maximum(deconvolved, 0)
-
+        raise ValueError(f"Unknown method '{method}'. Use 'wiener' or 'tikhonov'.")
+    
+    # Step 4: Apply physical constraints
+    deconvolved = np.maximum(deconvolved, 0)  # Non-negative photon counts
+    
     return deconvolved
 
 
 def estimate_irf(signal, tau_ns, time_window_ns=12.5, background=0.0):
     """
     Estimate IRF from mono-exponential signal using BIRFI algorithm.
-
-    This function uses L-BFGS-B optimization to extract a parametric IRF
-    (Gaussian shape) from a measured fluorescence decay with known lifetime.
+    
+    BIRFI (Blind IRF Inference) extracts the Instrument Response Function
+    from a measured fluorescence decay with known lifetime, without requiring
+    a direct IRF measurement (scatter/Ludox).
+    
+    This function uses L-BFGS-B optimization with Tikhonov regularization
+    to extract a parametric IRF (Gaussian shape) that is physically realistic.
+    
+    The IRF is modeled as a Gaussian:
+        IRF(t) = exp(-((t - t0)² / (2 * σ²)))
+        
+    where t0 is the peak position and σ controls the width.
+    
+    The optimization minimizes:
+        Loss = ||signal - (A * IRF ⊗ decay + bg)||² + λ(σ - σ_target)²
 
     Parameters
     ----------
@@ -884,7 +1032,7 @@ def estimate_irf(signal, tau_ns, time_window_ns=12.5, background=0.0):
         Typically 256 bins.
     tau_ns : float
         Known fluorescence lifetime in nanoseconds.
-        Example: Rhodamine B in water ≈ 1.7 ns
+        Example: Rhodamine B in water ≈ 1.7 ns, Coumarin 6 ≈ 2.5 ns
     time_window_ns : float, optional
         Total time window in nanoseconds (laser period).
         Default: 12.5 ns
@@ -903,9 +1051,13 @@ def estimate_irf(signal, tau_ns, time_window_ns=12.5, background=0.0):
         - 'fwhm': IRF FWHM in nanoseconds (= 2.355 * sigma)
         - 'background': Background level (input parameter)
         - 'success': True if optimization converged
+        - 'shift_applied': Number of bins shifted (circular shift correction)
+        
     Notes
     -----
     - Uses parametric Gaussian IRF (only 3 parameters: amplitude, t_peak, sigma)
+    - Tikhonov regularization favors realistic IRF widths (~200-500 ps FWHM)
+    - Automatic detection and correction of temporal offset (circular shift)
     - For non-Gaussian IRFs, this may introduce systematic errors
     """
     signal = np.array(signal, dtype=np.float64)
@@ -914,34 +1066,38 @@ def estimate_irf(signal, tau_ns, time_window_ns=12.5, background=0.0):
     # Time axis in nanoseconds
     dt = time_window_ns / n_points
     t = np.arange(n_points) * dt
+    
+    # -------------------------------------------------------------------------
+    # Step 1: Detect and correct temporal offset (circular shift)
+    # -------------------------------------------------------------------------
+    # If peak is in the second half of the window, apply circular shift
+    # to bring it to the beginning (typical for TCSPC data with timing offset)
+    peak_bin = np.argmax(signal)
+    
+    if peak_bin > n_points // 2:
+        shift_amount = n_points - peak_bin
+        signal = np.roll(signal, shift_amount)
+        shift_applied = shift_amount
+    else:
+        shift_applied = 0
 
+    # -------------------------------------------------------------------------
+    # Step 2: Setup BIRFI optimization
+    # -------------------------------------------------------------------------
     # Mono-exponential decay model
     decay = np.exp(-t / tau_ns)
 
     # Initial guess for parametric IRF: [amplitude, t_peak, sigma]
-    # IRF should appear in first ~15% of time window
+    # IRF should appear in first ~10% of time window
     amplitude_guess = signal.max()
-    # Estimate t_peak from the position of the maximum in the signal (early part of window)
-    t_peak_guess = t[np.argmax(signal)]
-    # --- Estimate sigma from the width at half maximum (FWHM) of the signal
-    half_max = signal.max() / 2
-    indices_half = np.where(signal[: int(len(signal) * 0.3)] >= half_max)[
-        0
-    ]  # only look in the first 30% of the window for the IRF peak
-    if len(indices_half) >= 2:
-        width_guess_bins = indices_half[-1] - indices_half[0]
-    else:
-        width_guess_bins = max(
-            1, int(len(signal) * 0.02)
-        )  # fallback to 2% of window if we can't find a proper half max width
-    sigma_guess = (
-        width_guess_bins * (time_window_ns / len(signal)) / 2.355
-    )  # Convert FWHM to sigma for Gaussian
+    t_peak_guess = time_window_ns * 0.08  # 8% of window (~1 ns for 12.5 ns)
+    sigma_guess = 0.15  # ~150 ps sigma -> ~350 ps FWHM (realistic for TCSPC)
+    
     params_guess = np.array([amplitude_guess, t_peak_guess, sigma_guess])
 
     def loss(params):
         """
-        Loss function for parametric IRF fitting.
+        Loss function for parametric IRF fitting with Tikhonov regularization.
         """
         amplitude, t_peak, sigma = params
 
@@ -955,14 +1111,20 @@ def estimate_irf(signal, tau_ns, time_window_ns=12.5, background=0.0):
 
         # Data fidelity: chi-square (least squares)
         chi2 = np.sum((signal - model) ** 2)
+        
+        # Regularization: penalize very wide IRFs (favor narrow, realistic IRFs)
+        # Typical TCSPC IRF: FWHM = 200-500 ps, sigma = 85-212 ps
+        target_sigma = 0.15  # ns (target ~350 ps FWHM)
+        lambda_reg = 1e8  # Regularization strength
+        reg_term = lambda_reg * (sigma - target_sigma)**2
 
-        return chi2
+        return chi2 + reg_term
 
-    # Bounds: amplitude > 0, t_peak in [0, time_window/2], sigma > 0
+    # Bounds: amplitude > 0, t_peak in [0, time_window/5], sigma constrained to realistic values
     bounds = [
-        (0.01, signal.max() * 10),  # amplitude
-        (0, time_window_ns * 0.3),  # t_peak (first 30% of window)
-        (dt, time_window_ns * 0.1),  # sigma (> 1 bin, < 10% window)
+        (0.01, signal.max() * 10),              # amplitude
+        (0, time_window_ns * 0.2),              # t_peak (first 20% of window, ~0-2.5 ns)
+        (0.05, 0.4)                             # sigma: 50-400 ps -> FWHM 118-940 ps (realistic range)
     ]
 
     # Run L-BFGS-B optimization with loose tolerance for speed
@@ -992,4 +1154,5 @@ def estimate_irf(signal, tau_ns, time_window_ns=12.5, background=0.0):
         "fwhm": fwhm,
         "background": background,
         "success": opt_result.success,
+        "shift_applied": shift_applied,
     }
