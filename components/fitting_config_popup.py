@@ -165,9 +165,12 @@ class FittingDecayConfigPopup(QWidget):
             )
         )
 
-        # For spectroscopy: use multi-file logic if in read_mode and has file_index (regardless of count)
+        # For spectroscopy: use multi-file logic only if we have multiple entries with file_index
         has_multiple_files_from_spectroscopy = (
-            self.read_mode and self.data and any("file_index" in d for d in self.data)
+            self.read_mode
+            and self.data
+            and any("file_index" in d for d in self.data)
+            and len(self.data) > 1
         )
 
         has_multiple_files = (
@@ -509,8 +512,7 @@ class FittingDecayConfigPopup(QWidget):
                                 (
                                     item["channel_index"]
                                     for item in self.data
-                                    if item["channel_index"]
-                                    == result.get("channel", 0)
+                                    if item["channel_index"] == result.get("channel", 0)
                                 ),
                                 None,
                             )
@@ -619,9 +621,10 @@ class FittingDecayConfigPopup(QWidget):
             x_data = x_data[:min_len]
             y_data = y_data[:min_len]
 
-        # Use app.time_shifts to be consistent with main window
-        time_shift = (
-            0 if channel not in self.app.time_shifts else self.app.time_shifts[channel]
+        # Get time_shift from data if available (read-mode), otherwise use app.time_shifts (acquire-mode)
+        time_shift = data[0].get(
+            "time_shift",
+            0 if channel not in self.app.time_shifts else self.app.time_shifts[channel],
         )
         y = np.roll(y_data, time_shift)
 
@@ -794,13 +797,9 @@ class FittingDecayConfigPopup(QWidget):
         )
 
         is_multi_file_spectroscopy = (
-            self.read_mode
-            and self.preloaded_spectroscopy
-            and any(
-                "file_index" in s
-                for s in self.preloaded_spectroscopy
-                if "error" not in s
-            )
+            self.data
+            and any("file_index" in d for d in self.data)
+            and len(self.data) > 1
         )
 
         # Set X-axis range based on mode
@@ -809,26 +808,17 @@ class FittingDecayConfigPopup(QWidget):
             plot_widget.enableAutoRange()
         else:
             # Single file mode: use actual data range instead of laser_period_ns
-            if self.read_mode and self.preloaded_spectroscopy:
-                # Get actual data range from spectroscopy data
-                spectroscopy_data = self.preloaded_spectroscopy[channel - 1]
-                if "error" not in spectroscopy_data:
-                    x_data = spectroscopy_data.get("x", [])
-                    if len(x_data) > 0:
-                        data_min = min(x_data)
-                        data_max = max(x_data)
-                        margin = (data_max - data_min) * 0.05  # 5% margin
-                        plot_widget.setXRange(data_min - margin, data_max + margin)
-                        plot_widget.setLimits(
-                            xMin=data_min - margin, xMax=data_max + margin
-                        )
-                    else:
-                        # Fallback to laser period
-                        margin = 0.5
-                        plot_widget.setXRange(0 - margin, self.laser_period_ns + margin)
-                        plot_widget.setLimits(
-                            xMin=0 - margin, xMax=self.laser_period_ns + margin
-                        )
+            if self.data and len(self.data) > 0:
+                # Use first entry's x data for range calculation
+                x_data = np.array(self.data[0].get("x", []))
+                if len(x_data) > 0:
+                    data_min = np.min(x_data)
+                    data_max = np.max(x_data)
+                    margin = (data_max - data_min) * 0.1  # 10% margin
+                    plot_widget.setXRange(data_min - margin, data_max + margin)
+                    plot_widget.setLimits(
+                        xMin=data_min - margin, xMax=data_max + margin
+                    )
                 else:
                     # Fallback to laser period
                     margin = 0.5
@@ -837,7 +827,7 @@ class FittingDecayConfigPopup(QWidget):
                         xMin=0 - margin, xMax=self.laser_period_ns + margin
                     )
             else:
-                # Acquire mode: use laser period
+                # Fallback to laser period if no data available
                 margin = 0.5
                 plot_widget.setXRange(0 - margin, self.laser_period_ns + margin)
                 plot_widget.setLimits(
@@ -869,7 +859,14 @@ class FittingDecayConfigPopup(QWidget):
                     continue
                 # In multi-file mode, display all files (channel filter removed)
                 x = spectroscopy_data.get("x", [])
-                y = spectroscopy_data.get("y", [])
+                y_data = np.array(spectroscopy_data.get("y", []))
+                
+                # Apply time shift if present
+                time_shift = spectroscopy_data.get("time_shift", 0)
+                if time_shift != 0 and len(y_data) > 0:
+                    y = np.roll(y_data, time_shift)
+                else:
+                    y = y_data
 
                 if len(x) > 0 and len(y) > 0:
                     all_x_data.extend(x)
@@ -981,45 +978,59 @@ class FittingDecayConfigPopup(QWidget):
 
         else:
             # Single file read mode
-            if channel != 0:
-                # Display spectroscopy curve
-                spectroscopy_data = self.preloaded_spectroscopy[channel - 1]
-                if "error" not in spectroscopy_data:
-                    x = spectroscopy_data.get("x", [])
-                    y = spectroscopy_data.get("y", [])
+            if self.data and len(self.data) > 0:
+                # Find data for this channel
+                channel_data = [d for d in self.data if d["channel_index"] == channel]
+                if channel_data:
+                    data_entry = channel_data[0]
+                    x = data_entry["x"]
+                    time_shift = data_entry.get(
+                        "time_shift",
+                        0
+                        if channel not in self.app.time_shifts
+                        else self.app.time_shifts[channel],
+                    )
+                    y = np.roll(data_entry["y"], time_shift)
 
-                    if len(x) > 0 and len(y) > 0:
-                        plot_widget.plot(x, y, pen=pg.mkPen(color="#00d4ff", width=2))
+                    # Cache the data for lin/log controls
+                    self.cached_counts_data[channel] = {"x": x, "y": y}
 
-                        # Initialize ROI based on data range
-                        x_min = min(x)
-                        x_max = max(x)
-                        x_range = x_max - x_min
+                    # Plot the spectroscopy curve
+                    curve_item = plot_widget.plot(
+                        x, y, pen=pg.mkPen("#f72828", width=2), name="Spectroscopy"
+                    )
 
-                        # Initialize ROI to 10%-50% of data range
-                        roi_start = x_min + x_range * 0.1
-                        roi_end = x_min + x_range * 0.5
-
-                        roi = pg.LinearRegionItem([roi_start, roi_end])
-
-                        # Try to load saved ROI
-                        result = self.get_saved_roi(channel)
-                        if result is not None:
-                            saved_min_x, saved_max_x = result
-                            # Validate saved ROI is within data range
-                            if saved_min_x >= x_min and saved_max_x <= x_max:
-                                roi.setRegion([saved_min_x, saved_max_x])
-                                self.set_roi_mask(roi, x, y, channel)
-
-                        roi.setVisible(False)
-                        roi.sigRegionChanged.connect(
-                            lambda: self.on_roi_selection_changed(roi, x, y, channel)
+                    # Add ROI selection (same as acquire mode)
+                    # Initialize ROI based on data range
+                    x_min, x_max = np.min(x), np.max(x)
+                    roi_start = x_min + (x_max - x_min) * 0.1  # 10% from start
+                    roi_end = x_min + (x_max - x_min) * 0.5  # 50% from start
+                    roi = pg.LinearRegionItem([roi_start, roi_end])
+                    result = self.get_saved_roi(channel)
+                    # Only use saved ROI if it's valid (min != max, within data range)
+                    if result is not None:
+                        min_x_saved, max_x_saved = result
+                        # Check if saved values are within actual data range (with some tolerance)
+                        data_range = x_max - x_min
+                        if (
+                            min_x_saved != max_x_saved
+                            and abs(max_x_saved - min_x_saved) > 1
+                            and min_x_saved >= x_min - data_range * 0.1
+                            and max_x_saved <= x_max + data_range * 0.1
+                        ):  # Valid range
+                            roi.setRegion([min_x_saved, max_x_saved])
+                            self.set_roi_mask(roi, x, y, channel)
+                    roi.setVisible(False)
+                    roi.sigRegionChanged.connect(
+                        lambda roi=roi, x=x, y=y, ch=channel: self.on_roi_selection_changed(
+                            roi, x, y, ch
                         )
-                        roi.sigRegionChangeFinished.connect(
-                            lambda: self.limit_roi_bounds(roi)
-                        )
-                        self.roi_items[channel] = roi
-                        plot_widget.addItem(roi)
+                    )
+                    roi.sigRegionChangeFinished.connect(
+                        lambda roi=roi: self.limit_roi_bounds(roi)
+                    )
+                    self.roi_items[channel] = roi
+                    plot_widget.addItem(roi)
         # Residuals
         residuals_widget = pg.PlotWidget()
         residuals_widget.setMinimumHeight(120)
@@ -2052,42 +2063,50 @@ class FittingDecayConfigPopup(QWidget):
 
     def export_fitting_data(self):
         """Exports the fitting results to files with ROI-aware data."""
-        
+
         # Build IRFs and raw signals for export (use ROI-cut data if available)
         irfs_to_export = []
         raw_signals_to_export = []
-        
+
         for result in self.fitting_results:
             # Get channel from result
             channel = result.get("channel_index", result.get("channel", 0))
-            
+
             # Use ROI-cut IRF if available, otherwise find original IRF
             if channel in self.cut_irfs:
                 irfs_to_export.append(self.cut_irfs[channel])
             else:
                 # Find original IRF index for this channel
                 data_index = next(
-                    (idx for idx, d in enumerate(self.data) if d.get("channel_index") == channel),
-                    None
+                    (
+                        idx
+                        for idx, d in enumerate(self.data)
+                        if d.get("channel_index") == channel
+                    ),
+                    None,
                 )
                 if data_index is not None and data_index < len(self.irfs):
                     irfs_to_export.append(self.irfs[data_index])
                 else:
                     irfs_to_export.append(None)
-            
+
             # Use ROI-cut raw signal if available, otherwise find original
             if channel in self.cut_raw_signals:
                 raw_signals_to_export.append({"y": self.cut_raw_signals[channel]})
             else:
                 data_index = next(
-                    (idx for idx, d in enumerate(self.data) if d.get("channel_index") == channel),
-                    None
+                    (
+                        idx
+                        for idx, d in enumerate(self.data)
+                        if d.get("channel_index") == channel
+                    ),
+                    None,
                 )
                 if data_index is not None and data_index < len(self.raw_signals):
                     raw_signals_to_export.append(self.raw_signals[data_index])
                 else:
                     raw_signals_to_export.append(None)
-        
+
         parsed_fitting_results = convert_fitting_result_into_json_serializable_item(
             self.fitting_results,
             raw_signals_to_export,

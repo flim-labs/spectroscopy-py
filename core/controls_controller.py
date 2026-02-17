@@ -339,6 +339,8 @@ class ControlsController:
         )
 
         if app.acquire_read_mode == "read":
+            display_channel = app.plots_to_show[0] if app.plots_to_show else 0
+            time_shift = 0 if display_channel not in app.time_shifts else app.time_shifts[display_channel]
 
             if app.reader_data["fitting"]["data"]["spectroscopy_data"]:
 
@@ -349,7 +351,7 @@ class ControlsController:
                         {
                             "x": [0],
                             "y": [0],
-                            "time_shift": 0,
+                            "time_shift": time_shift,
                             "title": "Multi-File Comparison",
                             "channel_index": 0,
                         }
@@ -367,7 +369,7 @@ class ControlsController:
                     if has_files_data:
                         # Use get_spectroscopy_data_to_fit whenever files_data exists
                         data = ReadData.get_spectroscopy_data_to_fit(app)
-                        time_shift = 0
+                        # Keep the time_shift calculated above (don't reset to 0)
                     else:
                         # No files_data: use acquired_spectroscopy_data_to_fit
                         data, time_shift = (
@@ -421,7 +423,7 @@ class ControlsController:
                     {
                         "x": [0],
                         "y": [0],
-                        "time_shift": 0,
+                        "time_shift": time_shift,
                         "title": title,
                         "channel_index": 0,
                     }

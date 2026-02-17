@@ -45,8 +45,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QRunnable, QThreadPool, pyqtSignal, QObject, pyqtSlot
 from PyQt6.QtGui import QColor, QIcon
-import pdb
-import pprint
+
+
 
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -214,7 +214,8 @@ class ReadData:
         for file_name in file_names:
             try:
                 with open(file_name, "rb") as f:
-                    if f.read(4) == magic_bytes:
+                    file_magic_bytes = f.read(4)
+                    if file_magic_bytes == magic_bytes:
                         valid_files.append(file_name)
                     else:
                         invalid_count += 1
@@ -301,8 +302,8 @@ class ReadData:
                 with open(file_name, "r") as f:
                     data = json.load(f)
                     if data:
-                        valid_data.append({"file": file_name, "data": data, "channels": [item["channel_index"] for item in data]})
-                        all_channels.extend([item["channel_index"] for item in data])
+                        valid_data.append({"file": file_name, "data": data, "channels": [item["channel"] for item in data]})
+                        all_channels.extend([item["channel"] for item in data])
             except:
                 pass
         
@@ -331,10 +332,10 @@ class ReadData:
             if isinstance(data, list) and len(data) > 0:
                 all_channels = []
                 for file_data in data:
-                    all_channels.extend([item["channel_index"] for item in file_data])
+                    all_channels.extend([item["channel"] for item in file_data])
                 return list(set(all_channels))
             elif isinstance(data, dict):
-                return [item["channel_index"] for item in data]
+                return [item["channel"] for item in data]
         return []
 
     @staticmethod
@@ -959,13 +960,15 @@ class ReadData:
                         # Use the display channel from plots_to_show
                         display_channel = app.plots_to_show[0] if app.plots_to_show else 0
                         channel_id = channels[channel]
+                        # Get time_shift for this channel from app.time_shifts
+                        channel_time_shift = 0 if display_channel not in app.time_shifts else app.time_shifts[display_channel]
                         data.append(
                             {
                                 "x": x_values,
                                 "y": y_values,
                                 "title": get_channel_name(channel_id, app.channel_names),
                                 "channel_index": display_channel,
-                                "time_shift": 0,
+                                "time_shift": channel_time_shift,
                                 "file_index": file_idx,
                                 "file_name": file_name
                             }
@@ -981,6 +984,7 @@ class ReadData:
                         
             channels_curves = spectroscopy_data.get("channels_curves", {})
             channels = metadata["channels"]
+            display_channel = app.plots_to_show[0] if app.plots_to_show else 0
             
             for channel, curves in channels_curves.items():
                 if channels[channel] in app.plots_to_show:
@@ -991,12 +995,15 @@ class ReadData:
                             channels[channel]
                         ] = y_values
                     
+                    # Get time_shift for this channel from app.time_shifts
+                    channel_time_shift = 0 if channels[channel] not in app.time_shifts else app.time_shifts[channels[channel]]
+                    
                     data_entry = {
                         "x": x_values,
                         "y": y_values,
                         "title": get_channel_name(channels[channel], app.channel_names),
                         "channel_index": channels[channel],
-                        "time_shift": 0
+                        "time_shift": channel_time_shift
                     }
                     data.append(data_entry)
                     
@@ -2395,7 +2402,7 @@ class ReaderPopup(QWidget):
             if isinstance(spectroscopy_files, list):
                 has_spectroscopy = len(spectroscopy_files) > 0
             else:
-                has_spectroscopy = spectroscopy_files and len(spectroscopy_files.strip()) > 0
+                has_spectroscopy = bool(spectroscopy_files and len(spectroscopy_files.strip()) > 0)
             self.widgets["plot_btn"].setEnabled(has_spectroscopy)
             if has_spectroscopy:
                 self.widgets["plot_btn"].setText("PLOT DATA")
