@@ -128,6 +128,8 @@ class ControlsController:
             if app.use_deconvolution:
                 app.control_inputs[s.LOAD_REF_BTN].setText("LOAD IRF")
                 app.control_inputs[s.LOAD_REF_BTN].show()
+            else:
+                app.control_inputs[s.LOAD_REF_BTN].hide()
         ControlsController.hide_harmonic_selector(app)
         hide_layout(app.control_inputs["phasors_resolution_container"])
         hide_layout(app.control_inputs["quantize_phasors_container"])
@@ -487,6 +489,7 @@ class ControlsController:
             raw_signals=data,
             irfs_tau_ns=irfs_tau_ns,
         )
+        # Show popup after it's fully constructed
         app.fitting_config_popup.show()
 
     @staticmethod
@@ -784,9 +787,11 @@ class ControlsController:
             app: The main application instance.
             state (bool): The new state of the switch.
         """
+        from core.ui_controller import UIController
         app.settings.setValue(s.SETTINGS_USE_DECONVOLUTION, state)
         app.use_deconvolution = state
         if state:
+            UIController.update_reference_info_banner_label(app)
             show_layout(app.widgets[s.REFERENCE_INFO_BANNER])
             app.control_inputs[s.LOAD_REF_BTN].setText("LOAD IRF")
             app.control_inputs[s.LOAD_REF_BTN].show()
@@ -1316,6 +1321,7 @@ class ControlsController:
             app: The main application instance.
         """
         app.popup = PlotsConfigPopup(app, start_acquisition=False)
+        # Show popup after it's fully constructed
         app.popup.show()
 
     @staticmethod
@@ -1327,6 +1333,7 @@ class ControlsController:
             app: The main application instance.
         """
         app.popup = ReaderPopup(app, tab_selected=app.tab_selected)
+        # Show popup after it's fully constructed
         app.popup.show()
 
     @staticmethod
@@ -1338,6 +1345,7 @@ class ControlsController:
             app: The main application instance.
         """
         app.popup = ReaderMetadataPopup(app, tab_selected=app.tab_selected)
+        # Show popup after it's fully constructed
         app.popup.show()
 
     @staticmethod

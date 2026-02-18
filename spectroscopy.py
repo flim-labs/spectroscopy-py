@@ -22,6 +22,7 @@ from PyQt6.QtCore import (
     QThreadPool,
     QtMsgType,
     qInstallMessageHandler,
+    Qt
 )
 from PyQt6.QtWidgets import (
     QApplication,
@@ -56,10 +57,14 @@ class SpectroscopyWindow(QWidget):
         Initializes the SpectroscopyWindow instance.
         """
         super().__init__()
+        # Prevent widget from being shown during construction
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
         self._initialize_settings()
         self._initialize_attributes()
         self._initialize_ui()
         self._initialize_controllers_and_timers()
+        # Re-enable showing
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def _initialize_settings(self):
         """
@@ -313,7 +318,7 @@ def main():
 
     app = QApplication(sys.argv)
     window = SpectroscopyWindow()
-    window.showMaximized()
+    window.setWindowState(Qt.WindowState.WindowMaximized)
     window.show()
 
     def custom_message_handler(msg_type, context, message):

@@ -1609,6 +1609,9 @@ class ReaderPopup(QWidget):
             tab_selected: Currently selected tab identifier
         """
         super().__init__()
+        # Prevent widget from being shown during construction to avoid visual glitches
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.tab_selected = tab_selected
         self.widgets = {}
@@ -1641,6 +1644,10 @@ class ReaderPopup(QWidget):
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.app.widgets[s.READER_POPUP] = self
         self.center_window()
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def create_file_type_selector(self):
         """Creates radio button selector for choosing which file types to load (fitting tab only).
@@ -1919,6 +1926,8 @@ class ReaderPopup(QWidget):
         plots_to_show = self.app.reader_data[self.data_type]["plots"]
         if "channels" in file_metadata and file_metadata["channels"] is not None:
             selected_channels = file_metadata["channels"]
+            # Filter out None values before sorting
+            selected_channels = [ch for ch in selected_channels if ch is not None]
             selected_channels.sort()
             self.app.selected_channels = selected_channels
             for i, ch in enumerate(self.app.channel_checkboxes):
@@ -2574,6 +2583,9 @@ class ReaderMetadataPopup(QWidget):
             tab_selected: Currently selected tab identifier
         """
         super().__init__()
+        # Prevent widget from being shown during construction
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.tab_selected = tab_selected
         self.data_type = ReadData.get_data_type(self.tab_selected)
@@ -2591,6 +2603,10 @@ class ReaderMetadataPopup(QWidget):
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.app.widgets[s.READER_METADATA_POPUP] = self
         self.center_window()
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def get_metadata_keys_dict(self):
         """

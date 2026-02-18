@@ -1,6 +1,6 @@
 import json
 import numpy as np
-from utils.fitting_utilities import estimate_irf, fit_decay_curve
+from utils.fitting_utilities import estimate_irf
 
 
 class FittingController:

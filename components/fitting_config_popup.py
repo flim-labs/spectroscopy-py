@@ -15,12 +15,11 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QCheckBox,
 )
-from components.select_control import SelectControl
 from utils.export_data import ExportData
 from components.gradient_text import GradientText
 from core.phasors_controller import PhasorsController
 from utils.gui_styles import GUIStyles
-from utils.layout_utilities import clear_layout_widgets, draw_layout_separator
+from utils.layout_utilities import clear_layout_widgets
 from components.lin_log_control import LinLogControl
 from utils.resource_path import resource_path
 from utils.fitting_utilities import (
@@ -84,6 +83,9 @@ class FittingDecayConfigPopup(QWidget):
             irfs (list, optional): A list of IRFs to use for deconvolution. Defaults to an empty list.
         """
         super().__init__()
+        # Prevent widget from being shown during construction
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.data = data
         self.use_deconvolution = use_deconvolution
@@ -212,6 +214,10 @@ class FittingDecayConfigPopup(QWidget):
 
         self._refresh_timer = QTimer()
         self._refresh_timer.singleShot(100, self.force_plots_refresh)
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def force_plots_refresh(self):
         """Force refresh of all plot widgets to ensure they are visible."""
@@ -366,7 +372,9 @@ class FittingDecayConfigPopup(QWidget):
         # Export plot img btn
         self.export_img_btn = ExportPlotImageButton(app=self.app, height=36)
         # Set initial visibility based on save_plot_img parameter
-        self.export_img_btn.setVisible(self.save_plot_img)
+        # Hide if in read mode without preloaded fitting (will show after fitting completes)
+        initial_visibility = self.save_plot_img and not (self.read_mode and self.preloaded_fitting is None)
+        self.export_img_btn.setVisible(initial_visibility)
         controls_row.addStretch(1)
 
         # Show EXPORT button only in ACQUIRE mode (not in READ mode)
@@ -555,6 +563,10 @@ class FittingDecayConfigPopup(QWidget):
         LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, True)
         # Note: export button visibility is now set inside the if/else branches above
         # to ensure correct data is passed for export
+        
+        # Show export image button after fitting is complete (if save_plot_img is True)
+        if self.save_plot_img:
+            self.export_img_btn.setVisible(True)
 
     @pyqtSlot(list)
     def handle_fitting_done(self, results):
@@ -2119,6 +2131,9 @@ class FittingDecayConfigPopup(QWidget):
 
     def reset(self):
         """Resets the popup to its initial state, clearing all plots and results."""
+        # Block UI updates during reset to prevent visual glitches and improve performance
+        self.setUpdatesEnabled(False)
+        
         for ch, plot in self.plot_widgets.items():
             if plot:
                 plot.clear()
@@ -2178,6 +2193,9 @@ class FittingDecayConfigPopup(QWidget):
                 )
 
         self.export_img_btn.setVisible(False)
+        
+        # Re-enable UI updates after reset
+        self.setUpdatesEnabled(True)
 
     def center_window(self):
         """Centers the popup window on the current screen."""

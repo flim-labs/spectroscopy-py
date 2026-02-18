@@ -23,7 +23,7 @@ def get_channel_name(channel_id):
     return f"Channel {channel_id + 1}"
 
 # ============================================================================
-# STEP 1: Read spectroscopy metadata (no curve data)
+# STEP 1: Read spectroscopy metadata 
 # ============================================================================
 print("=" * 70)
 print("SPECTROSCOPY FILE METADATA")

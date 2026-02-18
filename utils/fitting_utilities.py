@@ -537,11 +537,11 @@ def convert_fitting_result_into_json_serializable_item(
         if use_deconvolution:
             parsed_result["raw_signal"] = (
                 convert_ndarray_to_list(raw_signals[index]["y"])
-                if raw_signals and index < len(raw_signals)
+                if raw_signals and index < len(raw_signals) and raw_signals[index] is not None
                 else None
             )
             parsed_result["irf_reference"] = (
-                convert_ndarray_to_list(irfs[index]) if irfs else None
+                convert_ndarray_to_list(irfs[index]) if irfs and index < len(irfs) and irfs[index] is not None else None
             )
             parsed_result["irf_tau_ns"] = (
                 convert_np_num_to_py_num(irf_tau_ns) if irf_tau_ns is not None else None
@@ -566,19 +566,23 @@ def convert_json_serializable_item_into_np_fitting_result(parsed_results):
     """
     results = []
     for parsed_result in parsed_results:
+        # Skip results where all critical fields are None (invalid/placeholder results)
+        if parsed_result.get("channel") is None or parsed_result.get("decay_start") is None:
+            continue
+            
         result = {
-            "x_values": np.array(parsed_result.get("x_values")),
-            "t_data": np.array(parsed_result.get("t_data")),
-            "y_data": np.array(parsed_result.get("y_data")),
-            "fitted_values": np.array(parsed_result.get("fitted_values")),
-            "residuals": np.array(parsed_result.get("residuals")),
+            "x_values": np.array(parsed_result.get("x_values")) if parsed_result.get("x_values") is not None else None,
+            "t_data": np.array(parsed_result.get("t_data")) if parsed_result.get("t_data") is not None else None,
+            "y_data": np.array(parsed_result.get("y_data")) if parsed_result.get("y_data") is not None else None,
+            "fitted_values": np.array(parsed_result.get("fitted_values")) if parsed_result.get("fitted_values") is not None else None,
+            "residuals": np.array(parsed_result.get("residuals")) if parsed_result.get("residuals") is not None else None,
             "fitted_params_text": parsed_result.get("fitted_params_text"),
-            "output_data": convert_py_num_to_np_num(parsed_result.get("output_data")),
-            "scale_factor": np.float64(parsed_result.get("scale_factor")),
+            "output_data": convert_py_num_to_np_num(parsed_result.get("output_data")) if parsed_result.get("output_data") is not None else None,
+            "scale_factor": np.float64(parsed_result.get("scale_factor")) if parsed_result.get("scale_factor") is not None else None,
             "decay_start": np.int64(parsed_result.get("decay_start")),
             "channel": parsed_result.get("channel"),
-            "chi2": np.float64(parsed_result.get("chi2")),
-            "r2": np.float64(parsed_result.get("r2")),
+            "chi2": np.float64(parsed_result.get("chi2")) if parsed_result.get("chi2") is not None else None,
+            "r2": np.float64(parsed_result.get("r2")) if parsed_result.get("r2") is not None else None,
             "model": parsed_result.get("model"),
         }
         results.append(result)
