@@ -76,97 +76,6 @@ class AcquisitionController:
 
         return True
 
-    @staticmethod
-    def _validate_reference_file(app, frequency_mhz):
-        """
-        Validates the selected reference file for phasor analysis.
-
-        This check is skipped if the application is not in phasor mode. It verifies
-        file existence, format, and consistency with current settings.
-
-        Args:
-            app: The main application instance.
-            frequency_mhz (float): The current laser frequency in MHz.
-
-        Returns:
-            bool | str: True if valid, False if invalid. Returns the string "popup"
-                        if a configuration dialog was opened, indicating that the
-                        process should wait for user input.
-        """
-        if app.tab_selected != s.TAB_PHASORS:
-            return True
-
-        if not app.reference_file:
-            BoxMessage.setup(
-                "Error",
-                "No reference file selected",
-                QMessageBox.Icon.Warning,
-                GUIStyles.set_msg_box_style(),
-            )
-            return False
-
-        try:
-            with open(app.reference_file, "r") as f:
-                ref_data = json.load(f)
-
-            required_keys = [
-                "channels",
-                "laser_period_ns",
-                "harmonics",
-                "curves",
-                "tau_ns",
-            ]
-            for key in required_keys:
-                if key not in ref_data:
-                    BoxMessage.setup(
-                        "Error",
-                        f"Invalid reference file (missing {key})",
-                        QMessageBox.Icon.Warning,
-                        GUIStyles.set_msg_box_style(),
-                    )
-                    return False
-
-            if len(ref_data["channels"]) != len(app.selected_channels):
-                BoxMessage.setup(
-                    "Error",
-                    "Invalid reference file (channels mismatch)",
-                    QMessageBox.Icon.Warning,
-                    GUIStyles.set_msg_box_style(),
-                )
-                return False
-
-            if ns_to_mhz(ref_data["laser_period_ns"]) != frequency_mhz:
-                BoxMessage.setup(
-                    "Error",
-                    "Invalid reference file (laser period mismatch)",
-                    QMessageBox.Icon.Warning,
-                    GUIStyles.set_msg_box_style(),
-                )
-                return False
-
-            if (
-                not all(plot in ref_data["channels"] for plot in app.plots_to_show)
-                or len(app.plots_to_show) == 0
-            ):
-                popup = PlotsConfigPopup(
-                    app,
-                    start_acquisition=True,
-                    is_reference_loaded=True,
-                    reference_channels=ref_data["channels"],
-                )
-                popup.show()
-                return "popup"  # Special return to indicate popup was shown
-
-        except (IOError, json.JSONDecodeError) as e:
-            BoxMessage.setup(
-                "Error",
-                f"Error reading reference file: {e}",
-                QMessageBox.Icon.Warning,
-                GUIStyles.set_msg_box_style(),
-            )
-            return False
-
-        return True
 
     @staticmethod
     def _prepare_spectroscopy_parameters(app, frequency_mhz):
@@ -190,13 +99,14 @@ class AcquisitionController:
         tau_ns = (
             float(app.settings.value(s.SETTINGS_TAU_NS, "0"))
             if ControlsController.is_reference_phasors(app)
+            or ControlsController.is_reference_birfi(app)
             else None
         )
 
-        reference_file = None
+        phasors_reference_file = None
         if app.tab_selected == s.TAB_PHASORS:
-            reference_file = app.reference_file
-            with open(app.reference_file, "r") as f:
+            phasors_reference_file = app.phasors_reference_file
+            with open(app.phasors_reference_file, "r") as f:
                 reference_data = json.load(f)
                 app.harmonic_selector_value = int(reference_data["harmonics"])
         else:
@@ -204,14 +114,28 @@ class AcquisitionController:
                 s.SETTINGS_HARMONIC
             ].value()
 
-
-        # Prepare channels_name as a dict {channel_index (0-based): name} matching channels array
+        # Build channels_name dictionary with 0-based integer keys
         channels_name_dict = {}
-        if hasattr(app, 'channel_names') and app.channel_names:
+        if hasattr(app, "channel_names") and app.channel_names:
             for channel in sorted(app.selected_channels):
-                name = app.channel_names.get(str(channel), "")
+                # app.channel_names uses string keys, so convert channel to string
+                name = app.channel_names.get(str(channel), str(channel + 1))
                 channels_name_dict[channel] = name
-        
+
+        # Calibration type
+        calibration_type = "None"
+        if ControlsController.is_reference_phasors(app):
+            calibration_type = "Phasors"
+        elif (
+            app.tab_selected == s.TAB_SPECTROSCOPY
+            and ControlsController.is_reference_irf(app)
+        ):
+            calibration_type = "IRF"
+        elif (
+            app.tab_selected == s.TAB_SPECTROSCOPY
+            and ControlsController.is_reference_birfi(app)
+        ):
+            calibration_type = "BIRFI"
 
         params = {
             "enabled_channels": app.selected_channels,
@@ -224,7 +148,7 @@ class AcquisitionController:
                 acquisition_time * 1000 if acquisition_time else None
             ),
             "tau_ns": tau_ns,
-            "reference_file": reference_file,
+            "reference_file": phasors_reference_file,
             "harmonics": int(app.harmonic_selector_value),
             "write_bin": False,
             "time_tagger": app.time_tagger
@@ -232,6 +156,7 @@ class AcquisitionController:
             and app.tab_selected != s.TAB_PHASORS,
             "pico_mode": app.pico_mode,
             "channels_name": channels_name_dict,
+            "calibration_type": calibration_type,
         }
         return params
 
@@ -413,15 +338,42 @@ class AcquisitionController:
             app: The main application instance.
         """
         from core.controls_controller import ControlsController
+        from core.fitting_controller import FittingController
+        from core.ui_controller import UIController
 
-        if ControlsController.is_reference_phasors(app):
+        if app.tab_selected != s.TAB_FITTING and (
+            ControlsController.is_reference_phasors(app)
+            or ControlsController.is_reference_birfi(app)
+            or ControlsController.is_reference_irf(app)
+        ):
             try:
                 with open(".pid", "r") as f:
                     lines = f.readlines()
                     reference_file = lines[0].split("=")[1].strip()
-                app.reference_file = reference_file
-                app.saved_spectroscopy_reference = reference_file
+                if reference_file.endswith("calibration.json"):
+                    app.saved_phasors_reference_file = reference_file
+                    app.phasors_reference_file = reference_file
+                else:
+                    app.irf_reference_file = reference_file
+
                 print(f"Last reference file: {reference_file}")
+                if app.control_inputs[
+                    "calibration"
+                ].currentIndex() == 3 and reference_file.endswith(
+                    "birfi.json"
+                ):  # If BIRFI Ref. is selected, update the reference file with BIRFI results
+                    FittingController.update_ref_file_with_birfi_results(
+                        app, reference_file
+                    )
+                if app.control_inputs[
+                    "calibration"
+                ].currentIndex() == 2 and reference_file.endswith(
+                    "irf.json"
+                ):  # If IRF Ref. is selected, extract the IRF data from the reference file
+                    FittingController.extract_irf_data_from_ref_file(
+                        app, reference_file
+                    )
+                UIController.update_reference_info_banner_label(app)
             except (IOError, IndexError) as e:
                 print(f"Could not read reference file from .pid: {e}")
 
@@ -681,20 +633,24 @@ class AcquisitionController:
                 if channel_index not in app.time_shifts
                 else app.time_shifts[channel_index]
             )
-            
+
             # Check if channel exists in decay_curves and cached_decay_values
-            if (app.tab_selected not in app.decay_curves or 
-                channel_index not in app.decay_curves[app.tab_selected] or
-                app.decay_curves[app.tab_selected][channel_index] is None):
+            if (
+                app.tab_selected not in app.decay_curves
+                or channel_index not in app.decay_curves[app.tab_selected]
+                or app.decay_curves[app.tab_selected][channel_index] is None
+            ):
                 continue
-            
-            if (app.tab_selected not in app.cached_decay_values or
-                channel_index not in app.cached_decay_values[app.tab_selected]):
+
+            if (
+                app.tab_selected not in app.cached_decay_values
+                or channel_index not in app.cached_decay_values[app.tab_selected]
+            ):
                 continue
-                
+
             x, _ = app.decay_curves[app.tab_selected][channel_index].getData()
             y = app.cached_decay_values[app.tab_selected][channel_index]
-            
+
             # For FITTING READ mode with bin indices, don't multiply by 1000
             # Check if x is already in bin indices (0-255 range)
             is_bin_indices = len(x) > 0 and np.max(x) <= 256
@@ -702,7 +658,7 @@ class AcquisitionController:
                 x_data = x * 1000
             else:
                 x_data = x
-            
+
             data.append(
                 {
                     "x": x_data,
@@ -740,3 +696,136 @@ class AcquisitionController:
                 CheckCard.update_check_message(app, str(e), error=True)
             if start_experiment:
                 raise
+
+    @staticmethod
+    def _validate_reference_file(app, frequency_mhz):
+        """
+        Validates the reference file based on the selected tab and settings."""
+        # Skip validation for spectroscopy tab
+        if app.tab_selected == s.TAB_SPECTROSCOPY:
+            return True
+        # Skip validation for fitting tab without deconvolution
+        if app.tab_selected == s.TAB_FITTING:
+            if not app.use_deconvolution:
+                return True
+            return AcquisitionController._validate_irf_reference(app, frequency_mhz)
+        # Validate phasors tab
+        if app.tab_selected == s.TAB_PHASORS:
+            return AcquisitionController._validate_phasors_reference(app, frequency_mhz)
+        return True
+
+    @staticmethod
+    def _show_error_popup(title, message):
+        """Helper function to show error messages."""
+        BoxMessage.setup(
+            title,
+            message,
+            QMessageBox.Icon.Warning,
+            GUIStyles.set_msg_box_style(),
+        )
+        return False
+
+    @staticmethod
+    def _validate_reference_data(ref_file, required_keys):
+        """
+        Load and validate JSON reference file structure.
+
+        Returns:
+            dict | False: Parsed data if valid, False otherwise.
+        """
+        try:
+            with open(ref_file, "r") as f:
+                ref_data = json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            AcquisitionController._show_error_popup(
+                "Error", f"Error reading reference file: {e}"
+            )
+            return False
+
+        for key in required_keys:
+            if key not in ref_data:
+                AcquisitionController._show_error_popup(
+                    "Error", f"Invalid reference file (missing {key})"
+                )
+                return False
+
+        return ref_data
+
+    @staticmethod
+    def _validate_irf_reference(app, frequency_mhz):
+        """Validate IRF reference file for fitting tab."""
+        if not app.irf_reference_file:
+            return AcquisitionController._show_error_popup(
+                "Error", "No IRF reference file selected"
+            )
+
+        ref_data = AcquisitionController._validate_reference_data(
+            app.irf_reference_file, ["channels", "irfs", "laser_period_ns"]
+        )
+        if not ref_data:
+            return False
+
+        if len(ref_data["channels"]) != len(app.selected_channels):
+            return AcquisitionController._show_error_popup(
+                "Error", "Invalid IRF reference file (channels mismatch)"
+            )
+
+        if ns_to_mhz(ref_data["laser_period_ns"]) != frequency_mhz:
+            return AcquisitionController._show_error_popup(
+                "Error", "Invalid calibration reference file (laser period mismatch)"
+            )
+
+        if (
+            not all(plot in ref_data["channels"] for plot in app.plots_to_show)
+            or len(app.plots_to_show) == 0
+        ):
+            popup = PlotsConfigPopup(
+                app,
+                start_acquisition=True,
+                is_reference_loaded=True,
+                reference_channels=ref_data["channels"],
+            )
+            popup.show()
+            return "popup"
+
+        return True
+
+    @staticmethod
+    def _validate_phasors_reference(app, frequency_mhz):
+        """Validate phasors calibration reference file."""
+        if not app.phasors_reference_file:
+            return AcquisitionController._show_error_popup(
+                "Error", "No calibration reference file selected"
+            )
+
+        ref_data = AcquisitionController._validate_reference_data(
+            app.phasors_reference_file,
+            ["channels", "laser_period_ns", "harmonics", "curves", "tau_ns"],
+        )
+        if not ref_data:
+            return False
+
+        if len(ref_data["channels"]) != len(app.selected_channels):
+            return AcquisitionController._show_error_popup(
+                "Error", "Invalid calibration reference file (channels mismatch)"
+            )
+
+        if ns_to_mhz(ref_data["laser_period_ns"]) != frequency_mhz:
+            return AcquisitionController._show_error_popup(
+                "Error", "Invalid calibration reference file (laser period mismatch)"
+            )
+
+        if (
+            not all(plot in ref_data["channels"] for plot in app.plots_to_show)
+            or len(app.plots_to_show) == 0
+        ):
+            popup = PlotsConfigPopup(
+                app,
+                start_acquisition=True,
+                is_reference_loaded=True,
+                reference_channels=ref_data["channels"],
+            )
+            popup.show()
+            return "popup"
+
+        return True

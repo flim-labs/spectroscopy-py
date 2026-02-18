@@ -7,14 +7,14 @@ class GUIStyles:
     @staticmethod
     def set_default_theme(theme):
         QApplication.setStyle(QStyleFactory.create(theme))
-        
-    @staticmethod        
-    def customize_theme(window, bg = QColor(28, 28, 28, 128), fg = QColor(255, 255, 255)):
+
+    @staticmethod
+    def customize_theme(window, bg=QColor(28, 28, 28, 128), fg=QColor(255, 255, 255)):
         palette = QPalette()
         background_color = bg
         palette.setColor(QPalette.ColorRole.Window, background_color)
         palette.setColor(QPalette.ColorRole.WindowText, fg)
-        window.setPalette(palette)  
+        window.setPalette(palette)
         window.setStyleSheet(
             """
         QLabel {
@@ -22,7 +22,7 @@ class GUIStyles:
             font-family: "Montserrat";
         }
         """
-        )  
+        )
 
     @staticmethod
     def set_fonts(font_name="Montserrat", font_size=10):
@@ -164,8 +164,8 @@ class GUIStyles:
             button.styleSheet()
             + "QPushButton {border-radius: 0px; border-bottom: 1px solid #D01B1B; padding-left: 10px; padding-right: 10px;}  QPushButton:checked {background-color: #D01B1B; border: 1px solid transparent;}"
         )
-        
-    @staticmethod            
+
+    @staticmethod
     def checkbox_wrapper_style():
         return """
             QWidget#ch_checkbox_wrapper, QWidget#simple_checkbox_wrapper {
@@ -182,7 +182,7 @@ class GUIStyles:
                 font-size: 12px;
                 padding: 0;
             }        
-        """ 
+        """
 
     @staticmethod
     def set_checkbox_style():
@@ -213,7 +213,9 @@ class GUIStyles:
         """
 
     @staticmethod
-    def set_input_number_style(border_color="#3b3b3b", disabled_border_color="#3c3c3c", min_width = "60px"):
+    def set_input_number_style(
+        border_color="#3b3b3b", disabled_border_color="#3c3c3c", min_width="60px"
+    ):
         return f"""
             QDoubleSpinBox, QSpinBox {{
                 color: #f8f8f8;
@@ -231,8 +233,8 @@ class GUIStyles:
             border-color: {disabled_border_color};
             }}        
         """
-    
-    @staticmethod    
+
+    @staticmethod
     def set_input_text_style(border_color="#11468F", disabled_border_color="#3c3c3c"):
         return f"""
            QLineEdit, QPlainTextEdit {{
@@ -250,11 +252,10 @@ class GUIStyles:
             color: #404040;  
             border-color: {disabled_border_color};
             }}        
-        """    
-        
+        """
 
     @staticmethod
-    def set_input_select_style(border_color = "#3b3b3b", disabled_border_color="#3c3c3c"):
+    def set_input_select_style(border_color="#3b3b3b", disabled_border_color="#3c3c3c"):
         return f"""
             QComboBox {{
                 color: #f8f8f8;
@@ -321,8 +322,8 @@ class GUIStyles:
                 font-size: 26px;
             }
         """
-        
-    @staticmethod            
+
+    @staticmethod
     def toggle_collapse_button():
         return """
             QPushButton{
@@ -331,10 +332,9 @@ class GUIStyles:
                 qproperty-iconSize: 15px;
                 border: 1px solid #808080;
             } 
-        """   
-        
-   
-    @staticmethod               
+        """
+
+    @staticmethod
     def chart_wrapper_style():
         return """
             QWidget#chart_wrapper {
@@ -342,9 +342,9 @@ class GUIStyles:
                 background-color: #141414;
                 padding: 0;
             }       
-        """      
-        
-    @staticmethod       
+        """
+
+    @staticmethod
     def plots_config_popup_style():
         return """
             QWidget {
@@ -357,9 +357,9 @@ class GUIStyles:
                 color: white;
                 font-size: 18px;
             } 
-        """    
-            
-    @staticmethod            
+        """
+
+    @staticmethod
     def set_simple_checkbox_style(color):
         return f"""
             QCheckBox {{
@@ -383,9 +383,9 @@ class GUIStyles:
             QCheckBox::indicator:checked {{
                 background-color: {color};
             }}
-        """ 
-        
-    @staticmethod    
+        """
+
+    @staticmethod
     def set_context_menu_style(base, selected, pressed):
         return f"""
         QWidget {{
@@ -416,8 +416,8 @@ class GUIStyles:
         QMenu::item:pressed {{
             background-color: {pressed};  
          }}
-        """ 
-        
+        """
+
     @staticmethod
     def set_lin_log_widget_style():
         return """
@@ -430,7 +430,7 @@ class GUIStyles:
                 font-size: 14px;
             }
         """
-            
+
     @staticmethod
     def set_laserblood_popup_style():
         return """   
@@ -442,8 +442,8 @@ class GUIStyles:
                 font-family: Montserrat;
                 font-size: 13px;
             }
-        """   
-            
+        """
+
     @staticmethod
     def acquire_read_btn_style():
         return f"""
@@ -464,8 +464,8 @@ class GUIStyles:
                 border-bottom-right-radius: 3px;
                 
             }}
-        """   
-        
+        """
+
     @staticmethod
     def acquisition_time_countdown_style():
         return """
@@ -474,8 +474,7 @@ class GUIStyles:
                 font-size: 18px;
                 padding: 0 8px 8px 16px;
             }
-        """                     
-                        
+        """
 
     @staticmethod
     def progress_bar_style(color: str):
@@ -497,7 +496,7 @@ class GUIStyles:
                 color: transparent;
             }}               
         """
-        
+
     @staticmethod
     def time_tagger_style():
         return f"""
@@ -535,9 +534,8 @@ class GUIStyles:
             QCheckBox::indicator:checked {{
                 background-color: #1fd400;
             }}                   
-        """        
-        
-        
+        """
+
     @staticmethod
     def SBR_label(font_size="22px", background_color="#0a0a0a", color="#f72828"):
         return f"""
@@ -550,9 +548,8 @@ class GUIStyles:
                 padding: 2px;
             }} 
                      
-        """   
-        
-        
+        """
+
     @staticmethod
     def check_card_message(color):
         return f"""
@@ -566,8 +563,8 @@ class GUIStyles:
                 font-weight: 800;
                 font-size: 14px;
             }}                
-        """   
-        
+        """
+
     @staticmethod
     def phasors_legend_label():
         return f"""
@@ -582,7 +579,7 @@ class GUIStyles:
                 text-align: center;
             }}                
         """
-        
+
     @staticmethod
     def coumarine_btn(color="#11468F"):
         return f"""
@@ -600,7 +597,6 @@ class GUIStyles:
             }}              
         """
 
-
     @staticmethod
     def fitting_algorithm_label_style():
         return """
@@ -615,3 +611,36 @@ class GUIStyles:
             margin-left: 10px;
             letter-spacing: 0.5px;
             """
+
+    @staticmethod
+    def ref_data_banner_style(is_none=False, ref_required=False):
+        if not ref_required:
+            color = "#808080" if is_none else "#1E90FF"
+        else:
+            color = "#DA1212" if is_none else "#1E90FF"
+        return f"""
+            QWidget {{
+                background-color: #181818;
+                border: 1px solid {color};
+                min-height: 30px;
+                margin: 0px;
+                padding: 0px;
+            }}
+        """
+
+    @staticmethod
+    def ref_data_banner_label_style(is_none=False, ref_required=False):
+        if not ref_required:
+            color = "#808080" if is_none else "#1E90FF"
+        else:
+            color = "#DA1212" if is_none else "#1E90FF"
+        return f"""
+            QLabel {{
+                color: {color};
+                font-family: "Montserrat";
+                font-size: 14px;
+                font-weight: 500;
+                background: transparent;
+                padding: 0px;
+            }}
+        """

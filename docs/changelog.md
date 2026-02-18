@@ -1,5 +1,8 @@
 # Spectroscopy Laserblood Changelog
 
+## Version 3.1
+- Added support for deconvolution before fitting
+
 ## Version 3.0
 
 - Added support for plotting up to 4 phasor files simultaneously in read mode.

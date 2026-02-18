@@ -103,7 +103,7 @@ To be able to run this project locally on your machine you need to satisfy these
 
 Navigate to the following links to view detailed application usage guides:
 
-- [Spectroscopy Laserblood GUI guide](./v3.0/index.md)
+- [Spectroscopy Laserblood GUI guide](./v3.1/index.md)
 - [Spectroscopy Laserblood Data Export guide ](./python-flim-labs/spectroscopy-file-format.md)
 - [Spectroscopy Laserblood Console guide](./python-flim-labs/spectroscopy-console.md)
 

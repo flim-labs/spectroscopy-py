@@ -8,6 +8,7 @@ from settings.settings import DEFAULT_BIN_WIDTH, SETTINGS_BIN_WIDTH, SETTINGS_TA
 
 class FileUtils:
     """A collection of utility methods for file and directory operations."""
+
     @staticmethod
     def directory_selector(window):
         """Opens a dialog for the user to select a directory.
@@ -33,6 +34,7 @@ class FileUtils:
             f
             for f in os.listdir(data_folder)
             if f.startswith("spectroscopy")
+            and f.endswith(".bin")
             and not ("calibration" in f)
             and not ("phasors" in f)
         ]
@@ -52,7 +54,7 @@ class FileUtils:
         files = [
             f
             for f in os.listdir(data_folder)
-            if f.startswith("time_tagger_spectroscopy")
+            if f.startswith("time_tagger_spectroscopy") and f.endswith(".bin")
         ]
         files.sort(
             key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
@@ -73,7 +75,9 @@ class FileUtils:
         files = [
             f
             for f in os.listdir(data_folder)
-            if f.startswith("spectroscopy-phasors") and not ("calibration" in f)
+            if f.startswith("spectroscopy-phasors")
+            and f.endswith(".bin")
+            and not ("calibration" in f)
         ]
         files.sort(
             key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
@@ -150,7 +154,9 @@ class FileUtils:
             ),
             None,
         )
-        parsed_data = FileUtils.parse_metadata_output(window, reference_files, timestamp)
+        parsed_data = FileUtils.parse_metadata_output(
+            window, reference_files, timestamp
+        )
         laser_key, filter_key = FileUtils.get_laser_info_slug(
             window, filter_wavelength_input
         )
@@ -176,6 +182,7 @@ class FileUtils:
             list: A list of dictionaries, where each dictionary represents a metadata field.
         """
         from core.controls_controller import ControlsController
+
         reference_filenames = [file.rsplit("\\", 1)[-1] for file in reference_files]
         reference_filenames = [os.path.basename(file) for file in reference_filenames]
         filenames_string = ", ".join(reference_filenames)
@@ -197,18 +204,60 @@ class FileUtils:
             else filter_wavelength_input["VALUE"]
         )
         frequency_mhz = ControlsController.get_frequency_mhz(app)
-        firmware_selected, connection_type = ControlsController.get_firmware_selected(app, frequency_mhz)
+        firmware_selected, connection_type = ControlsController.get_firmware_selected(
+            app, frequency_mhz
+        )
         firmware_selected_name = os.path.basename(firmware_selected)
         num_replicate = app.replicates
         parsed_data = [
-            {"label": "Acquisition Files", "unit": "", "id": "acquisition_files", "value": filenames_string},
-            {"label": "Acquisition Timestamp", "unit": "", "id": "acquisition_timestamp", "value": timestamp},
-            {"label": "Replicate", "unit": "", "id": "replicate", "value": num_replicate},
-            {"label": "Laser type", "unit": "", "id": "laser_type", "value": laser_type},
-            {"label": "Emission filter type", "unit": "", "id": "emission_filter_type", "value": parsed_filter_type},
-            {"label": "Firmware selected", "unit": "", "id": "firmware_selected", "value": firmware_selected_name},
-            {"label": "Connection type", "unit": "", "id": "connection_type", "value": connection_type},
-            {"label": "Frequency", "unit": "Mhz", "id": "frequency", "value": frequency_mhz},
+            {
+                "label": "Acquisition Files",
+                "unit": "",
+                "id": "acquisition_files",
+                "value": filenames_string,
+            },
+            {
+                "label": "Acquisition Timestamp",
+                "unit": "",
+                "id": "acquisition_timestamp",
+                "value": timestamp,
+            },
+            {
+                "label": "Replicate",
+                "unit": "",
+                "id": "replicate",
+                "value": num_replicate,
+            },
+            {
+                "label": "Laser type",
+                "unit": "",
+                "id": "laser_type",
+                "value": laser_type,
+            },
+            {
+                "label": "Emission filter type",
+                "unit": "",
+                "id": "emission_filter_type",
+                "value": parsed_filter_type,
+            },
+            {
+                "label": "Firmware selected",
+                "unit": "",
+                "id": "firmware_selected",
+                "value": firmware_selected_name,
+            },
+            {
+                "label": "Connection type",
+                "unit": "",
+                "id": "connection_type",
+                "value": connection_type,
+            },
+            {
+                "label": "Frequency",
+                "unit": "Mhz",
+                "id": "frequency",
+                "value": frequency_mhz,
+            },
             {
                 "label": "Enabled channels",
                 "unit": "",
@@ -237,12 +286,17 @@ class FileUtils:
                 "id": "tau_ns",
                 "value": app.settings.value(SETTINGS_TAU_NS, "0"),
             },
-            {"label": "Harmonics", "unit": "", "id": "harmonics", "value": app.harmonic_selector_value},
+            {
+                "label": "Harmonics",
+                "unit": "",
+                "id": "harmonics",
+                "value": app.harmonic_selector_value,
+            },
         ]
-        
+
         def map_values(data):
             new_data = data.copy()
-             
+
             for d in new_data:
                 if isinstance(d["VALUE"], float) and d["VALUE"].is_integer():
                     value = int(d["VALUE"])
@@ -275,9 +329,9 @@ class FileUtils:
 
         map_values(metadata_settings)
         map_values(custom_fields_settings)
-        
+
         # Add channel_names to metadata if available
-        if hasattr(app, 'channel_names') and app.channel_names:
+        if hasattr(app, "channel_names") and app.channel_names:
             # Build a dict with 1-based keys (as shown in UI) only for enabled channels
             filtered_channel_names = {}
             for channel in app.selected_channels:
@@ -285,8 +339,17 @@ class FileUtils:
                 if name:
                     filtered_channel_names[str(channel + 1)] = name
             if filtered_channel_names:
-                parsed_data.append({"id": "channel_names", "value": filtered_channel_names, "label": "Channel Names", "unit": ""})
-        
+                # Convert dict to JSON string for MATLAB compatibility
+                channel_names_str = json.dumps(filtered_channel_names)
+                parsed_data.append(
+                    {
+                        "id": "channel_names",
+                        "value": channel_names_str,
+                        "label": "Channel Names",
+                        "unit": "",
+                    }
+                )
+
         return parsed_data
 
     @staticmethod
@@ -308,6 +371,7 @@ class FileUtils:
         )
         # Extract only the numeric part (with /) from filter_type, e.g. '450/50 Bandpass' -> '450/50', then slugify
         import re
+
         match = re.match(r"(\d+\/\d+)", filter_type.strip())
         if match:
             filter_key = match.group(1).replace("/", "_") + "_nm"

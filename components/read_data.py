@@ -700,13 +700,7 @@ class ReadData:
                 if data_type == "spectroscopy"
                 else app.reader_data[data_type]["data"]["spectroscopy_data"]
             )
-
-            if isinstance(spectroscopy_data, dict):
-
-                if "files_data" in spectroscopy_data:
-                    print(
-                        f"[DEBUG] files_data length: {len(spectroscopy_data['files_data'])}"
-                    )
+              
             metadata = app.reader_data[data_type]["metadata"]
             laser_period_ns = (
                 metadata["laser_period_ns"]
@@ -1102,15 +1096,18 @@ class ReadData:
 
     @staticmethod
     def get_spectroscopy_data_to_fit(app):
-        """Prepares spectroscopy data for the fitting process.
-
-        Args:
-            app: The main application instance.
-
-        Returns:
-            list: A list of dictionaries, each containing the data for one channel to be fitted.
-                  In multi-file mode, returns one entry per file per channel.
         """
+        Prepare spectroscopy data for fitting operations.
+        
+        Args:
+            app: Main application instance
+            
+        Returns:
+            list: List of dictionaries containing x, y, title, channel_index, time_shift, 
+                  and optionally file_index and file_name for multi-file support
+        """
+        from utils.channel_name_utils import get_channel_name
+        
         spectroscopy_data = app.reader_data["fitting"]["data"]["spectroscopy_data"]
         metadata = app.reader_data["fitting"]["metadata"]
 
@@ -1127,13 +1124,9 @@ class ReadData:
             "files_data" in spectroscopy_data
             and len(spectroscopy_data["files_data"]) > 0
         ):
-            # Multi-file mode: use the actual file times converted to proper units
+            # Multi-file mode: use the actual file times
             files_data = spectroscopy_data["files_data"]
             spectroscopy_metadata = app.reader_data["fitting"]["spectroscopy_metadata"]
-
-            # Use times from first file as reference (converted to ns)
-            first_file_times = files_data[0]["times"]
-            x_values = np.array(first_file_times) * 1000  # Convert to ns if needed
 
             for file_idx, file_data in enumerate(files_data):
                 file_channels_curves = file_data["channels_curves"]
@@ -1144,23 +1137,38 @@ class ReadData:
                 )
                 file_name = file_metadata.get("file_name", f"File {file_idx + 1}")
                 channels = file_metadata["channels"]
+                
+                # Get times for this specific file
+                file_times = file_data["times"]
 
                 # In multi-file mode, map all first channels to the display channel
                 for channel, curves in file_channels_curves.items():
                     # Only process the first channel of each file
                     if channel == 0:
                         y_values = np.sum(curves, axis=0)
+                        
+                        # Match x_values length to y_values length
+                        if len(file_times) >= len(y_values):
+                            # Take first len(y_values) elements of times
+                            x_values = np.array(file_times[:len(y_values)])
+                        else:
+                            # Times is shorter, generate x_values
+                            x_values = np.linspace(0, laser_period_ns, len(y_values))
+                        
                         # Use the display channel from plots_to_show
                         display_channel = (
                             app.plots_to_show[0] if app.plots_to_show else 0
                         )
+                        channel_id = channels[channel]
+                        # Get time_shift for this channel from app.time_shifts
+                        channel_time_shift = 0 if display_channel not in app.time_shifts else app.time_shifts[display_channel]
                         data.append(
                             {
                                 "x": x_values,
                                 "y": y_values,
-                                "title": f"Channel {channels[channel] + 1}",
+                                "title": get_channel_name(channel_id, app.channel_names),
                                 "channel_index": display_channel,
-                                "time_shift": 0,
+                                "time_shift": channel_time_shift,
                                 "file_index": file_idx,
                                 "file_name": file_name,
                             }
@@ -1168,31 +1176,36 @@ class ReadData:
         else:
             # Single-file mode: check if we have actual times data
             if "times" in spectroscopy_data and spectroscopy_data["times"]:
-                # Use actual times from data (convert to ns if needed)
-                x_values = np.array(spectroscopy_data["times"]) * 1000
+                # Use actual times from data (already in correct units)
+                x_values = np.array(spectroscopy_data["times"])  # Don't multiply by 1000
             else:
                 # Fallback to linspace
                 x_values = np.linspace(0, laser_period_ns, num_bins)
 
             channels_curves = spectroscopy_data.get("channels_curves", {})
             channels = metadata["channels"]
+            display_channel = app.plots_to_show[0] if app.plots_to_show else 0
 
             for channel, curves in channels_curves.items():
                 if channels[channel] in app.plots_to_show:
                     y_values = np.sum(curves, axis=0)
+                    
                     if app.tab_selected != s.TAB_PHASORS:
                         app.cached_decay_values[app.tab_selected][
                             channels[channel]
                         ] = y_values
-                    data.append(
-                        {
-                            "x": x_values,
-                            "y": y_values,
-                            "title": "Channel " + str(channels[channel] + 1),
-                            "channel_index": channels[channel],
-                            "time_shift": 0,
-                        }
-                    )
+                    
+                    # Get time_shift for this channel from app.time_shifts
+                    channel_time_shift = 0 if channels[channel] not in app.time_shifts else app.time_shifts[channels[channel]]
+                    
+                    data_entry = {
+                        "x": x_values,
+                        "y": y_values,
+                        "title": get_channel_name(channels[channel], app.channel_names),
+                        "channel_index": channels[channel],
+                        "time_shift": channel_time_shift
+                    }
+                    data.append(data_entry)
         return data
 
     @staticmethod
@@ -1648,6 +1661,7 @@ class ReadDataControls:
             read_mode (bool): True if the application is in read mode.
         """
         from core.controls_controller import ControlsController
+        from core.ui_controller import UIController
 
         if not read_mode:
             ControlsController.fit_button_hide(app)
@@ -1678,6 +1692,18 @@ class ReadDataControls:
         if app.tab_selected == s.TAB_FITTING:
             app.control_inputs[s.SETTINGS_REPLICATES].setVisible(not read_mode)
             app.control_inputs["replicates_label"].setVisible(not read_mode)
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD IRF")
+            app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode and app.use_deconvolution)
+            if read_mode:
+                app.control_inputs[s.LOAD_REF_BTN].hide()
+                hide_layout(app.control_inputs["use_deconv_container"]) 
+                if  UIController.show_ref_info_banner(app) == False:
+                    hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
+            else:
+                show_layout(app.control_inputs["use_deconv_container"])
+                if UIController.show_ref_info_banner(app):
+                    UIController.update_reference_info_banner_label(app) 
+                    show_layout(app.widgets[s.REFERENCE_INFO_BANNER])
 
         app.widgets[s.TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
         app.widgets["collapse_button"].setVisible(not read_mode)
@@ -1690,6 +1716,7 @@ class ReadDataControls:
         app.control_inputs[s.SETTINGS_TIME_SPAN].setEnabled(not read_mode)
         app.control_inputs[s.SETTINGS_HARMONIC].setEnabled(not read_mode)
         if app.tab_selected == s.TAB_PHASORS:
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
             app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode)
             if read_mode:
                 app.control_inputs[s.LOAD_REF_BTN].hide()
@@ -1697,10 +1724,15 @@ class ReadDataControls:
                 hide_layout(app.control_inputs["quantize_phasors_container"])
                 ControlsController.on_quantize_phasors_changed(app, False)
                 app.settings.setValue(s.SETTINGS_QUANTIZE_PHASORS, False)
+                if UIController.show_ref_info_banner(app) == False:
+                    hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
             else:
                 show_layout(app.control_inputs["quantize_phasors_container"])
                 if app.quantized_phasors:
                     show_layout(app.control_inputs["phasors_resolution_container"])
+                if UIController.show_ref_info_banner(app):               
+                    UIController.update_reference_info_banner_label(app)
+                    show_layout(app.widgets[s.REFERENCE_INFO_BANNER])    
 
     @staticmethod
     def handle_plots_config(app, file_type):
@@ -1820,6 +1852,9 @@ class ReaderPopup(QWidget):
             tab_selected (str): The identifier of the tab that opened the popup.
         """
         super().__init__()
+        # Prevent widget from being shown during construction to avoid visual glitches
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.tab_selected = tab_selected
         self.widgets = {}
@@ -1852,6 +1887,10 @@ class ReaderPopup(QWidget):
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.app.widgets[s.READER_POPUP] = self
         self.center_window()
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def create_file_type_selector(self):
         """Creates radio button selector for choosing which file types to load (fitting tab only).
@@ -2206,6 +2245,8 @@ class ReaderPopup(QWidget):
         plots_to_show = self.app.reader_data[self.data_type]["plots"]
         if "channels" in file_metadata and file_metadata["channels"] is not None:
             selected_channels = file_metadata["channels"]
+            # Filter out None values before sorting
+            selected_channels = [ch for ch in selected_channels if ch is not None]
             selected_channels.sort()
             self.app.selected_channels = selected_channels
             for i, ch in enumerate(self.app.channel_checkboxes):
@@ -2558,9 +2599,7 @@ class ReaderPopup(QWidget):
             if isinstance(spectroscopy_files, list):
                 has_spectroscopy = len(spectroscopy_files) > 0
             else:
-                has_spectroscopy = (
-                    spectroscopy_files and len(spectroscopy_files.strip()) > 0
-                )
+                has_spectroscopy = bool(spectroscopy_files and len(spectroscopy_files.strip()) > 0)
             self.widgets["plot_btn"].setEnabled(has_spectroscopy)
             if has_spectroscopy:
                 self.widgets["plot_btn"].setText("PLOT DATA")
@@ -3116,6 +3155,9 @@ class ReaderMetadataPopup(QWidget):
             tab_selected (str): The identifier of the tab that opened the popup.
         """
         super().__init__()
+        # Prevent widget from being shown during construction
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.tab_selected = tab_selected
         self.data_type = ReadData.get_data_type(self.tab_selected)
@@ -3138,6 +3180,10 @@ class ReaderMetadataPopup(QWidget):
         self.setMinimumHeight(600)
         self.app.widgets[s.READER_METADATA_POPUP] = self
         self.center_window()
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def get_metadata_keys_dict(self):
         """Returns a dictionary mapping metadata keys to human-readable labels.
