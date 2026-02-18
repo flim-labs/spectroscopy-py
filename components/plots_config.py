@@ -25,6 +25,9 @@ class PlotsConfigPopup(QWidget):
             reference_channels (list, optional): A list of channels available from the reference measurement. Defaults to [].
         """
         super().__init__()
+        # Prevent widget from being shown during construction
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.setWindowTitle("Spectroscopy - Plots config")
         TitlebarIcon.setup(self)
@@ -71,6 +74,10 @@ class PlotsConfigPopup(QWidget):
         self.app.widgets[s.PLOTS_CONFIG_POPUP] = self
         
         self.center_window()
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
         
         
     def center_window(self):   

@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.8
+- Added support for deconvolution before fitting
+
 ## Version 2.7
 - Added support for plotting up to 4 phasor files simultaneously in read mode.
 - Added support for plotting up to 4 fitting files or spectroscopy files in read mode.
