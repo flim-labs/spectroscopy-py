@@ -47,13 +47,20 @@ class ExportData:
             app: The main application instance.
         """
         try:
-            timestamp  = calc_timestamp()
+            timestamp = calc_timestamp()
             time_tagger = app.time_tagger
             # Spectroscopy file (.bin)
             spectroscopy_file = FileUtils.get_recent_spectroscopy_file()
             new_spectroscopy_file_path, save_dir, save_name = (
                 ExportData.rename_and_move_file(
-                    spectroscopy_file, "fitting_spectroscopy", "Save Fitting files", timestamp, window, app))
+                    app,
+                    spectroscopy_file,
+                    "fitting_spectroscopy",
+                    "Save Fitting files",
+                    timestamp,
+                    window,
+                )
+            )
             if not new_spectroscopy_file_path:
                 return
             # Laserblood metadata file (.json)
@@ -61,13 +68,22 @@ class ExportData:
                 app, save_name, save_dir, timestamp, [new_spectroscopy_file_path]
             )
             # Fitting file (.json)
-            ExportData.save_fitting_config_json(fitting_data, save_dir, save_name, app, timestamp)
-            
+            old_fitting_file_name = ExportData.save_fitting_config_json(
+                fitting_data, save_dir, save_name, app, timestamp
+            )
+
+            new_fitting_file_path = os.path.join(save_dir, old_fitting_file_name)
+
             # Time Tagger file (.bin)
             if time_tagger:
                 time_tagger_file = FileUtils.get_recent_time_tagger_file()
                 new_time_tagger_path = ExportData.copy_file(
-                    time_tagger_file, save_name, save_dir, "time_tagger_spectroscopy", timestamp, app
+                    time_tagger_file,
+                    save_name,
+                    save_dir,
+                    "time_tagger_spectroscopy",
+                    timestamp,
+                    app,
                 )
             new_time_tagger_path = (
                 ""
@@ -75,7 +91,11 @@ class ExportData:
                 else new_time_tagger_path
             )
 
-            file_paths = {"spectroscopy": new_spectroscopy_file_path, "laserblood_metadata": laserblood_metadata_file_path,}
+            file_paths = {
+                "spectroscopy": new_spectroscopy_file_path,
+                "laserblood_metadata": laserblood_metadata_file_path,
+                "fitting": new_fitting_file_path,
+            }
             ExportData.download_scripts(
                 file_paths,
                 save_name,
@@ -103,13 +123,14 @@ class ExportData:
         """
         try:
             laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-            file_name = FileUtils.clean_filename(f"{timestamp}_{laser_key}_{filter_key}_{save_name}_fitting_result")
-            file_name = f"{file_name}.json"
-            save_path = os.path.join(
-                save_dir, file_name
+            file_name = FileUtils.clean_filename(
+                f"{timestamp}_{laser_key}_{filter_key}_{save_name}_fitting_result"
             )
+            file_name = f"{file_name}.json"
+            save_path = os.path.join(save_dir, file_name)
             with open(save_path, "w") as file:
                 json.dump(fitting_data, file, indent=4)
+            return file_name
         except Exception as e:
             BoxMessage.setup(
                 "Error",
@@ -136,7 +157,12 @@ class ExportData:
             time_tagger = app.time_tagger
             new_spectroscopy_file_path, save_dir, save_name = (
                 ExportData.rename_and_move_file(
-                    spectroscopy_file, "spectroscopy", "Save Spectroscopy files", timestamp, app, app
+                    app,
+                    spectroscopy_file,
+                    "spectroscopy",
+                    "Save Spectroscopy files",
+                    timestamp,
+                    app,
                 )
             )
             if not new_spectroscopy_file_path:
@@ -146,25 +172,42 @@ class ExportData:
             if time_tagger:
                 time_tagger_file = FileUtils.get_recent_time_tagger_file()
                 new_time_tagger_path = ExportData.copy_file(
-                    time_tagger_file, save_name, save_dir, "time_tagger_spectroscopy", timestamp, app
+                    app,
+                    time_tagger_file,
+                    save_name,
+                    save_dir,
+                    "time_tagger_spectroscopy",
+                    timestamp,
                 )
             new_time_tagger_path = (
                 ""
                 if not time_tagger or not new_time_tagger_path
                 else new_time_tagger_path
             )
+
             # Laserblood metadata file (.json)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
                 app, save_name, save_dir, timestamp, [new_spectroscopy_file_path]
-            )      
-            # Spectroscopy reference file (.json)      
-            if app.control_inputs["calibration"].currentIndex() == 1:
-                ExportData.save_spectroscopy_reference(save_name, save_dir, app, timestamp)
-            
+            )
+
+            # Spectroscopy Calibration reference file (.json)
+            calibration_active_index = [
+                1,
+                2,
+                3,
+            ]  # 1 = Phasors Ref., 2 = IRF Ref., 3 = BIRFI Ref.
+            selected_calibration_index = app.control_inputs[
+                "calibration"
+            ].currentIndex()
+            if selected_calibration_index in calibration_active_index:
+                ExportData.save_spectroscopy_reference(
+                    app, save_name, save_dir, timestamp, selected_calibration_index
+                )
+
             file_paths = {
                 "spectroscopy": new_spectroscopy_file_path,
                 "laserblood_metadata": laserblood_metadata_file_path,
-            }            
+            }
             ExportData.download_scripts(
                 file_paths,
                 save_name,
@@ -193,35 +236,45 @@ class ExportData:
         Returns:
             str: The path to the saved metadata file.
         """
-        return FileUtils.save_laserblood_metadata_json(file_name, directory, app, timestamp, reference_file)
+        return FileUtils.save_laserblood_metadata_json(
+            file_name, directory, app, timestamp, reference_file
+        )
 
     @staticmethod
-    def save_spectroscopy_reference(file_name, directory, app, timestamp):
+    def save_spectroscopy_reference(
+        app, file_name, directory, timestamp, calibration_type
+    ):
         """
         Saves the spectroscopy reference file used for calibration.
 
         Args:
+            app: The main application instance.
             file_name (str): The base name for the file.
             directory (str): The directory to save the file in.
-            app: The main application instance.
             timestamp (str): The timestamp for the filename.
+            calibration_type (int): The type of calibration reference (1 = Phasors Ref., 2 = IRF Ref., 3 = BIRFI Ref.).
         """
         # read all lines from .pid file
         with open(".pid", "r") as f:
             lines = f.readlines()
             reference_file = lines[0].split("=")[1].strip()
+        ref_suffix = {
+            1: "phasors_reference",
+            2: "irf_reference",
+            3: "birfi_reference",
+        }
         laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-        file_name = FileUtils.clean_filename(f"{timestamp}_{laser_key}_{filter_key}_{file_name}_spectroscopy_reference")
+        file_name = FileUtils.clean_filename(
+            f"{timestamp}_{laser_key}_{filter_key}_{file_name}_{ref_suffix[calibration_type]}"
+        )
         full_path = os.path.join(
             directory,
             f"{file_name}.json",
         )
-        app.saved_spectroscopy_reference = f"{file_name}.json"
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(reference_file, "r") as f:
             with open(full_path, "w") as f2:
                 f2.write(f.read())
-
 
     @staticmethod
     def get_laser_filter_type_info(app):
@@ -235,13 +288,13 @@ class ExportData:
             tuple: A tuple containing the laser key (str) and filter key (str).
         """
         filter_wavelength_input = next(
-                (
-                    input
-                    for input in app.laserblood_settings
-                    if input["LABEL"] == "Emission filter wavelength"
-                ),
-                None,
-            )
+            (
+                input
+                for input in app.laserblood_settings
+                if input["LABEL"] == "Emission filter wavelength"
+            ),
+            None,
+        )
         laser_key, filter_key = FileUtils.get_laser_info_slug(
             app, filter_wavelength_input
         )
@@ -263,36 +316,55 @@ class ExportData:
             spectroscopy_file_ref = FileUtils.get_recent_spectroscopy_file()
             phasors_file = FileUtils.get_recent_phasors_file()
             time_tagger = app.time_tagger
-        
+
             # Phasors file (.bin)
             new_phasors_file_path, save_dir, save_name = (
-                ExportData.rename_and_move_file(phasors_file, "phasors", "Save Phasors Files", timestamp, app, app)
+                ExportData.rename_and_move_file(
+                    app, phasors_file, "phasors", "Save Phasors Files", timestamp, app
+                )
             )
             if not new_phasors_file_path:
                 return
-            
+
             # Spectroscopy file (.bin)
             laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-            clean_name = FileUtils.clean_filename(f"{timestamp}_{laser_key}_{filter_key}_{save_name}_phasors_spectroscopy")
-            new_spectroscopy_ref_name = (
-                f"{clean_name}.bin"
+            clean_name = FileUtils.clean_filename(
+                f"{timestamp}_{laser_key}_{filter_key}_{save_name}_phasors_spectroscopy"
             )
+            new_spectroscopy_ref_name = f"{clean_name}.bin"
             new_spectroscopy_ref_path = os.path.join(
                 save_dir, new_spectroscopy_ref_name
             )
             shutil.copyfile(spectroscopy_file_ref, new_spectroscopy_ref_path)
-      
+
             # Laserblood metadata file (.json)
             laserblood_metadata_file_path = ExportData.save_laserblood_metadata(
-                app, save_name, save_dir, timestamp, [new_phasors_file_path, new_spectroscopy_ref_path, app.saved_spectroscopy_reference if app.saved_spectroscopy_reference is not None else app.reference_file]
+                app,
+                save_name,
+                save_dir,
+                timestamp,
+                [
+                    new_phasors_file_path,
+                    new_spectroscopy_ref_path,
+                    (
+                        app.saved_phasors_reference_file
+                        if app.saved_phasors_reference_file is not None
+                        else app.phasors_reference_file
+                    ),
+                ],
             )
-            app.saved_spectroscopy_reference = None
+            app.saved_phasors_reference_file = None
 
             # Time Tagger file (.bin)
             if time_tagger:
                 time_tagger_file = FileUtils.get_recent_time_tagger_file()
                 new_time_tagger_path = ExportData.copy_file(
-                    time_tagger_file, save_name, save_dir, "time_tagger_spectroscopy", timestamp, app
+                    app,
+                    time_tagger_file,
+                    save_name,
+                    save_dir,
+                    "time_tagger_spectroscopy",
+                    timestamp,
                 )
             new_time_tagger_path = (
                 ""
@@ -345,7 +417,7 @@ class ExportData:
         """
         file_name = FileUtils.clean_filename(file_name)
         laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-        file_name = f"{timestamp}_{laser_key}_{filter_key}_{file_name}"
+        file_name = f"{file_name}_{laser_key}_{filter_key}_{timestamp}"
         ScriptFileUtils.export_scripts(
             bin_file_paths,
             file_name,
@@ -356,17 +428,25 @@ class ExportData:
         )
 
     @staticmethod
-    def copy_file(origin_file_path, save_name, save_dir, file_type, timestamp, app, file_extension="bin"):
+    def copy_file(
+        app,
+        origin_file_path,
+        save_name,
+        save_dir,
+        file_type,
+        timestamp,
+        file_extension="bin",
+    ):
         """
         Copies a file to a new location with a standardized filename.
 
         Args:
+            app: The main application instance.
             origin_file_path (str): The path to the source file.
             save_name (str): The base name for the new file.
             save_dir (str): The directory to save the new file in.
             file_type (str): A descriptor for the file type (e.g., 'time_tagger_spectroscopy').
             timestamp (str): The timestamp for the filename.
-            app: The main application instance.
             file_extension (str, optional): The file extension. Defaults to "bin".
 
         Returns:
@@ -380,17 +460,25 @@ class ExportData:
         return new_file_path
 
     @staticmethod
-    def rename_and_move_file(original_file_path, file_type, file_dialog_prompt, timestamp, window, app, file_extension="bin"):
+    def rename_and_move_file(
+        app,
+        original_file_path,
+        file_type,
+        file_dialog_prompt,
+        timestamp,
+        window,
+        file_extension="bin",
+    ):
         """
         Opens a save dialog, then copies and renames a file to the chosen location.
 
         Args:
+            app: The main application instance.
             original_file_path (str): The path to the source file.
             file_type (str): A descriptor for the file type (e.g., 'spectroscopy').
             file_dialog_prompt (str): The title for the save file dialog.
             timestamp (str): The timestamp for the filename.
             window: The parent window for the dialog.
-            app: The main application instance.
             file_extension (str, optional): The file extension. Defaults to "bin".
 
         Returns:
@@ -409,16 +497,16 @@ class ExportData:
             save_dir = os.path.dirname(save_path)
             save_name = os.path.basename(save_path)
             laser_key, filter_key = ExportData.get_laser_filter_type_info(app)
-            new_filename = f"{timestamp}_{laser_key}_{filter_key}_{save_name}_{file_type}"
+            new_filename = (
+                f"{timestamp}_{laser_key}_{filter_key}_{save_name}_{file_type}"
+            )
             new_filename = f"{FileUtils.clean_filename(new_filename)}.{file_extension}"
             new_file_path = os.path.join(save_dir, new_filename)
             shutil.copyfile(original_file_path, new_file_path)
             return new_file_path, save_dir, save_name
         else:
             return None, None, None
-        
-        
-    
+
     @staticmethod
     def calc_exported_file_size(app):
         """
@@ -430,7 +518,9 @@ class ExportData:
         Args:
             app: The main application instance.
         """
-        free_running = app.settings.value(s.SETTINGS_FREE_RUNNING, s.DEFAULT_FREE_RUNNING)
+        free_running = app.settings.value(
+            s.SETTINGS_FREE_RUNNING, s.DEFAULT_FREE_RUNNING
+        )
         acquisition_time = app.settings.value(
             s.SETTINGS_ACQUISITION_TIME, s.DEFAULT_ACQUISITION_TIME
         )

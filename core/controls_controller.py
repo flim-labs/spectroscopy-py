@@ -73,9 +73,16 @@ class ControlsController:
         """
         app.widgets[s.TIME_TAGGER_WIDGET].setVisible(app.write_data_gui)
         ControlsController.fit_button_hide(app)
+
+        # Show N° Replicate control in spectroscopy tab
+        app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
+        app.control_inputs["replicates_label"].setVisible(True)
+
         ControlsController.hide_harmonic_selector(app)
         hide_layout(app.control_inputs["phasors_resolution_container"])
         hide_layout(app.control_inputs["quantize_phasors_container"])
+        hide_layout(app.control_inputs["use_deconv_container"])
+        hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
         app.control_inputs["tau_label"].hide()
         app.control_inputs["tau"].hide()
         app.control_inputs[s.SETTINGS_HARMONIC].hide()
@@ -106,12 +113,35 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
+        from core.ui_controller import UIController
+
         app.widgets[s.TIME_TAGGER_WIDGET].setVisible(app.write_data_gui)
         if ReadDataControls.fit_button_enabled(app):
             ControlsController.fit_button_show(app)
         else:
             ControlsController.fit_button_hide(app)
-        app.control_inputs[s.LOAD_REF_BTN].hide()
+
+        if UIController.show_ref_info_banner(app) == False:
+            hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
+        else:
+            UIController.update_reference_info_banner_label(app)
+            show_layout(app.widgets[s.REFERENCE_INFO_BANNER])
+
+        # Hide N° Replicate control in fitting read mode
+        if app.acquire_read_mode == "read":
+            hide_layout(app.control_inputs["use_deconv_container"])
+            app.control_inputs[s.LOAD_REF_BTN].hide()
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(False)
+            app.control_inputs["replicates_label"].setVisible(False)
+        else:
+            show_layout(app.control_inputs["use_deconv_container"])
+            if app.use_deconvolution:
+                app.control_inputs[s.LOAD_REF_BTN].setText("LOAD IRF")
+                app.control_inputs[s.LOAD_REF_BTN].show()
+            else:
+                app.control_inputs[s.LOAD_REF_BTN].hide()    
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
+            app.control_inputs["replicates_label"].setVisible(True)
         ControlsController.hide_harmonic_selector(app)
         hide_layout(app.control_inputs["phasors_resolution_container"])
         hide_layout(app.control_inputs["quantize_phasors_container"])
@@ -137,33 +167,58 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
+        from core.ui_controller import UIController
+
         app.widgets[s.TIME_TAGGER_WIDGET].setVisible(False)
         ControlsController.fit_button_hide(app)
-        (
-            show_layout(app.control_inputs["phasors_resolution_container"])
-            if app.quantized_phasors
-            else hide_layout(app.control_inputs["phasors_resolution_container"])
-        )
-        show_layout(app.control_inputs["quantize_phasors_container"])
+        hide_layout(app.control_inputs["use_deconv_container"])
+
+        # Hide N° Replicate control only in phasors read mode
+        if app.acquire_read_mode == "read":
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(False)
+            app.control_inputs["replicates_label"].setVisible(False)
+        else:
+            app.control_inputs[s.SETTINGS_REPLICATES].setVisible(True)
+            app.control_inputs["replicates_label"].setVisible(True)
+
+        if app.acquire_read_mode == "read":
+            app.control_inputs[s.LOAD_REF_BTN].hide()
+            hide_layout(app.control_inputs["phasors_resolution_container"])
+            hide_layout(app.control_inputs["quantize_phasors_container"])
+            hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
+            ControlsController.on_quantize_phasors_changed(app, False)
+            app.settings.setValue(s.SETTINGS_QUANTIZE_PHASORS, False)
+        else:
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
+            app.control_inputs[s.LOAD_REF_BTN].show()
+            UIController.update_reference_info_banner_label(app)
+            show_layout(app.control_inputs["quantize_phasors_container"])
+            show_layout(app.widgets[s.REFERENCE_INFO_BANNER])
+            if app.quantized_phasors:
+                show_layout(app.control_inputs["phasors_resolution_container"])
+
         app.control_inputs["tau_label"].hide()
         app.control_inputs["tau"].hide()
         app.control_inputs["calibration"].hide()
         app.control_inputs["calibration_label"].hide()
         app.control_inputs[s.SETTINGS_HARMONIC].hide()
         app.control_inputs[s.SETTINGS_HARMONIC_LABEL].hide()
-        if app.acquire_read_mode == "read":
-            app.control_inputs[s.LOAD_REF_BTN].hide()
-        else:
-            app.control_inputs[s.LOAD_REF_BTN].show()
-            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
 
         PhasorsController.initialize_phasor_feature(app)
         ControlsController._update_phasor_plots_for_harmonic(app)
 
-        if app.harmonic_selector_shown:
-            ControlsController.show_harmonic_selector(
-                app, app.control_inputs[s.SETTINGS_HARMONIC].value()
+        # Show harmonic selector if needed (for both acquire and read modes)
+        # In read mode with loaded files, always show if we have loaded_phasors_harmonics
+        if app.harmonic_selector_shown or (
+            app.acquire_read_mode == "read" and hasattr(app, "loaded_phasors_harmonics")
+        ):
+            # Use loaded_phasors_harmonics if available (from loaded file), otherwise use settings value
+            harmonics_count = getattr(
+                app,
+                "loaded_phasors_harmonics",
+                app.control_inputs[s.SETTINGS_HARMONIC].value(),
             )
+            ControlsController.show_harmonic_selector(app, harmonics_count)
 
         channels_grid = app.widgets[s.CHANNELS_GRID]
         plot_config_btn = channels_grid.itemAt(channels_grid.count() - 1).widget()
@@ -186,11 +241,36 @@ class ControlsController:
         app.tab_selected = tab_name
         app.control_inputs[app.tab_selected].setChecked(True)
 
+        # Close fitting popup when changing tabs
+        if (
+            hasattr(app, "fitting_config_popup")
+            and app.fitting_config_popup is not None
+        ):
+            try:
+                app.fitting_config_popup.close()
+                app.fitting_config_popup.deleteLater()
+                app.fitting_config_popup = None
+            except:
+                pass
+
         bin_metadata_btn_visible = ReadDataControls.read_bin_metadata_enabled(app)
         app.control_inputs["bin_metadata_button"].setVisible(bin_metadata_btn_visible)
         app.control_inputs[s.EXPORT_PLOT_IMG_BUTTON].setVisible(
             bin_metadata_btn_visible and app.tab_selected != s.TAB_FITTING
         )
+        if tab_name != s.TAB_PHASORS or (
+            tab_name == s.TAB_PHASORS and app.acquire_read_mode == "acquire"
+        ):
+            channels = app.selected_channels or []
+            app.plots_to_show = channels[:4]
+            app.settings.setValue(
+                s.SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show)
+            )
+        else:
+            app.plots_to_show = [0]
+            app.settings.setValue(
+                s.SETTINGS_PLOTS_TO_SHOW, json.dumps(app.plots_to_show)
+            )
 
         if app.acquire_read_mode == "acquire":
             PlotsController.clear_plots(app, deep_clear=False)
@@ -269,54 +349,172 @@ class ControlsController:
             app: The main application instance.
         """
         from core.acquisition_controller import AcquisitionController
+        from core.fitting_controller import FittingController
 
         data = []
         time_shift = 0
         frequency_mhz = ControlsController.get_frequency_mhz(app)
         laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
+
+        preloaded_fitting_results = ReadData.preloaded_fitting_data(app)
+        has_multi_file_fitting = preloaded_fitting_results and any(
+            "file_index" in r for r in preloaded_fitting_results if "error" not in r
+        )
+
         if app.acquire_read_mode == "read":
+            display_channel = app.plots_to_show[0] if app.plots_to_show else 0
+            time_shift = (
+                0
+                if display_channel not in app.time_shifts
+                else app.time_shifts[display_channel]
+            )
+
             if app.reader_data["fitting"]["data"]["spectroscopy_data"]:
-                data, time_shift = (
-                    AcquisitionController.acquired_spectroscopy_data_to_fit(
-                        app, read=True
-                    )
-                )
-            else:
-                active_channels = ReadData.get_fitting_active_channels(app)
-                for channel in active_channels:
+
+                if has_multi_file_fitting:
+                    # Multi-file comparison: create single plot entry regardless of selected channels
+                    active_channels = ReadData.get_fitting_active_channels(app)
                     data.append(
                         {
                             "x": [0],
                             "y": [0],
-                            "time_shift": 0,
-                            "title": "Channel " + str(channel + 1),
-                            "channel_index": channel,
+                            "time_shift": time_shift,
+                            "title": "Multi-File Comparison",
+                            "channel_index": 0,
                         }
                     )
+                else:
+                    # Check if we have multi-file spectroscopy data
+                    spectroscopy_data = app.reader_data["fitting"]["data"][
+                        "spectroscopy_data"
+                    ]
+                    has_files_data = (
+                        "files_data" in spectroscopy_data
+                        and len(spectroscopy_data.get("files_data", [])) > 0
+                    )
+
+                    if has_files_data:
+                        # Use get_spectroscopy_data_to_fit whenever files_data exists
+                        data = ReadData.get_spectroscopy_data_to_fit(app)
+                        # Keep the time_shift calculated above (don't reset to 0)
+                    else:
+                        # No files_data: use acquired_spectroscopy_data_to_fit
+                        data, time_shift = (
+                            AcquisitionController.acquired_spectroscopy_data_to_fit(
+                                app, read=True
+                            )
+                        )
+
+                    if len(data) > 0 and "file_index" not in data[0]:
+                        import os
+
+                        file_name = "Single File"
+                        if hasattr(app, "reader_data") and app.reader_data:
+                            if "fitting" in app.reader_data:
+                                if "files" in app.reader_data["fitting"]:
+                                    fitting_files = app.reader_data["fitting"]["files"]
+
+                                    # files is a dict with 'spectroscopy' key containing list of paths
+                                    if (
+                                        isinstance(fitting_files, dict)
+                                        and "spectroscopy" in fitting_files
+                                    ):
+                                        spectroscopy_files = fitting_files[
+                                            "spectroscopy"
+                                        ]
+                                        if (
+                                            isinstance(spectroscopy_files, list)
+                                            and len(spectroscopy_files) > 0
+                                        ):
+                                            file_name = os.path.basename(
+                                                spectroscopy_files[0]
+                                            )
+                        for entry in data:
+                            entry["file_index"] = 0
+                            entry["file_name"] = file_name
+            else:
+                # In FITTING READ mode without spectroscopy data, create single plot
+                from utils.channel_name_utils import get_channel_name
+
+                active_channels = ReadData.get_fitting_active_channels(app)
+
+                # Create only one plot entry (will show fitting results for all channels averaged)
+                if len(active_channels) > 1:
+                    title = f"Average of {len(active_channels)} channel(s)"
+                elif len(active_channels) > 0:
+                    title = get_channel_name(active_channels[0], app.channel_names)
+                else:
+                    title = "No data"
+
+                data.append(
+                    {
+                        "x": [0],
+                        "y": [0],
+                        "time_shift": time_shift,
+                        "title": title,
+                        "channel_index": 0,
+                    }
+                )
         else:
             data, time_shift = AcquisitionController.acquired_spectroscopy_data_to_fit(
                 app, read=False
             )
-        # check if every x len is the same as y len
-        if not all(len(data[0]["x"]) == len(data[i]["x"]) for i in range(1, len(data))):
-            BoxMessage.setup(
-                "Error",
-                "Different x-axis lengths detected. Please, check the data.",
-                QMessageBox.Icon.Warning,
-                GUIStyles.set_msg_box_style(),
-            )
-            return
-        preloaded_fitting_results = ReadData.preloaded_fitting_data(app)
-        read_mode = True if preloaded_fitting_results is not None else False
+        for i, d in enumerate(data):
+            has_file_info = "file_index" in d
+        # Determine read_mode based on app.acquire_read_mode, not just preloaded_fitting
+        read_mode = app.acquire_read_mode == "read"
+
+        # Close existing popup if it exists
+        if (
+            hasattr(app, "fitting_config_popup")
+            and app.fitting_config_popup is not None
+        ):
+            try:
+                app.fitting_config_popup.close()
+                app.fitting_config_popup.deleteLater()
+                app.fitting_config_popup = None
+            except Exception as e:
+                pass
+
+        # Extract IRFs from reference file
+        irfs = []
+        irfs_tau_ns = None
+        if app.irf_reference_file is not None:
+            if (
+                "ref_type" in app.birfi_reference_data
+                and app.birfi_reference_data["ref_type"] == "birfi"
+            ):
+                if "irfs" in app.birfi_reference_data:
+                    irfs = app.birfi_reference_data["irfs"]
+                if "tau_ns" in app.birfi_reference_data:
+                    irfs_tau_ns = app.birfi_reference_data["tau_ns"]
+            if (
+                "ref_type" in app.irf_reference_data
+                and app.irf_reference_data["ref_type"] == "irf"
+            ):
+                if "irfs" in app.irf_reference_data:
+                    irfs = app.irf_reference_data["irfs"]
+
+        deconvolved_signals = FittingController.deconvolve_signals(
+            app, [d for d in data], irfs, laser_period_ns
+        )
+
         app.fitting_config_popup = FittingDecayConfigPopup(
             app,
-            data,
+            data=deconvolved_signals if len(deconvolved_signals) > 0 else data,
             read_mode=read_mode,
             preloaded_fitting=preloaded_fitting_results,
             save_plot_img=app.acquire_read_mode == "read",
             y_data_shift=time_shift,
             laser_period_ns=laser_period_ns,
+            use_deconvolution=app.use_deconvolution
+            and app.acquire_read_mode != "read"
+            and len(irfs) > 0,
+            irfs=irfs,
+            raw_signals=data,
+            irfs_tau_ns=irfs_tau_ns,
         )
+        # Show popup after it's fully constructed
         app.fitting_config_popup.show()
 
     @staticmethod
@@ -354,27 +552,58 @@ class ControlsController:
 
     @staticmethod
     def on_load_reference(app):
+        from core.ui_controller import UIController
+
         """
-        Opens a file dialog to allow the user to select a phasor reference file.
+        Opens a file dialog to allow the user to select a phasor or IRF reference file.
 
         Args:
             app: The main application instance.
         """
         if app.tab_selected == s.TAB_PHASORS:
-            dialog = QFileDialog()
-            dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
-            # extension supported: .reference.json
-            dialog.setNameFilter("Reference files (*reference.json)")
-            dialog.setDefaultSuffix("reference.json")
-            file_name, _ = dialog.getOpenFileName(
-                app,
-                "Load reference file",
-                "",
-                "Reference files (*reference.json)",
-                options=QFileDialog.Option.DontUseNativeDialog,
-            )
-            if file_name:
-                app.reference_file = file_name
+            ControlsController.on_load_phasors_reference(app)
+        if app.tab_selected == s.TAB_FITTING:
+            ControlsController.on_load_irf_reference(app)
+        UIController.update_reference_info_banner_label(app)
+
+    @staticmethod
+    def on_load_phasors_reference(app):
+        dialog = QFileDialog()
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        # extension supported: .phasors_reference.json
+        dialog.setNameFilter("Calibration Reference files (*phasors_reference.json)")
+        dialog.setDefaultSuffix("phasors_reference.json")
+        file_name, _ = dialog.getOpenFileName(
+            app,
+            "Load calibration reference file",
+            "",
+            "Calibration Reference files (*phasors_reference.json)",
+            options=QFileDialog.Option.DontUseNativeDialog,
+        )
+        if file_name:
+            app.phasors_reference_file = file_name
+
+    @staticmethod
+    def on_load_irf_reference(app):
+        from core.fitting_controller import FittingController
+
+        dialog = QFileDialog()
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        # extension supported: .irf_reference.json  / .birfi_reference.json
+        dialog.setNameFilter(
+            "IRF Reference files (*irf_reference.json *birfi_reference.json)"
+        )
+        dialog.setDefaultSuffix("irf_reference.json")
+        file_name, _ = dialog.getOpenFileName(
+            app,
+            "Load IRF reference file",
+            "",
+            "IRF Reference files (*irf_reference.json *birfi_reference.json)",
+            options=QFileDialog.Option.DontUseNativeDialog,
+        )
+        if file_name:
+            app.irf_reference_file = file_name
+            FittingController.extract_irf_data_from_ref_file(app, file_name)
 
     @staticmethod
     def get_free_running_state(app):
@@ -521,7 +750,19 @@ class ControlsController:
                 if channel_index in app.phasors_colorbars:
                     widget.removeItem(app.phasors_colorbars[channel_index])
                     del app.phasors_colorbars[channel_index]
-            if len(app.plots_to_show) <= len(app.all_phasors_points):
+
+            # In phasors read mode, points are ONLY drawn by plot_phasors_data
+            import settings.settings as settings
+
+            is_phasors_read_mode = (
+                app.tab_selected == settings.TAB_PHASORS
+                and app.acquire_read_mode == "read"
+            )
+
+            # Only redraw in acquisition mode - never in phasors read mode
+            if not is_phasors_read_mode and len(app.plots_to_show) <= len(
+                app.all_phasors_points
+            ):
                 for channel_index in app.plots_to_show:
                     points = app.all_phasors_points[channel_index][harmonic_value]
                     PhasorsController.draw_points_in_phasors(
@@ -556,11 +797,14 @@ class ControlsController:
             value (int): The index of the selected calibration type.
         """
         app.settings.setValue(s.SETTINGS_CALIBRATION_TYPE, value)
-        if value == 1:
-            app.control_inputs["tau_label"].show()
-            app.control_inputs["tau"].show()
+        if value == 1:  # Phasors Ref. selected
             app.control_inputs[s.SETTINGS_HARMONIC].show()
             app.control_inputs[s.SETTINGS_HARMONIC_LABEL].show()
+
+        if value == 1 or value == 3:  # Phasors Ref. or BIRFI Ref. selected
+            app.control_inputs["tau_label"].show()
+            app.control_inputs["tau"].show()
+
         else:
             app.control_inputs["tau_label"].hide()
             app.control_inputs["tau"].hide()
@@ -586,6 +830,27 @@ class ControlsController:
         ExportData.calc_exported_file_size(app) if state else None
 
     @staticmethod
+    def on_use_deconvolution_changed(app, state):
+        """
+        Callback for the 'Use deconvolution' switch.
+
+        Args:
+            app: The main application instance.
+            state (bool): The new state of the switch.
+        """
+        from core.ui_controller import UIController
+        app.settings.setValue(s.SETTINGS_USE_DECONVOLUTION, state)
+        app.use_deconvolution = state
+        if state:
+            UIController.update_reference_info_banner_label(app)
+            show_layout(app.widgets[s.REFERENCE_INFO_BANNER])
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD IRF")
+            app.control_inputs[s.LOAD_REF_BTN].show()
+        else:
+            hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
+            app.control_inputs[s.LOAD_REF_BTN].hide()
+
+    @staticmethod
     def on_show_SBR_changed(app, state):
         """
         Callback for the 'Show SBR' switch.
@@ -609,7 +874,24 @@ class ControlsController:
         Args:
             app: The main application instance.
         """
-        frequency_mhz = ControlsController.get_current_frequency_mhz(app)
+        # In phasors read mode, file-specific scatters/legends are managed by plot_phasors_data
+        # Do not clear them here, as they won't be redrawn by this function
+        import settings.settings as settings
+
+        is_phasors_read_mode = (
+            app.tab_selected == settings.TAB_PHASORS and app.acquire_read_mode == "read"
+        )
+
+        if app.acquire_read_mode == "read" and not is_phasors_read_mode:
+            # Only clear for non-phasors read modes (e.g., fitting/spectroscopy read)
+            PhasorsController.clear_phasors_file_scatters(app)
+            PhasorsController.clear_phasors_files_legend(app)
+
+        # Get frequency - use metadata frequency in read mode, current frequency in acquire mode
+        if app.acquire_read_mode == "read":
+            frequency_mhz = ReadData.get_frequency_mhz(app)
+        else:
+            frequency_mhz = ControlsController.get_current_frequency_mhz(app)
         laser_period_ns = mhz_to_ns(frequency_mhz) if frequency_mhz != 0 else 0
 
         if app.harmonic_selector_value >= 1 and app.quantized_phasors:
@@ -620,23 +902,31 @@ class ControlsController:
             )
 
         if not app.quantized_phasors:
-            for i, channel_index in enumerate(app.plots_to_show):
-                if (
-                    len(app.plots_to_show) <= len(app.all_phasors_points)
-                    and channel_index in app.all_phasors_points
-                ):
-                    PhasorsController.draw_points_in_phasors(
-                        app,
-                        channel_index,
-                        app.harmonic_selector_value,
-                        app.all_phasors_points[channel_index][
-                            app.harmonic_selector_value
-                        ],
-                    )
+            # In phasors read mode, clear old scatters and redraw for new harmonic
+            if is_phasors_read_mode:
+                PhasorsController.clear_phasors_file_scatters(app)
+                PhasorsController.clear_phasors_files_legend(app)
+
+                # Redraw points for the selected harmonic (only in read mode)
+                for i, channel_index in enumerate(app.plots_to_show):
+                    if (
+                        channel_index < len(app.all_phasors_points)
+                        and app.harmonic_selector_value
+                        in app.all_phasors_points[channel_index]
+                    ):
+                        PhasorsController.draw_points_in_phasors(
+                            app,
+                            channel_index,
+                            app.harmonic_selector_value,
+                            app.all_phasors_points[channel_index][
+                                app.harmonic_selector_value
+                            ],
+                        )
 
         PhasorsController.generate_phasors_cluster_center(
             app, app.harmonic_selector_value
         )
+        PhasorsController.hide_phasors_legends(app)
         PhasorsController.generate_phasors_legend(app, app.harmonic_selector_value)
 
         for i, channel_index in enumerate(app.plots_to_show):
@@ -1041,6 +1331,7 @@ class ControlsController:
             app: The main application instance.
         """
         app.popup = PlotsConfigPopup(app, start_acquisition=False)
+        # Show popup after it's fully constructed
         app.popup.show()
 
     @staticmethod
@@ -1053,6 +1344,8 @@ class ControlsController:
         """
         LaserbloodMetadataPopup.set_FPGA_firmware(app)
         app.popup = LaserbloodMetadataPopup(app, start_acquisition=False)
+        app.popup.setWindowState(Qt.WindowState.WindowMaximized)
+        # Show popup after it's fully constructed
         app.popup.show()
 
     @staticmethod
@@ -1064,6 +1357,7 @@ class ControlsController:
             app: The main application instance.
         """
         app.popup = ReaderPopup(app, tab_selected=app.tab_selected)
+        # Show popup after it's fully constructed
         app.popup.show()
 
     @staticmethod
@@ -1075,6 +1369,7 @@ class ControlsController:
             app: The main application instance.
         """
         app.popup = ReaderMetadataPopup(app, tab_selected=app.tab_selected)
+        # Show popup after it's fully constructed
         app.popup.show()
 
     @staticmethod
@@ -1128,6 +1423,58 @@ class ControlsController:
         return app.tab_selected == s.TAB_SPECTROSCOPY and selected_calibration == 1
 
     @staticmethod
+    def is_reference_irf(app):
+        """
+        Checks if the current mode is for recording an IRF reference.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            bool: True if selected calibration is 'IRF Ref.'
+        """
+        selected_calibration = app.settings.value(
+            s.SETTINGS_CALIBRATION_TYPE, s.DEFAULT_SETTINGS_CALIBRATION_TYPE
+        )
+        return selected_calibration == 2
+
+    @staticmethod
+    def is_phasor_ref_data(reference_data):
+        return "ref_type" in reference_data and reference_data["ref_type"] == "phasors"
+
+    @staticmethod
+    def is_irf_ref_data(reference_data):
+        return "ref_type" in reference_data and reference_data["ref_type"] == "irf"
+
+    @staticmethod
+    def is_birfi_ref_data(reference_data):
+        return "ref_type" in reference_data and reference_data["ref_type"] == "birfi"
+
+    @staticmethod
+    def is_fitting_ref_data(reference_data):
+        return (
+            "ref_type" in reference_data
+            and reference_data["ref_type"] == "irf"
+            or reference_data["ref_type"] == "birfi"
+        )
+
+    @staticmethod
+    def is_reference_birfi(app):
+        """
+        Checks if the current mode is for recording a BIRFI reference.
+
+        Args:
+            app: The main application instance.
+
+        Returns:
+            bool: True if selected calibration is 'BIRFI Ref.'
+        """
+        selected_calibration = app.settings.value(
+            s.SETTINGS_CALIBRATION_TYPE, s.DEFAULT_SETTINGS_CALIBRATION_TYPE
+        )
+        return selected_calibration == 3
+
+    @staticmethod
     def is_phasors(app):
         """
         Checks if the currently selected tab is the Phasors tab.
@@ -1160,7 +1507,7 @@ class ControlsController:
             # Update the checkbox UI if it already exists
             if i < len(app.channel_checkboxes):
                 app.channel_checkboxes[i].set_checked(is_selected)
-        return app.selected_channels        
+        return app.selected_channels
 
     @staticmethod
     def set_selected_channels_to_settings(app):
@@ -1192,8 +1539,10 @@ class ControlsController:
             bool: True if 'Pico mode' conditions are met, False otherwise.
         """
         nearest_frequency = get_nearest_frequency_mhz(frequency_mhz)
-        return len(selected_channels) <= 2 and len(selected_channels) > 0 and (
-            nearest_frequency == 40.0 or nearest_frequency == 80.0
+        return (
+            len(selected_channels) <= 2
+            and len(selected_channels) > 0
+            and (nearest_frequency == 40.0 or nearest_frequency == 80.0)
         )
 
     @staticmethod

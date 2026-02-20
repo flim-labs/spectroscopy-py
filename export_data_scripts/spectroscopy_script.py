@@ -28,16 +28,6 @@ with open(file_path, 'rb') as f:
     null = None
     metadata = eval(f.read(json_length).decode("utf-8"))
 
-    # ENABLED CHANNELS
-    if "channels" in metadata and metadata["channels"] is not None:
-        print(
-            "Enabled channels: "
-            + (
-                ", ".join(
-                    ["Channel " + str(ch + 1) for ch in metadata["channels"]]
-                )
-            )
-        )   
     # BIN WIDTH (us)    
     if "bin_width_micros" in metadata and metadata["bin_width_micros"] is not None:
         print("Bin width: " + str(metadata["bin_width_micros"]) + "us")    
@@ -54,6 +44,27 @@ with open(file_path, 'rb') as f:
     # TAU (ns)
     if "tau_ns" in metadata and metadata["tau_ns"] is not None:
         print("Tau: " + str(metadata["tau_ns"]) + "ns")   
+    
+    # Extract channel names from binary metadata
+    channel_names = metadata.get("channels_name", {})
+    
+    def get_channel_label(channel_index, channel_names_dict):
+        """Get channel label with custom name if available.
+        
+        Args:
+            channel_index: 0-based channel index from metadata['channels']
+            channel_names_dict: dict with channel names (keys as strings, 0-based)
+        """
+        # The channel_names_dict uses string keys with 0-based indices
+        custom_name = channel_names_dict.get(str(channel_index), None)
+        
+        # If not found with 0-based, try 1-based (for backward compatibility)
+        if not custom_name:
+            custom_name = channel_names_dict.get(str(channel_index + 1), None)
+        
+        if custom_name:
+            return f"{custom_name} (Ch{channel_index + 1})"
+        return f"Channel {channel_index + 1}"
         
     channel_curves = [[] for _ in range(len(metadata["channels"]))]
     times = []
@@ -93,7 +104,9 @@ with open(file_path, 'rb') as f:
             total_max = max
         if min < total_min:    
             total_min = min
-        plt.plot(x_values, sum_curve, label=f"Channel {metadata['channels'][i] + 1}")  
+        # Use custom channel name if available
+        label = get_channel_label(metadata['channels'][i], channel_names)
+        plt.plot(x_values, sum_curve, label=label)  
         plt.legend()  
     plt.ylim(total_min * 0.99, total_max * 1.01) 
     plt.xlim(0, laser_period_ns)
