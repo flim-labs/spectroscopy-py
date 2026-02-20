@@ -1245,7 +1245,12 @@ class ReadData:
 
         # Now reset harmonic selector (this will trigger _update_phasor_plots_for_harmonic)
         # which will handle drawing points and generating legends
-        app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
+        # Qt only emits currentIndexChanged if the index actually changes.
+        # With a single harmonic the selector is already at 0, so we call directly.
+        if app.control_inputs[s.HARMONIC_SELECTOR].currentIndex() == 0:
+            ControlsController._update_phasor_plots_for_harmonic(app)
+        else:
+            app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
         # Store the number of harmonics for later use when switching modes
         app.loaded_phasors_harmonics = harmonics
 
