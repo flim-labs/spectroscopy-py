@@ -45,8 +45,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QRunnable, QThreadPool, pyqtSignal, QObject, pyqtSlot
 from PyQt6.QtGui import QColor, QIcon
-import pdb
-import pprint
+
+
 
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -214,7 +214,8 @@ class ReadData:
         for file_name in file_names:
             try:
                 with open(file_name, "rb") as f:
-                    if f.read(4) == magic_bytes:
+                    file_magic_bytes = f.read(4)
+                    if file_magic_bytes == magic_bytes:
                         valid_files.append(file_name)
                     else:
                         invalid_count += 1
@@ -959,13 +960,15 @@ class ReadData:
                         # Use the display channel from plots_to_show
                         display_channel = app.plots_to_show[0] if app.plots_to_show else 0
                         channel_id = channels[channel]
+                        # Get time_shift for this channel from app.time_shifts
+                        channel_time_shift = 0 if display_channel not in app.time_shifts else app.time_shifts[display_channel]
                         data.append(
                             {
                                 "x": x_values,
                                 "y": y_values,
                                 "title": get_channel_name(channel_id, app.channel_names),
                                 "channel_index": display_channel,
-                                "time_shift": 0,
+                                "time_shift": channel_time_shift,
                                 "file_index": file_idx,
                                 "file_name": file_name
                             }
@@ -981,6 +984,7 @@ class ReadData:
                         
             channels_curves = spectroscopy_data.get("channels_curves", {})
             channels = metadata["channels"]
+            display_channel = app.plots_to_show[0] if app.plots_to_show else 0
             
             for channel, curves in channels_curves.items():
                 if channels[channel] in app.plots_to_show:
@@ -991,12 +995,15 @@ class ReadData:
                             channels[channel]
                         ] = y_values
                     
+                    # Get time_shift for this channel from app.time_shifts
+                    channel_time_shift = 0 if channels[channel] not in app.time_shifts else app.time_shifts[channels[channel]]
+                    
                     data_entry = {
                         "x": x_values,
                         "y": y_values,
                         "title": get_channel_name(channels[channel], app.channel_names),
                         "channel_index": channels[channel],
-                        "time_shift": 0
+                        "time_shift": channel_time_shift
                     }
                     data.append(data_entry)
                     
@@ -1041,7 +1048,12 @@ class ReadData:
         
         # Now reset harmonic selector (this will trigger _update_phasor_plots_for_harmonic)
         # which will handle drawing points and generating legends
-        app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
+        if app.control_inputs[s.HARMONIC_SELECTOR].currentIndex() == 0:
+            # Already at 0 - signal won't fire, call directly
+            from core.controls_controller import ControlsController
+            ControlsController._update_phasor_plots_for_harmonic(app)
+        else:
+            app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
         # Store the number of harmonics for later use when switching modes
         app.loaded_phasors_harmonics = harmonics
         
@@ -1414,6 +1426,7 @@ class ReadDataControls:
             None: Updates widget visibility states
         """
         from core.controls_controller import ControlsController
+        from core.ui_controller import UIController
         if not read_mode:
             ControlsController.fit_button_hide(app)
         else:
@@ -1429,12 +1442,19 @@ class ReadDataControls:
             bin_metadata_btn_visible and app.tab_selected != s.TAB_FITTING
         )
         
-        # Handle N° Replicate visibility for fitting tab
         if app.tab_selected == s.TAB_FITTING:
-            if s.SETTINGS_REPLICATES in app.control_inputs:
-                app.control_inputs[s.SETTINGS_REPLICATES].setVisible(not read_mode)
-            if "replicates_label" in app.control_inputs:
-                app.control_inputs["replicates_label"].setVisible(not read_mode)
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD IRF")
+            app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode and app.use_deconvolution)
+            if read_mode:
+                app.control_inputs[s.LOAD_REF_BTN].hide()
+                hide_layout(app.control_inputs["use_deconv_container"]) 
+                if  UIController.show_ref_info_banner(app) == False:
+                    hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
+            else:
+                show_layout(app.control_inputs["use_deconv_container"])
+                if UIController.show_ref_info_banner(app):
+                    UIController.update_reference_info_banner_label(app) 
+                    show_layout(app.widgets[s.REFERENCE_INFO_BANNER])
          
         app.widgets[s.TOP_COLLAPSIBLE_WIDGET].setVisible(not read_mode)
         app.widgets["collapse_button"].setVisible(not read_mode)
@@ -1447,15 +1467,21 @@ class ReadDataControls:
         app.control_inputs[s.SETTINGS_TIME_SPAN].setEnabled(not read_mode)
         app.control_inputs[s.SETTINGS_HARMONIC].setEnabled(not read_mode)
         if app.tab_selected == s.TAB_PHASORS:
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
             app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode)
             if read_mode : 
                 app.control_inputs[s.LOAD_REF_BTN].hide()
+                if UIController.show_ref_info_banner(app) == False:
+                    hide_layout(app.widgets[s.REFERENCE_INFO_BANNER])
                 hide_layout(app.control_inputs["phasors_resolution_container"])
                 hide_layout(app.control_inputs["quantize_phasors_container"])
                 ControlsController.on_quantize_phasors_changed(app, False)
                 app.settings.setValue(s.SETTINGS_QUANTIZE_PHASORS, False)
             else : 
                 show_layout(app.control_inputs["quantize_phasors_container"])
+                if UIController.show_ref_info_banner(app):
+                    UIController.update_reference_info_banner_label(app)
+                    show_layout(app.widgets[s.REFERENCE_INFO_BANNER])
                 if app.quantized_phasors :
                     show_layout(app.control_inputs["phasors_resolution_container"])  
 
@@ -1588,6 +1614,9 @@ class ReaderPopup(QWidget):
             tab_selected: Currently selected tab identifier
         """
         super().__init__()
+        # Prevent widget from being shown during construction to avoid visual glitches
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.tab_selected = tab_selected
         self.widgets = {}
@@ -1620,6 +1649,10 @@ class ReaderPopup(QWidget):
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.app.widgets[s.READER_POPUP] = self
         self.center_window()
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def create_file_type_selector(self):
         """Creates radio button selector for choosing which file types to load (fitting tab only).
@@ -1898,6 +1931,8 @@ class ReaderPopup(QWidget):
         plots_to_show = self.app.reader_data[self.data_type]["plots"]
         if "channels" in file_metadata and file_metadata["channels"] is not None:
             selected_channels = file_metadata["channels"]
+            # Filter out None values before sorting
+            selected_channels = [ch for ch in selected_channels if ch is not None]
             selected_channels.sort()
             self.app.selected_channels = selected_channels
             for i, ch in enumerate(self.app.channel_checkboxes):
@@ -2381,7 +2416,7 @@ class ReaderPopup(QWidget):
             if isinstance(spectroscopy_files, list):
                 has_spectroscopy = len(spectroscopy_files) > 0
             else:
-                has_spectroscopy = spectroscopy_files and len(spectroscopy_files.strip()) > 0
+                has_spectroscopy = bool(spectroscopy_files and len(spectroscopy_files.strip()) > 0)
             self.widgets["plot_btn"].setEnabled(has_spectroscopy)
             if has_spectroscopy:
                 self.widgets["plot_btn"].setText("PLOT DATA")
@@ -2553,6 +2588,9 @@ class ReaderMetadataPopup(QWidget):
             tab_selected: Currently selected tab identifier
         """
         super().__init__()
+        # Prevent widget from being shown during construction
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.tab_selected = tab_selected
         self.data_type = ReadData.get_data_type(self.tab_selected)
@@ -2570,6 +2608,10 @@ class ReaderMetadataPopup(QWidget):
         self.setStyleSheet(GUIStyles.plots_config_popup_style())
         self.app.widgets[s.READER_METADATA_POPUP] = self
         self.center_window()
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def get_metadata_keys_dict(self):
         """

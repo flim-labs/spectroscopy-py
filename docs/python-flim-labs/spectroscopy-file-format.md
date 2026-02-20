@@ -138,7 +138,7 @@ The script files are automatically downloaded along with the acquisition .bin fi
 For more details about the project follow these links:
 
 - [Spectroscopy introduction](../index.md)
-- [Spectroscopy GUI guide](../v2.6/index.md)
+- [Spectroscopy GUI guide](../v2.7/index.md)
 - [Spectroscopy Console guide ](./spectroscopy-console.md)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

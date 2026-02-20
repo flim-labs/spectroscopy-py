@@ -15,12 +15,11 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QCheckBox,
 )
-from components.select_control import SelectControl
 from utils.export_data import ExportData
 from components.gradient_text import GradientText
 from core.phasors_controller import PhasorsController
 from utils.gui_styles import GUIStyles
-from utils.layout_utilities import clear_layout_widgets, draw_layout_separator
+from utils.layout_utilities import clear_layout_widgets
 from components.lin_log_control import LinLogControl
 from utils.resource_path import resource_path
 from utils.fitting_utilities import (
@@ -64,6 +63,10 @@ class FittingDecayConfigPopup(QWidget):
         save_plot_img=False,
         y_data_shift=0,
         laser_period_ns=0,
+        use_deconvolution=False,
+        irfs=[],
+        raw_signals=[],
+        irfs_tau_ns=None,
     ):
         """
         Initializes the FittingDecayConfigPopup.
@@ -76,15 +79,25 @@ class FittingDecayConfigPopup(QWidget):
             save_plot_img (bool, optional): If True, shows a button to save the plot as an image. Defaults to False.
             y_data_shift (int, optional): A global time shift to apply to the y-data. Defaults to 0.
             laser_period_ns (float, optional): The laser period in nanoseconds, used for plot limits. Defaults to 0.
+            use_deconvolution (bool, optional): If True, deconvolution will be applied. Defaults to False.
+            irfs (list, optional): A list of IRFs to use for deconvolution. Defaults to an empty list.
         """
         super().__init__()
+        # Prevent widget from being shown during construction
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.data = data
+        self.use_deconvolution = use_deconvolution
+        self.irfs = irfs
+        self.raw_signals = raw_signals
         self.preloaded_spectroscopy = (
             self.data
         )  # Use self.data as preloaded_spectroscopy for multi-file display
         self.y_data_shift = y_data_shift
         self.laser_period_ns = laser_period_ns
+        self.irfs_tau_ns = irfs_tau_ns
+
         self.preloaded_fitting = preloaded_fitting
         self.read_mode = read_mode
         self.save_plot_img = save_plot_img
@@ -108,6 +121,8 @@ class FittingDecayConfigPopup(QWidget):
         self.roi_warnings = {}
         self.cut_data_x = {}
         self.cut_data_y = {}
+        self.cut_irfs = {}  # Store ROI-cut IRFs
+        self.cut_raw_signals = {}  # Store ROI-cut raw signals
         self.roi_regions = {}  # Store ROI regions for multi-file mode
         self.cached_counts_data = {}
         self.cached_fitted_data = {}
@@ -152,9 +167,12 @@ class FittingDecayConfigPopup(QWidget):
             )
         )
 
-        # For spectroscopy: use multi-file logic if in read_mode and has file_index (regardless of count)
+        # For spectroscopy: use multi-file logic only if we have multiple entries with file_index
         has_multiple_files_from_spectroscopy = (
-            self.read_mode and self.data and any("file_index" in d for d in self.data)
+            self.read_mode
+            and self.data
+            and any("file_index" in d for d in self.data)
+            and len(self.data) > 1
         )
 
         has_multiple_files = (
@@ -196,6 +214,10 @@ class FittingDecayConfigPopup(QWidget):
 
         self._refresh_timer = QTimer()
         self._refresh_timer.singleShot(100, self.force_plots_refresh)
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def force_plots_refresh(self):
         """Force refresh of all plot widgets to ensure they are visible."""
@@ -333,7 +355,7 @@ class FittingDecayConfigPopup(QWidget):
         self.start_fitting_btn = QPushButton("START FITTING")
         self.start_fitting_btn.setObjectName("btn")
         GUIStyles.set_start_btn_style(self.start_fitting_btn)
-        self.start_fitting_btn.setFixedHeight(36)  
+        self.start_fitting_btn.setFixedHeight(36)
         self.start_fitting_btn.setFixedWidth(150)
         self.start_fitting_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.start_fitting_btn.clicked.connect(self.start_fitting)
@@ -343,14 +365,16 @@ class FittingDecayConfigPopup(QWidget):
         reset_btn = QPushButton("RESET")
         reset_btn.setObjectName("btn")
         GUIStyles.set_stop_btn_style(reset_btn)
-        reset_btn.setFixedHeight(36) 
+        reset_btn.setFixedHeight(36)
         reset_btn.setFixedWidth(150)
         reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         reset_btn.clicked.connect(self.reset)
         # Export plot img btn
         self.export_img_btn = ExportPlotImageButton(app=self.app, height=36)
         # Set initial visibility based on save_plot_img parameter
-        self.export_img_btn.setVisible(self.save_plot_img)
+        # Hide if in read mode without preloaded fitting (will show after fitting completes)
+        initial_visibility = self.save_plot_img and not (self.read_mode and self.preloaded_fitting is None)
+        self.export_img_btn.setVisible(initial_visibility)
         controls_row.addStretch(1)
 
         # Show EXPORT button only in ACQUIRE mode (not in READ mode)
@@ -539,6 +563,10 @@ class FittingDecayConfigPopup(QWidget):
         LinLogControl.set_lin_log_switches_enable_mode(self.lin_log_switches, True)
         # Note: export button visibility is now set inside the if/else branches above
         # to ensure correct data is passed for export
+        
+        # Show export image button after fitting is complete (if save_plot_img is True)
+        if self.save_plot_img:
+            self.export_img_btn.setVisible(True)
 
     @pyqtSlot(list)
     def handle_fitting_done(self, results):
@@ -572,8 +600,7 @@ class FittingDecayConfigPopup(QWidget):
 
     def display_spectroscopy_curve(self, plot_widget, channel):
         """
-        Displays the initial raw spectroscopy curve on a plot.
-
+        Displays the initial spectroscopy curve on a plot (raw or deconvolved).
         Args:
             plot_widget (pg.PlotWidget): The widget to plot on.
             channel (int): The channel index of the data to display.
@@ -582,6 +609,7 @@ class FittingDecayConfigPopup(QWidget):
             tuple: A tuple containing the x and y data arrays that were plotted.
         """
         data = [d for d in self.data if d["channel_index"] == channel]
+
         if len(data) == 0:
             return np.array([]), np.array([])
 
@@ -605,9 +633,10 @@ class FittingDecayConfigPopup(QWidget):
             x_data = x_data[:min_len]
             y_data = y_data[:min_len]
 
-        # Use app.time_shifts to be consistent with main window
-        time_shift = (
-            0 if channel not in self.app.time_shifts else self.app.time_shifts[channel]
+        # Get time_shift from data if available (read-mode), otherwise use app.time_shifts (acquire-mode)
+        time_shift = data[0].get(
+            "time_shift",
+            0 if channel not in self.app.time_shifts else self.app.time_shifts[channel],
         )
         y = np.roll(y_data, time_shift)
 
@@ -651,8 +680,53 @@ class FittingDecayConfigPopup(QWidget):
                     ):
                         file_name = os.path.basename(spectroscopy_files[0])
 
-        # Don't show filename in legend here - it will be added as a separate legend entry
-        plot_widget.plot(x_data, y, pen=pg.mkPen("#f72828", width=2))
+        # Plot IRF and raw signal ONLY in acquire mode (use_deconvolution is True)
+        if self.use_deconvolution and self.irfs and self.raw_signals:
+            # Find the index of this channel in self.data (since channels may not be 0,1,2...)
+            data_index = None
+            for idx, d in enumerate(self.data):
+                if d["channel_index"] == channel:
+                    data_index = idx
+                    break
+
+            if data_index is not None and data_index < len(self.irfs):
+                irf = np.array(self.irfs[data_index])
+                if len(irf) == len(x_data) and np.max(irf) > 0:
+                    # Normalize IRF to 80% of max counts for visibility
+                    irf_normalized = (irf / np.max(irf)) * np.max(y) * 0.8
+                    plot_widget.plot(
+                        x_data,
+                        irf_normalized,
+                        pen=pg.mkPen("#FFA500", width=1, style=Qt.PenStyle.DashLine),
+                        name="IRF",
+                    )
+
+                # Plot raw signal
+                if data_index < len(self.raw_signals):
+                    raw_signal_data = self.raw_signals[data_index]
+                    raw_signal = np.array(
+                        raw_signal_data["y"]
+                        if isinstance(raw_signal_data, dict)
+                        else raw_signal_data
+                    )
+                    if len(raw_signal) == len(x_data):
+                        plot_widget.plot(
+                            x_data,
+                            raw_signal,
+                            pen=pg.mkPen(
+                                "#00FFFF", width=1, style=Qt.PenStyle.DashLine
+                            ),
+                            name="Raw Signal",
+                        )
+
+        # Plot the main signal (deconvolved or raw) with prominence
+        plot_widget.plot(
+            x_data,
+            y,
+            pen=pg.mkPen("#f72828", width=2),
+            name="Deconvolved Signal" if self.use_deconvolution else "Raw Signal",
+        )
+
         return x_data, y
 
     def display_plot(self, title, channel, index):
@@ -735,13 +809,9 @@ class FittingDecayConfigPopup(QWidget):
         )
 
         is_multi_file_spectroscopy = (
-            self.read_mode
-            and self.preloaded_spectroscopy
-            and any(
-                "file_index" in s
-                for s in self.preloaded_spectroscopy
-                if "error" not in s
-            )
+            self.data
+            and any("file_index" in d for d in self.data)
+            and len(self.data) > 1
         )
 
         # Set X-axis range based on mode
@@ -750,26 +820,17 @@ class FittingDecayConfigPopup(QWidget):
             plot_widget.enableAutoRange()
         else:
             # Single file mode: use actual data range instead of laser_period_ns
-            if self.read_mode and self.preloaded_spectroscopy:
-                # Get actual data range from spectroscopy data
-                spectroscopy_data = self.preloaded_spectroscopy[channel - 1]
-                if "error" not in spectroscopy_data:
-                    x_data = spectroscopy_data.get("x", [])
-                    if len(x_data) > 0:
-                        data_min = min(x_data)
-                        data_max = max(x_data)
-                        margin = (data_max - data_min) * 0.05  # 5% margin
-                        plot_widget.setXRange(data_min - margin, data_max + margin)
-                        plot_widget.setLimits(
-                            xMin=data_min - margin, xMax=data_max + margin
-                        )
-                    else:
-                        # Fallback to laser period
-                        margin = 0.5
-                        plot_widget.setXRange(0 - margin, self.laser_period_ns + margin)
-                        plot_widget.setLimits(
-                            xMin=0 - margin, xMax=self.laser_period_ns + margin
-                        )
+            if self.data and len(self.data) > 0:
+                # Use first entry's x data for range calculation
+                x_data = np.array(self.data[0].get("x", []))
+                if len(x_data) > 0:
+                    data_min = np.min(x_data)
+                    data_max = np.max(x_data)
+                    margin = (data_max - data_min) * 0.1  # 10% margin
+                    plot_widget.setXRange(data_min - margin, data_max + margin)
+                    plot_widget.setLimits(
+                        xMin=data_min - margin, xMax=data_max + margin
+                    )
                 else:
                     # Fallback to laser period
                     margin = 0.5
@@ -778,7 +839,7 @@ class FittingDecayConfigPopup(QWidget):
                         xMin=0 - margin, xMax=self.laser_period_ns + margin
                     )
             else:
-                # Acquire mode: use laser period
+                # Fallback to laser period if no data available
                 margin = 0.5
                 plot_widget.setXRange(0 - margin, self.laser_period_ns + margin)
                 plot_widget.setLimits(
@@ -810,7 +871,14 @@ class FittingDecayConfigPopup(QWidget):
                     continue
                 # In multi-file mode, display all files (channel filter removed)
                 x = spectroscopy_data.get("x", [])
-                y = spectroscopy_data.get("y", [])
+                y_data = np.array(spectroscopy_data.get("y", []))
+                
+                # Apply time shift if present
+                time_shift = spectroscopy_data.get("time_shift", 0)
+                if time_shift != 0 and len(y_data) > 0:
+                    y = np.roll(y_data, time_shift)
+                else:
+                    y = y_data
 
                 if len(x) > 0 and len(y) > 0:
                     all_x_data.extend(x)
@@ -922,45 +990,59 @@ class FittingDecayConfigPopup(QWidget):
 
         else:
             # Single file read mode
-            if channel != 0:
-                # Display spectroscopy curve
-                spectroscopy_data = self.preloaded_spectroscopy[channel - 1]
-                if "error" not in spectroscopy_data:
-                    x = spectroscopy_data.get("x", [])
-                    y = spectroscopy_data.get("y", [])
+            if self.data and len(self.data) > 0:
+                # Find data for this channel
+                channel_data = [d for d in self.data if d["channel_index"] == channel]
+                if channel_data:
+                    data_entry = channel_data[0]
+                    x = data_entry["x"]
+                    time_shift = data_entry.get(
+                        "time_shift",
+                        0
+                        if channel not in self.app.time_shifts
+                        else self.app.time_shifts[channel],
+                    )
+                    y = np.roll(data_entry["y"], time_shift)
 
-                    if len(x) > 0 and len(y) > 0:
-                        plot_widget.plot(x, y, pen=pg.mkPen(color="#00d4ff", width=2))
+                    # Cache the data for lin/log controls
+                    self.cached_counts_data[channel] = {"x": x, "y": y}
 
-                        # Initialize ROI based on data range
-                        x_min = min(x)
-                        x_max = max(x)
-                        x_range = x_max - x_min
+                    # Plot the spectroscopy curve
+                    curve_item = plot_widget.plot(
+                        x, y, pen=pg.mkPen("#f72828", width=2), name="Spectroscopy"
+                    )
 
-                        # Initialize ROI to 10%-50% of data range
-                        roi_start = x_min + x_range * 0.1
-                        roi_end = x_min + x_range * 0.5
-
-                        roi = pg.LinearRegionItem([roi_start, roi_end])
-
-                        # Try to load saved ROI
-                        result = self.get_saved_roi(channel)
-                        if result is not None:
-                            saved_min_x, saved_max_x = result
-                            # Validate saved ROI is within data range
-                            if saved_min_x >= x_min and saved_max_x <= x_max:
-                                roi.setRegion([saved_min_x, saved_max_x])
-                                self.set_roi_mask(roi, x, y, channel)
-
-                        roi.setVisible(False)
-                        roi.sigRegionChanged.connect(
-                            lambda: self.on_roi_selection_changed(roi, x, y, channel)
+                    # Add ROI selection (same as acquire mode)
+                    # Initialize ROI based on data range
+                    x_min, x_max = np.min(x), np.max(x)
+                    roi_start = x_min + (x_max - x_min) * 0.1  # 10% from start
+                    roi_end = x_min + (x_max - x_min) * 0.5  # 50% from start
+                    roi = pg.LinearRegionItem([roi_start, roi_end])
+                    result = self.get_saved_roi(channel)
+                    # Only use saved ROI if it's valid (min != max, within data range)
+                    if result is not None:
+                        min_x_saved, max_x_saved = result
+                        # Check if saved values are within actual data range (with some tolerance)
+                        data_range = x_max - x_min
+                        if (
+                            min_x_saved != max_x_saved
+                            and abs(max_x_saved - min_x_saved) > 1
+                            and min_x_saved >= x_min - data_range * 0.1
+                            and max_x_saved <= x_max + data_range * 0.1
+                        ):  # Valid range
+                            roi.setRegion([min_x_saved, max_x_saved])
+                            self.set_roi_mask(roi, x, y, channel)
+                    roi.setVisible(False)
+                    roi.sigRegionChanged.connect(
+                        lambda roi=roi, x=x, y=y, ch=channel: self.on_roi_selection_changed(
+                            roi, x, y, ch
                         )
-                        roi.sigRegionChangeFinished.connect(
-                            lambda: self.limit_roi_bounds(roi)
-                        )
-                        self.roi_items[channel] = roi
-                        plot_widget.addItem(roi)
+                    )
+                    roi.sigRegionChangeFinished.connect(
+                        lambda roi=roi: self.limit_roi_bounds(roi)
+                    )
+                    self.roi_items[channel] = roi
+                    plot_widget.addItem(roi)
         # Residuals
         residuals_widget = pg.PlotWidget()
         residuals_widget.setMinimumHeight(120)
@@ -1198,19 +1280,45 @@ class FittingDecayConfigPopup(QWidget):
 
         color = PhasorsController.get_color_for_file_index(file_index)
 
-        # Add explanatory legend entries first (gray)
+        # Add explanatory legend entries first
+        counts_label = "Deconv Counts" if self.use_deconvolution else "Counts"
         legend_counts = plot_widget.plot(
             [],
             [],
-            pen=None,
+            pen=pg.mkPen(None),
             symbol="o",
             symbolSize=6,
-            symbolBrush="gray",
-            name="Counts",
+            symbolBrush=pg.mkBrush("#f72828"),
+            name=counts_label,
         )
         legend_fitted = plot_widget.plot(
-            [], [], pen=pg.mkPen("gray", width=2), name="Fitted curve"
+            [], [], pen=pg.mkPen("#f72828", width=2), name="Fitted curve"
         )
+
+        # Add IRF and raw signal to legend ONLY in acquire mode
+        if self.use_deconvolution and self.irfs and self.raw_signals:
+            # Check if we have data for this channel
+            data_index = None
+            for idx, d in enumerate(self.data):
+                if d["channel_index"] == channel:
+                    data_index = idx
+                    break
+            if data_index is not None and data_index < len(self.irfs):
+                legend_raw = plot_widget.plot(
+                    [],
+                    [],
+                    pen=pg.mkPen(None),
+                    symbol="s",
+                    symbolSize=6,
+                    symbolBrush=pg.mkBrush("#00FFFF"),
+                    name="Raw Signal Counts",
+                )
+                legend_irf = plot_widget.plot(
+                    [],
+                    [],
+                    pen=pg.mkPen("#FFA500", width=2, style=Qt.PenStyle.DashLine),
+                    name="IRF",
+                )
 
         # Ensure arrays have matching lengths
         min_len = min(len(truncated_x_values), len(y_data))
@@ -1224,7 +1332,115 @@ class FittingDecayConfigPopup(QWidget):
         fitted_x = self.cached_fitted_data[channel]["x"][:fitted_min_len]
         fitted_y = fitted_data[:fitted_min_len]
 
-        # Plot Counts (points) with symbolSize=6
+        # Plot IRF and raw signal ONLY in acquire mode (before main data for z-order)
+        if self.use_deconvolution and self.irfs and self.raw_signals:
+            # Find the index of this channel in self.data
+            data_index = None
+            for idx, d in enumerate(self.data):
+                if d["channel_index"] == channel:
+                    data_index = idx
+                    break
+
+            if data_index is not None and data_index < len(self.irfs):
+                # Use cut IRF if available (ROI applied), otherwise use full IRF
+                if channel in self.cut_irfs:
+                    irf = self.cut_irfs[channel]
+                else:
+                    irf = np.array(self.irfs[data_index])
+                irf_x_full = result["x_values"]
+                decay_start = result["decay_start"]
+                if len(irf) > decay_start and len(irf_x_full) > decay_start:
+                    irf = irf[decay_start:]
+                    irf_x = irf_x_full[decay_start:]
+                else:
+                    irf_x = irf_x_full
+
+                # Ensure IRF and X have matching lengths
+                min_len = min(len(irf), len(irf_x))
+                irf = irf[:min_len]
+                irf_x = irf_x[:min_len]
+
+                if len(irf) > 0 and np.max(irf) > 0:
+                    # Normalize IRF to 80% of max counts (counts already trimmed with decay_start)
+                    irf_normalized = (
+                        (irf / np.max(irf))
+                        * np.max(self.cached_counts_data[channel]["y"])
+                        * 0.8
+                    )
+                    # Apply lin/log transformation to IRF
+                    if (
+                        channel not in self.lin_log_modes
+                        or self.lin_log_modes[channel] == "LIN"
+                    ):
+                        _, irf_transformed = LinLogControl.calculate_lin_mode(
+                            irf_normalized
+                        )
+                    else:
+                        irf_transformed, _, _ = LinLogControl.calculate_log_ticks(
+                            irf_normalized
+                        )
+
+                    # Ensure final matching lengths
+                    final_len = min(len(irf_x), len(irf_transformed))
+                    plot_widget.plot(
+                        irf_x[:final_len],
+                        irf_transformed[:final_len],
+                        pen=pg.mkPen("#FFA500", width=2, style=Qt.PenStyle.DashLine),
+                    )
+
+                # Plot raw signal if available
+                if data_index < len(self.raw_signals):
+                    # Use cut raw signal if available (ROI applied), otherwise use full raw signal
+                    if channel in self.cut_raw_signals:
+                        raw_signal = self.cut_raw_signals[channel]
+                    else:
+                        raw_signal_data = self.raw_signals[data_index]
+                        raw_signal = np.array(
+                            raw_signal_data["y"]
+                            if isinstance(raw_signal_data, dict)
+                            else raw_signal_data
+                        )
+                    raw_signal_x_full = result["x_values"]
+                    if (
+                        len(raw_signal) > decay_start
+                        and len(raw_signal_x_full) > decay_start
+                    ):
+                        raw_signal = raw_signal[decay_start:]
+                        raw_signal_x = raw_signal_x_full[decay_start:]
+                    else:
+                        raw_signal_x = raw_signal_x_full
+
+                    # Ensure raw signal and X have matching lengths
+                    min_len = min(len(raw_signal), len(raw_signal_x))
+                    raw_signal = raw_signal[:min_len]
+                    raw_signal_x = raw_signal_x[:min_len]
+
+                    if len(raw_signal) > 0:
+                        # Apply lin/log transformation to raw signal
+                        if (
+                            channel not in self.lin_log_modes
+                            or self.lin_log_modes[channel] == "LIN"
+                        ):
+                            _, raw_transformed = LinLogControl.calculate_lin_mode(
+                                raw_signal
+                            )
+                        else:
+                            raw_transformed, _, _ = LinLogControl.calculate_log_ticks(
+                                raw_signal
+                            )
+
+                        # Ensure final matching lengths
+                        final_len = min(len(raw_signal_x), len(raw_transformed))
+                        plot_widget.plot(
+                            raw_signal_x[:final_len],
+                            raw_transformed[:final_len],
+                            pen=None,
+                            symbol="s",
+                            symbolSize=6,
+                            symbolBrush=pg.mkBrush("#00FFFF"),
+                        )
+
+        # Plot Counts (points) with symbolSize=6 - prominence for deconv counts
         plot_widget.plot(
             truncated_x_values,
             y_data,
@@ -1234,11 +1450,11 @@ class FittingDecayConfigPopup(QWidget):
             symbolBrush=color,
         )
 
-        # Plot Fitted curve (line) - use cached_fitted_data x values
+        # Plot Fitted curve (line) with prominence
         plot_widget.plot(
             fitted_x,
             fitted_y,
-            pen=pg.mkPen(color, width=2),
+            pen=pg.mkPen(color, width=2.5),
         )
 
         # Plot original spectroscopy curve in read mode (red line width=1)
@@ -1345,14 +1561,14 @@ class FittingDecayConfigPopup(QWidget):
         legend = plot_widget.addLegend(offset=(0, 20), labelTextSize="11pt")
         legend.setParent(plot_widget)
 
-        # Add global legend entries to explain symbols (gray color)
+        # Add global legend entries to explain symbols
         plot_widget.plot(
             [],
             [],
             pen=None,
             symbol="o",
             symbolSize=6,
-            symbolBrush="gray",
+            symbolBrush=pg.mkBrush("gray"),
             name="Counts",
         )
         plot_widget.plot([], [], pen=pg.mkPen("gray", width=2), name="Fitted curve")
@@ -1765,6 +1981,43 @@ class FittingDecayConfigPopup(QWidget):
             self.cut_data_y[channel] = selected_y
             self.app.roi[channel] = (min_x, max_x)
 
+            # Also cut IRF and raw signal using THE SAME MASK for consistency
+            if self.use_deconvolution and self.irfs and self.raw_signals:
+                # Find the index of this channel in self.data
+                data_index = None
+                for idx, d in enumerate(self.data):
+                    if d["channel_index"] == channel:
+                        data_index = idx
+                        break
+
+                if data_index is not None:
+                    # Cut IRF with the same mask
+                    if data_index < len(self.irfs):
+                        irf = np.array(self.irfs[data_index])
+                        # Verify IRF has same length as x before applying mask
+                        if len(irf) == len(x):
+                            self.cut_irfs[channel] = irf[mask]
+                        else:
+                            print(
+                                f"Warning: IRF length ({len(irf)}) != x length ({len(x)}) for channel {channel}"
+                            )
+
+                    # Cut raw signal with the same mask
+                    if data_index < len(self.raw_signals):
+                        raw_signal_data = self.raw_signals[data_index]
+                        raw_signal = np.array(
+                            raw_signal_data["y"]
+                            if isinstance(raw_signal_data, dict)
+                            else raw_signal_data
+                        )
+                        # Verify raw signal has same length as x before applying mask
+                        if len(raw_signal) == len(x):
+                            self.cut_raw_signals[channel] = raw_signal[mask]
+                        else:
+                            print(
+                                f"Warning: Raw signal length ({len(raw_signal)}) != x length ({len(x)}) for channel {channel}"
+                            )
+
     def create_roi_checkbox(self, channel):
         """
         Creates the 'ROI' checkbox for a specific channel.
@@ -1821,14 +2074,66 @@ class FittingDecayConfigPopup(QWidget):
                 widget.setVisible(visible)
 
     def export_fitting_data(self):
-        """Exports the fitting results to files."""
+        """Exports the fitting results to files with ROI-aware data."""
+
+        # Build IRFs and raw signals for export (use ROI-cut data if available)
+        irfs_to_export = []
+        raw_signals_to_export = []
+
+        for result in self.fitting_results:
+            # Get channel from result
+            channel = result.get("channel_index", result.get("channel", 0))
+
+            # Use ROI-cut IRF if available, otherwise find original IRF
+            if channel in self.cut_irfs:
+                irfs_to_export.append(self.cut_irfs[channel])
+            else:
+                # Find original IRF index for this channel
+                data_index = next(
+                    (
+                        idx
+                        for idx, d in enumerate(self.data)
+                        if d.get("channel_index") == channel
+                    ),
+                    None,
+                )
+                if data_index is not None and data_index < len(self.irfs):
+                    irfs_to_export.append(self.irfs[data_index])
+                else:
+                    irfs_to_export.append(None)
+
+            # Use ROI-cut raw signal if available, otherwise find original
+            if channel in self.cut_raw_signals:
+                raw_signals_to_export.append({"y": self.cut_raw_signals[channel]})
+            else:
+                data_index = next(
+                    (
+                        idx
+                        for idx, d in enumerate(self.data)
+                        if d.get("channel_index") == channel
+                    ),
+                    None,
+                )
+                if data_index is not None and data_index < len(self.raw_signals):
+                    raw_signals_to_export.append(self.raw_signals[data_index])
+                else:
+                    raw_signals_to_export.append(None)
+
         parsed_fitting_results = convert_fitting_result_into_json_serializable_item(
-            self.fitting_results
+            self.fitting_results,
+            raw_signals_to_export,
+            self.use_deconvolution,
+            irfs_to_export,
+            self.laser_period_ns,
+            self.irfs_tau_ns,
         )
         ExportData.save_fitting_data(parsed_fitting_results, self, self.app)
 
     def reset(self):
         """Resets the popup to its initial state, clearing all plots and results."""
+        # Block UI updates during reset to prevent visual glitches and improve performance
+        self.setUpdatesEnabled(False)
+        
         for ch, plot in self.plot_widgets.items():
             if plot:
                 plot.clear()
@@ -1843,6 +2148,8 @@ class FittingDecayConfigPopup(QWidget):
         self.roi_items.clear()
         self.cut_data_x.clear()
         self.cut_data_y.clear()
+        self.cut_irfs.clear()
+        self.cut_raw_signals.clear()
         for ch, checkbox in self.roi_checkboxes.items():
             if checkbox:
                 checkbox.setChecked(False)
@@ -1886,6 +2193,9 @@ class FittingDecayConfigPopup(QWidget):
                 )
 
         self.export_img_btn.setVisible(False)
+        
+        # Re-enable UI updates after reset
+        self.setUpdatesEnabled(True)
 
     def center_window(self):
         """Centers the popup window on the current screen."""
