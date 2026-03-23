@@ -1048,7 +1048,12 @@ class ReadData:
         
         # Now reset harmonic selector (this will trigger _update_phasor_plots_for_harmonic)
         # which will handle drawing points and generating legends
-        app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
+        if app.control_inputs[s.HARMONIC_SELECTOR].currentIndex() == 0:
+            # Already at 0 - signal won't fire, call directly
+            from core.controls_controller import ControlsController
+            ControlsController._update_phasor_plots_for_harmonic(app)
+        else:
+            app.control_inputs[s.HARMONIC_SELECTOR].setCurrentIndex(0)
         # Store the number of harmonics for later use when switching modes
         app.loaded_phasors_harmonics = harmonics
         
