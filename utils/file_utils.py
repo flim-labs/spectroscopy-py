@@ -32,6 +32,7 @@ class FileUtils:
             f
             for f in os.listdir(data_folder)
             if f.startswith("spectroscopy")
+            and f.endswith(".bin")
             and not ("calibration" in f)
             and not ("phasors" in f)
         ]
@@ -51,7 +52,7 @@ class FileUtils:
         files = [
             f
             for f in os.listdir(data_folder)
-            if f.startswith("time_tagger_spectroscopy")
+            if f.startswith("time_tagger_spectroscopy") and f.endswith(".bin")
         ]
         files.sort(
             key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True
@@ -72,7 +73,7 @@ class FileUtils:
         files = [
             f
             for f in os.listdir(data_folder)
-            if f.startswith("spectroscopy-phasors") and not ("calibration" in f)
+            if f.startswith("spectroscopy-phasors") and f.endswith(".bin") and not ("calibration" in f)
         ]
         files.sort(
             key=lambda x: os.path.getmtime(os.path.join(data_folder, x)), reverse=True

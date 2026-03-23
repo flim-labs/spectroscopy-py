@@ -585,3 +585,37 @@ class GUIStyles:
             margin-left: 10px;
             letter-spacing: 0.5px;
             """
+            
+            
+    @staticmethod
+    def ref_data_banner_style(is_none=False, ref_required=False):
+        if not ref_required:
+            color = "#808080" if is_none else "#1E90FF"  
+        else:
+            color = "#DA1212" if is_none else "#1E90FF"
+        return f"""
+            QWidget {{
+                background-color: #181818;
+                border: 1px solid {color};
+                min-height: 30px;
+                margin: 0px;
+                padding: 0px;
+            }}
+        """
+
+    @staticmethod
+    def ref_data_banner_label_style(is_none=False, ref_required=False):
+        if not ref_required:
+            color = "#808080" if is_none else "#1E90FF" 
+        else:
+            color = "#DA1212" if is_none else "#1E90FF"
+        return f"""
+            QLabel {{
+                color: {color};
+                font-family: "Montserrat";
+                font-size: 14px;
+                font-weight: 500;
+                background: transparent;
+                padding: 0px;
+            }}
+        """

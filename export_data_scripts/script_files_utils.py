@@ -105,8 +105,9 @@ class ScriptFileUtils:
         if channel_names is None:
             channel_names = {}
         is_phasors = script_type == "phasors"
+        is_fitting = script_type == "fitting"
         content = cls.read_file_content(content_modifier["source_file"])
-        new_content = cls.manipulate_file_content(content, bin_file_paths, is_phasors, channel_names)
+        new_content = cls.manipulate_file_content(content, bin_file_paths, is_phasors, is_fitting, channel_names)
         script_file_name = f"{file_name}_{script_type}_script.{file_extension}"
         script_file_path = os.path.join(directory, script_file_name)
         cls.write_file(script_file_path, new_content)
@@ -264,7 +265,7 @@ class ScriptFileUtils:
             return file.readlines()
 
     @classmethod
-    def manipulate_file_content(cls, content, file_paths, is_phasors, channel_names=None):
+    def manipulate_file_content(cls, content, file_paths, is_phasors, is_fitting, channel_names=None):
         """
         Replace placeholder patterns in file content with actual file paths and channel names.
         
@@ -272,6 +273,7 @@ class ScriptFileUtils:
             content (list): List of file content lines
             file_paths (dict): Dictionary mapping data types to file paths
             is_phasors (bool): Whether this is phasors data processing
+            is_fitting (bool): Whether this is fitting data processing
             channel_names (dict, optional): Dictionary of custom channel names. Defaults to None.
             
         Returns:
@@ -287,6 +289,10 @@ class ScriptFileUtils:
                 # Replace placeholders for phasors analysis (requires both spectroscopy and phasors files)
                 line = line.replace("<SPECTROSCOPY-FILE-PATH>", file_paths['spectroscopy_phasors_ref'].replace("\\", "/"))
                 line = line.replace("<PHASORS-FILE-PATH>", file_paths['phasors'].replace("\\", "/"))
+            elif is_fitting:
+                # Replace placeholder for fitting data
+                line = line.replace("<SPECTROSCOPY-FILE-PATH>", file_paths['spectroscopy'].replace("\\", "/"))
+                line = line.replace("<FITTING-FILE-PATH>", file_paths['fitting'].replace("\\", "/"))
             elif "time_tagger" in file_paths:
                 # Replace placeholder for time tagger data
                 line = line.replace("<FILE-PATH>", file_paths['time_tagger'].replace("\\", "/"))    
