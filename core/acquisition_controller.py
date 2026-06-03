@@ -661,6 +661,7 @@ class AcquisitionController:
                                       the last channel.
         """
         data = []
+        time_shift = 0  # Initialize time_shift before loop
         channels_shown = [
             channel for channel in app.plots_to_show if channel in app.selected_channels
         ]
@@ -670,11 +671,31 @@ class AcquisitionController:
                 if channel_index not in app.time_shifts
                 else app.time_shifts[channel_index]
             )
+            
+            # Check if channel exists in decay_curves and cached_decay_values
+            if (app.tab_selected not in app.decay_curves or 
+                channel_index not in app.decay_curves[app.tab_selected] or
+                app.decay_curves[app.tab_selected][channel_index] is None):
+                continue
+            
+            if (app.tab_selected not in app.cached_decay_values or
+                channel_index not in app.cached_decay_values[app.tab_selected]):
+                continue
+                
             x, _ = app.decay_curves[app.tab_selected][channel_index].getData()
             y = app.cached_decay_values[app.tab_selected][channel_index]
+            
+            # For FITTING READ mode with bin indices, don't multiply by 1000
+            # Check if x is already in bin indices (0-255 range)
+            is_bin_indices = len(x) > 0 and np.max(x) <= 256
+            if read and not is_bin_indices:
+                x_data = x * 1000
+            else:
+                x_data = x
+            
             data.append(
                 {
-                    "x": x * 1000 if read else x,
+                    "x": x_data,
                     "y": y,
                     "title": "Channel " + str(channel_index + 1),
                     "channel_index": channel_index,
