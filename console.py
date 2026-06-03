@@ -37,13 +37,17 @@ def detect_laser_sync_in_frequency():
 
 
 def select_firmware(sync, freq, conn_type, channels):
-    return flim_labs.get_spectroscopy_firmware(
+    firmware_selected = flim_labs.get_spectroscopy_firmware(
         sync="in" if sync == "sync_in" else "out",
         frequency_mhz=freq,
         channel=conn_type.lower(),
         sync_connection="sma",
         channels = channels
     )
+    ## Remove "_100ps" from the firmware name if present
+    firmware_selected = firmware_selected.replace("_100ps", "")
+    return firmware_selected
+    
 
 
 def select_frequency_mhz(sync, sync_in_freq):
