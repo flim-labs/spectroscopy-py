@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 <div align="center">
-  <h1>Spectroscopy Laserblood v3.0</h1>
+  <h1>Spectroscopy Laserblood v2.9</h1>
 </div>
 <div align="center">
   <a href="https://www.flimlabs.com/">
@@ -27,7 +27,6 @@
      <li><a href="#acquisition-channels">Acquisition Channels</a></li>
      <li><a href="#connection-type">Connection Type</a></li>
       <li><a href="#sync-in-and-sync-out">Sync in and sync out</a></li>
-      <li><a href="#100ps">100ps</a></li>
       <li><a href="#bin-width">Bin width</a></li>
       <li><a href="#time-span">Time span</a></li>
       <li><a href="#acquisition-mode">Acquisition mode</a></li>
@@ -57,7 +56,7 @@
 
 ## Introduction
 
-Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py) _v3.0_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
+Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py) _v2.9_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
 For a general introduction to the aims and technical requirements of the project, read the [Spectroscopy Laserblood Homepage](../index.md) link.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -139,7 +138,7 @@ Key features of _Phasors Mode_ include:
 #### Fitting Mode
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-fitting-gui-v3.0.png" alt="Spectroscopy Laserblood Fitting GUI" width="100%">
+    <img src="../assets/images/spectroscopy-fitting-gui-v2.4.png" alt="Spectroscopy Laserblood Fitting GUI" width="100%">
 </div>
 
 **Fitting Mode** allows users to identify and estimate the parameters of the **mathematical decay model** that best describes the acquired data.
@@ -217,14 +216,6 @@ Each decay curve is represented by **256 points**, maintaining this constancy de
 Selecting a `Sync out` of 80MHz, we obtain a laser period of 12.5 ns and a temporal resolution of about 48.828 ps; thus, each point represents an interval of approximately 48.828 ps across the cumulative decay curves.
 
 Conversely, at 20MHz, the laser period extends to 50 ns with a temporal resolution of about 195.312 ps, indicating that each point on the curve corresponds to an interval of approximately 195.312 ps across the cumulative decay curves of each chunk.
-
-<hr>
-
-#### 100ps
-
-The **100ps** toggle allows the user to enable or disable the 100 ps mode so that the corresponding firmware can be used.
-
-The pico mode can only be selected when there are at most _2 active channels_ and the laser frequency (either _sync-in_ or _sync-out_) is equal to, or very close to, _40 MHz_ or _80 MHz_.
 
 <hr>
 
@@ -420,8 +411,7 @@ Here a table summary of the configurable parameters:
 | `time_shifts`      | dict        | Defines the key (channel index) / value (time shift) pair for decay curves time shifts.                        | {}        | Configures time shifts for decay curve visualization by channel.                                                                                                          |
 | `lin_log_mode`     | dict        | Defines the key (channel index) / value (LIN/LOG) pair for decay curves linear/logarithmic plot visualization. | {}        | Configures the visualization mode (linear or logarithmic) for decay curves by channel.                                                                                    |
 | `write_data`       | boolean     | Set export data option to True/False.                                                                          | False     | If set to _True_, the acquired raw data will be exported locally to the computer along with script files (Python/Matlab).                                                 |
-| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                              | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).                                     |
-| `pico_mode`        | boolean     | Set firmware pico-mode (100ps) option to True/False.                                                           | False     | If set to _True_, the acquisition will use a 100ps firmware                                                                                                               |
+| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                              | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).                                     |                                                                                                          |
 
 <br/>
 
@@ -437,7 +427,7 @@ Here an example of the `settings.ini` structure:
 
 ```json
 [General]
-app_version=3.0
+app_version=9
 free_running=false
 tau_ns=1
 calibration=1
@@ -460,7 +450,6 @@ acquisition_time=10
 phasors_resolution=2
 quantize_phasors=true
 lin_log_mode="{\"2\": \"LOG\", \"3\": \"LIN\"}"
-pico_mode=false
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -485,12 +474,10 @@ If connections are found, the system allows the user to update the configuration
 ## Reader Mode
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-read-mode-v3.0.png" alt="GUI" width="100%">
+    <img src="../assets/images/spectroscopy-read-mode-v2.4.png" alt="GUI" width="100%">
 </div>
 
-The user can choose to use the software in **Reader mode**, loading .bin/.json files from external **spectroscopy**, **phasors** or **fitting** data acquisitions.
-In the **Spectroscopy** tab the user can configure which plots to display, with up to _4_ channels shown simultaneously. For the **Phasors** and **Fitting** tabs, it is possible to load up to a maximum of 4 files at the same time and plot all of them together in a single graph. This allows for direct comparison of multiple acquisitions or fitting results within the same visualization.
-Additionally, the user can view the _metadata_ related to the acquisition and download an image in _.png_ and _.eps_ format that replicates the acquisition graphs.
+The user can choose to use the software in **Reader mode**, loading .bin/.json files from external **spectroscopy**, **phasors** or **fitting** data acquisitions. The user can configure which plots to display, with up to _4_ channels shown simultaneously. Additionally, they can view the _metadata_ related to the acquisition and download an image in _.png_ and _.eps_ format that replicates the acquisition graphs.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

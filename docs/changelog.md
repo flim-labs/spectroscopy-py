@@ -9,6 +9,9 @@
 - Added support for plotting up to 4 fitting files or spectroscopy files in read mode.
 - Improved fitting UI: highlights the selected fitting algorithm and enhances the overall display.
 
+## Version 2.9.1
+- Remove 100ps firmware support
+
 ## Version 2.9
 
 - Add 100ps firmware toggle
