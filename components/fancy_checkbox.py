@@ -1,4 +1,4 @@
-from PyQt6.QtCore import pyqtSignal, Qt, QSize
+from PyQt6.QtCore import pyqtSignal, Qt, QSize, QEvent
 from PyQt6.QtGui import (
     QPainter,
     QColor,
@@ -6,6 +6,7 @@ from PyQt6.QtGui import (
     QBrush,
     QMouseEvent,
     QIcon,
+    QFontMetrics,
 )
 from PyQt6.QtWidgets import (
     QWidget,
@@ -39,36 +40,160 @@ class FancyCheckbox(QWidget):
     Signals:
         toggled (pyqtSignal): Emitted when the checkbox state changes.
     """
-    toggled = pyqtSignal(bool)  # Signal to emit when the checkbox state changes
+    toggled = pyqtSignal(bool) 
+    labelClicked = pyqtSignal()  
 
-    def __init__(self, text="", parent=None):
-        """
-        Initializes the FancyCheckbox widget.
-
-        Args:
-            text (str, optional): The text for the label. Defaults to "".
-            parent (QWidget, optional): The parent widget. Defaults to None.
-        """
+    def __init__(self, text="", label_custom_part="", label_default_part="", label_clickable=False, parent=None):
         super().__init__(parent)
         self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(
-            0, 0, 0, 0
-        )  # Remove margins around the checkbox and label
-        self.layout.setSpacing(5)  # Set spacing between checkbox and label
+        self.layout.setContentsMargins(0, 0, 0, 0)  
+        self.layout.setSpacing(3)  # Reduced from 5px to 3px to save space  
 
         self.checkbox = Checkbox(self)
-        self.label = QLabel(text, self)
-
+        
+        self.label_container = QWidget(self)
+        self.label_container.setObjectName("label_container")
+        self.label_layout = QHBoxLayout(self.label_container)
+        self.label_layout.setContentsMargins(5, 0, 0, 0)
+        self.label_layout.setSpacing(0)
+        
+        if label_custom_part:
+            if len(label_custom_part) > 5:
+                truncated_custom = label_custom_part[:5] + "..."
+            else:
+                truncated_custom = label_custom_part
+            full_text = f"{truncated_custom} {label_default_part}"
+        elif label_default_part:
+            full_text = label_default_part
+        else:
+            full_text = text
+        
+        self.label = QLabel(full_text, self)
+        self.has_custom_name = bool(label_custom_part)
+        self.label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.custom_part = label_custom_part
+        self.default_part = label_default_part
+        self._apply_label_styles(label_clickable, self.has_custom_name)
+        self.label_layout.addWidget(self.label)
+        self.label_layout.addStretch()
+        self.label_clickable = label_clickable
+        self.is_hovering = False
         self.checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.label.setCursor(Qt.CursorShape.PointingHandCursor)
-
+        if label_clickable:
+            self.label_container.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.label_container.mousePressEvent = self._label_click_handler
+            self.label_container.setToolTip("Click to rename channel")
+            self.label_container.installEventFilter(self)
+            self.label_container.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        else:
+            self.label_container.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.label_container.mousePressEvent = self.checkbox.mousePressEvent
         self.layout.addWidget(self.checkbox)
-        self.layout.addWidget(self.label)
-
-        self.label.mousePressEvent = (
-            self.checkbox.mousePressEvent
-        )  # Forward mousePressEvent from label to checkbox
+        self.layout.addWidget(self.label_container)
         self.checkbox.toggled.connect(self.emit_toggled_signal)
+
+    def _apply_label_styles(self, clickable, has_custom):
+        base_style = "color: white; font-family: 'Montserrat'; font-size: 13px;"
+        self.label.setStyleSheet(base_style)
+        if clickable:
+            self.label_container.setStyleSheet("""
+                QWidget#label_container {
+                    border-radius: 3px;
+                    padding: 2px;
+                    background-color: transparent;
+                }
+            """)
+
+    def eventFilter(self, obj, event):
+        """Handle hover events for label container"""
+        if obj == self.label_container and self.label_clickable:
+            if event.type() == QEvent.Type.Enter:
+                if not self.is_hovering:
+                    self.is_hovering = True
+                    self.label_container.setStyleSheet("""
+                        QWidget#label_container {
+                            border-radius: 3px;
+                            padding: 2px;
+                            background-color: rgba(141, 78, 242, 0.2);
+                        }
+                    """)
+            elif event.type() == QEvent.Type.Leave:
+                if self.is_hovering:
+                    self.is_hovering = False
+                    self.label_container.setStyleSheet("""
+                        QWidget#label_container {
+                            border-radius: 3px;
+                            padding: 2px;
+                            background-color: transparent;
+                        }
+                    """)
+        return super().eventFilter(obj, event)
+    
+    def _label_click_handler(self, event):
+        """Handle label click for rename functionality"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.labelClicked.emit()
+
+    def emit_toggled_signal(self, checked):
+        self.toggled.emit(checked)  
+
+    def is_checked(self):
+        return self.checkbox.is_checked()
+
+    def set_checked(self, checked):
+        self.checkbox.set_checked(checked)
+
+    def set_text(self, text):
+        self.label.setText(text)
+        self.has_custom_name = False
+
+    def set_text_parts(self, custom_part, default_part):
+        self.custom_part = custom_part
+        self.default_part = default_part
+        if custom_part:
+            self.has_custom_name = True
+        else:
+            self.has_custom_name = False
+        self._update_label_text()
+        self._apply_label_styles(self.label_clickable, self.has_custom_name)
+    
+    def _update_label_text(self):
+        if not self.custom_part:
+            self.label.setText(self.default_part if self.default_part else "")
+            return
+        available_width = self.label_container.width() - 20
+        if available_width <= 0:
+            available_width = 80
+        font_metrics = QFontMetrics(self.label.font())
+        default_text = f" {self.default_part}"
+        default_width = font_metrics.horizontalAdvance(default_text)
+        available_for_custom = available_width - default_width
+        custom_text = self.custom_part
+        custom_width = font_metrics.horizontalAdvance(custom_text)
+        if custom_width > available_for_custom:
+            ellipsis = "..."
+            ellipsis_width = font_metrics.horizontalAdvance(ellipsis)
+            available_for_custom -= ellipsis_width
+            truncated = ""
+            for i in range(len(custom_text)):
+                test_text = custom_text[:i+1]
+                if font_metrics.horizontalAdvance(test_text) > available_for_custom:
+                    break
+                truncated = test_text
+            if len(truncated) < 3 and len(custom_text) >= 3:
+                truncated = custom_text[:3]
+            custom_text = truncated + ellipsis
+        full_text = f"{custom_text}{default_text}"
+        self.label.setText(full_text)
+    
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, 'custom_part') and self.custom_part:
+            self._update_label_text()
+
+    def setEnabled(self, enabled):
+        self.checkbox.setEnabled(enabled)
+        self.label.setEnabled(enabled)
 
     def emit_toggled_signal(self, checked):
         """
