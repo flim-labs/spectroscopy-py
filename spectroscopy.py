@@ -129,8 +129,7 @@ class SpectroscopyWindow(QWidget):
         )
         self.use_deconvolution = str(use_deconvolution).lower() == "true"
 
-        pico_mode_value = self.settings.value(s.SETTINGS_PICO_MODE, s.DEFAULT_PICO_MODE)
-        self.pico_mode = str(pico_mode_value).lower() == "true"
+        self.pico_mode = False ## Pico mode always False; support for 100ps firmwares removed
 
         time_tagger = self.settings.value(s.SETTINGS_TIME_TAGGER, s.DEFAULT_TIME_TAGGER)
         self.time_tagger = str(time_tagger).lower() == "true"

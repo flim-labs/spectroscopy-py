@@ -11,7 +11,11 @@
 ## Version 2.6
 - Add 100ps toggle for Pico mode with automatic availability checks
 - Add pico_mode propagation to firmware selection and acquisition params
-- Introduce helper to validate frequencies near 40/80 MHz for Pico mode
+- Introduce helper to validate frequencies near 40/80 MHz for Pico mode2
+**Note: version not released**
+
+## Version 2.5.1
+- Remove support for 100ps firmwares
 
 ## Version 2.5
 - Phasors analysis: add tau_n calculation and display 

@@ -362,7 +362,7 @@ class ExportPlotImageButton(QWidget):
         Generates a plot based on the currently selected tab and saves it as an image.
         """
         if self.app.tab_selected == s.TAB_SPECTROSCOPY:
-            channels_curves, times, metadata = (
+            channels_curves, times, metadata, channel_names = (
                 ReadData.prepare_spectroscopy_data_for_export_img(self.app)
             )
             # Use channel names from binary metadata (not from session)

@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 <div align="center">
-  <h1>Spectroscopy v2.7</h1>
+  <h1>Spectroscopy v2.5.1</h1>
 </div>
 <div align="center">
   <a href="https://www.flimlabs.com/">
@@ -55,7 +55,7 @@
 
 ## Introduction
 
-Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py) _v2.7_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
+Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py) _v2.5.1_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
 For a general introduction to the aims and technical requirements of the project, read the [Spectroscopy Homepage](../index.md) link.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -137,7 +137,7 @@ Key features of _Phasors Mode_ include:
 #### Fitting Mode
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-fitting-gui-v2.7.png" alt="Spectroscopy Fitting GUI" width="100%">
+    <img src="../assets/images/spectroscopy-fitting-gui-v2.4.png" alt="Spectroscopy Fitting GUI" width="100%">
 </div>
 
 **Fitting Mode** allows users to identify and estimate the parameters of the **mathematical decay model** that best describes the acquired data.
@@ -163,7 +163,7 @@ Key features of _Fitting Mode_ include:
 #### Settings
 
 <div align="center">
-    <img src="../assets/images/spectroscopy-settings-v2.6.png" alt="Spectroscopy Settings bar" width="100%">
+    <img src="../assets/images/spectroscopy-settings-v2.4.png" alt="Spectroscopy Settings bar" width="100%">
 </div>
 
 _Spectroscopy_ includes a comprehensive **settings** package that allows users to configure their acquisition parameters and hardware connections with ease.
@@ -331,7 +331,7 @@ Here a table summary of the configurable parameters:
 | `time_shifts`      | dict        | Defines the key (channel index) / value (time shift) pair for decay curves time shifts.                       | {}        | Configures time shifts for decay curve visualization by channel.                                                                                                         |
 | `lin_log_mode`     | dict        | Defines the key (channel index) / value (LIN/LOG) pair for decay curves linear/logarithmic plot visualization. | {}        | Configures the visualization mode (linear or logarithmic) for decay curves by channel.                                                                                   |
 | `write_data`       | boolean     | Set export data option to True/False.                                                                         | False     | If set to _True_, the acquired raw data will be exported locally to the computer along with script files (Python/Matlab).                                                |
-| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                             | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).      
+| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                             | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).                                     |
 
 
 <br/>
@@ -348,7 +348,7 @@ Here an example of the `settings.ini` structure:
 
 ```json
 [General]
-app_version=2.7
+app_version=2.5.1
 free_running=false
 tau_ns=1
 calibration=1
@@ -396,12 +396,10 @@ If connections are found, the system allows the user to update the configuration
 ## Reader Mode
 
 <div align="center">
-  <img src="../assets/images/spectroscopy-read-mode-v2.7.png" alt="GUI" width="100%">
+    <img src="../assets/images/spectroscopy-read-mode-v2.4.png" alt="GUI" width="100%">
 </div>
 
-The user can choose to use the software in **Reader mode**, loading .bin/.json files from external **spectroscopy**, **phasors** or **fitting** data acquisitions.
-In the **Spectroscopy** tab the user can configure which plots to display, with up to _4_ channels shown simultaneously. For the **Phasors** and **Fitting** tabs, it is possible to load up to a maximum of 4 files at the same time and plot all of them together in a single graph. This allows for direct comparison of multiple acquisitions or fitting results within the same visualization.
-Additionally, the user can view the _metadata_ related to the acquisition and download an image in _.png_ and _.eps_ format that replicates the acquisition graphs.
+The user can choose to use the software in **Reader mode**, loading .bin/.json files from external **spectroscopy**, **phasors** or **fitting** data acquisitions. The user can configure which plots to display, with up to _4_ channels shown simultaneously. Additionally, they can view the _metadata_ related to the acquisition and download an image in _.png_ and _.eps_ format that replicates the acquisition graphs.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

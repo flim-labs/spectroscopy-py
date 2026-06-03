@@ -95,3 +95,17 @@ def sanitize_channel_name(name: str) -> str:
     # Replace any other non-alphanumeric characters (except _ and -) with underscores
     name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
     return name
+
+
+
+def format_channel_list(channels: list, custom_names: dict) -> str:
+    """Format a list of channel indices with custom names.
+    
+    Args:
+        channels: List of channel indices (0-based)
+        custom_names: Dictionary mapping channel indices (as strings) to custom names
+        
+    Returns:
+        str: Formatted string like "test123 (Ch4), Channel 5"
+    """
+    return ", ".join([get_channel_name(ch, custom_names) for ch in channels])

@@ -42,7 +42,8 @@ def select_firmware(sync, freq, conn_type, channels):
         frequency_mhz=freq,
         channel=conn_type.lower(),
         sync_connection="sma",
-        channels = channels
+        channels = channels,
+        pico_mode=False
     )
 
 
