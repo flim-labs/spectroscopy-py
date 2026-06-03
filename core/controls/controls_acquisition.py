@@ -295,7 +295,6 @@ def get_firmware_selected(app, frequency_mhz, pico_mode=None):
         pico_mode=False  # Pico mode support removed; always False,
     )
     firmware_selected = firmware_selected.replace("_100ps", "")
-    print(firmware_selected)
     return firmware_selected, connection_type
 
 
