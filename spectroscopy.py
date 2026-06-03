@@ -138,9 +138,8 @@ class SpectroscopyWindow(QWidget):
             s.SETTINGS_WRITE_DATA, s.DEFAULT_WRITE_DATA
         )
         self.write_data_gui = str(write_data_gui).lower() == "true"
-        
-        pico_mode = self.settings.value(s.SETTINGS_PICO_MODE, s.DEFAULT_PICO_MODE)
-        self.pico_mode = str(pico_mode).lower() == "true"
+       
+        self.pico_mode = False ## Pico Mode always False (remove support for 100ps firmwares)
 
         time_tagger = self.settings.value(s.SETTINGS_TIME_TAGGER, s.DEFAULT_TIME_TAGGER)
         self.time_tagger = str(time_tagger).lower() == "true"

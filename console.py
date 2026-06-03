@@ -53,7 +53,8 @@ def select_firmware():
             sync="in" if selected_sync == "sync_in" else "out",
             frequency_mhz=frequency_mhz,
             channel=connection_type.lower(),
-            sync_connection="sma"
+            sync_connection="sma",
+            pico_mode=False
         )
     return firmware_selected
 

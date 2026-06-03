@@ -1,5 +1,8 @@
 # Spectroscopy Laserblood Changelog
 
+## Version 2.9.1
+- Remove 100ps firmware support
+
 ## Version 2.9
 - Add 100ps firmware toggle
 
