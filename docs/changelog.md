@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.5.1
+- Remove support for 100ps firmwares
+
 ## Version 2.5
 - Phasors analysis: add tau_n calculation and display 
 - Improve phasor centroid information display layout

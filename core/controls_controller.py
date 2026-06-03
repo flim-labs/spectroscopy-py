@@ -808,6 +808,8 @@ class ControlsController:
             channels=app.selected_channels,
             sync_connection="sma",
         )
+        ## Remove "_100ps" from the firmware name if present
+        firmware_selected = firmware_selected.replace("_100ps", "")
         return firmware_selected, connection_type  
     
     
