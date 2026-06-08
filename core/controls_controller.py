@@ -53,7 +53,9 @@ from core.controls.controls_acquisition import (
     on_tau_change,
     on_harmonic_change,
     on_calibration_change,
-    on_use_deconvolution_changed
+    on_use_deconvolution_changed,
+    on_decay_calc_mode_change
+    
 )
 from core.controls.controls_phasors import (
     is_phasors,
@@ -205,6 +207,10 @@ class ControlsController:
     @staticmethod
     def get_firmware_selected(app, frequency_mhz, pico_mode=None):
         return get_firmware_selected(app, frequency_mhz, pico_mode)
+    
+    @staticmethod
+    def on_decay_calc_mode_change(app, value):
+        on_decay_calc_mode_change(app, value)
 
     # ------------------------------------------------------------------
     # Channel selection

@@ -1,5 +1,8 @@
 # Spectroscopy Changelog
 
+## Version 2.9
+- Decay curve: user can now choose between cumulative counts (previous default) and per-timespan histogram refresh.
+
 ## Version 2.8
 - Added support for deconvolution before fitting
 

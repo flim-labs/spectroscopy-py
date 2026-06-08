@@ -134,6 +134,34 @@ def _create_pileup_sbr_controls(app, layout):
     show_SBR_control.addWidget(inp)
     layout.addLayout(show_SBR_control)
     layout.addSpacing(10)
+    
+
+def _create_decay_calc_mode_control(app, layout):
+    """Creates control for selecting the decay calculation mode.
+    """
+    from core.controls_controller import ControlsController
+    widget_decay_calc_mode = QWidget()
+    col_decay_calc_mode = QVBoxLayout()
+    col_decay_calc_mode.setContentsMargins(0, 0, 0, 0)
+    _, inp, label = SelectControl.setup(
+        "Decay calc:",
+        int(
+            app.settings.value(
+                s.SETTINGS_DECAY_CALC_MODE, s.DEFAULT_DECAY_CALC_MODE
+            )
+        ),
+        layout,
+        s.DECAY_CALC_MODES,
+        partial(ControlsController.on_decay_calc_mode_change, app),
+    )
+    inp.setStyleSheet(GUIStyles.set_input_select_style())
+    app.control_inputs[s.SETTINGS_DECAY_CALC_MODE] = inp
+    app.control_inputs["decay_calc_mode_label"] = label
+    col_decay_calc_mode.addWidget(label)
+    col_decay_calc_mode.addSpacing(5)
+    col_decay_calc_mode.addWidget(inp)
+    widget_decay_calc_mode.setLayout(col_decay_calc_mode)
+    layout.addWidget(widget_decay_calc_mode)
 
 
 def _create_phasor_controls(app, layout):
@@ -318,6 +346,7 @@ def create_control_inputs(app):
     controls_row.addSpacing(10)
 
     _create_basic_controls(app, controls_row)
+    _create_decay_calc_mode_control(app, controls_row)
     _create_pileup_sbr_controls(app, controls_row)
     _create_fitting_controls(app, controls_row)
     _create_phasor_controls(app, controls_row)
