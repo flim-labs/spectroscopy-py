@@ -40,7 +40,7 @@ def create_action_buttons(app, layout):
     from core.controls_controller import ControlsController
 
     # LOAD REFERENCE Button
-    save_button = QPushButton("LOAD REFERENCE")
+    save_button = QPushButton("LOAD REF.")
     save_button.setFlat(True)
     save_button.setFixedHeight(55)
     save_button.setCursor(Qt.CursorShape.PointingHandCursor)
