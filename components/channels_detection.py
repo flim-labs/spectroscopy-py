@@ -383,9 +383,11 @@ class DetectChannelsDialog(QDialog):
             ch_checkbox.set_checked(ch_index in channels)
         self.app.selected_channels = channels
         ControlsController.set_selected_channels_to_settings(self.app)
-        self.app.plots_to_show = channels[:4]
+        plots_to_show = [0] if self.app.tab_selected == s.TAB_PHASORS and self.app.acquire_read_mode == "read" else channels[:4]
+        self.app.plots_to_show = plots_to_show
+        self.app.plots_to_show_cache = channels[:4]
         self.app.settings.setValue(
-            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(self.app.plots_to_show)
+            s.SETTINGS_PLOTS_TO_SHOW, json.dumps(plots_to_show)
         )
         PlotsController.clear_plots(self.app)
         PlotsController.generate_plots(self.app)

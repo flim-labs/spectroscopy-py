@@ -1,7 +1,6 @@
 from copy import deepcopy
 
-
-VERSION = "2.9.1"
+VERSION = "3.2"
 APP_DEFAULT_WIDTH = 1000
 APP_DEFAULT_HEIGHT = 800
 TOP_BAR_HEIGHT = 250
@@ -14,6 +13,7 @@ SETTINGS_TIME_SPAN = "time_span"
 DEFAULT_TIME_SPAN = 10
 SETTINGS_CONNECTION_TYPE = "connection_type"
 SETTINGS_CALIBRATION_TYPE = "calibration"
+CALIBRATION_TYPES = ["None", "Phasors Ref.", "IRF Ref.", "BIRFI Ref."]
 DEFAULT_SETTINGS_CALIBRATION_TYPE = 0
 DEFAULT_CONNECTION_TYPE = "1"
 SETTINGS_FREE_RUNNING = "free_running"
@@ -32,6 +32,8 @@ SETTINGS_SYNC_IN_FREQUENCY_MHZ = "sync_in_frequency_mhz"
 DEFAULT_SYNC_IN_FREQUENCY_MHZ = 0.0
 SETTINGS_WRITE_DATA = "write_data"
 DEFAULT_WRITE_DATA = True
+SETTINGS_USE_DECONVOLUTION = "use_deconvolution"
+DEFAULT_USE_DECONVOLUTION = False
 SETTINGS_TIME_TAGGER = "time_tagger"
 DEFAULT_TIME_TAGGER = False
 SETTINGS_TIME_SHIFTS = "time_shift"
@@ -39,6 +41,9 @@ SETTINGS_CPS_THRESHOLD = "cps_threshold"
 DEFAULT_CPS_THRESHOLD = 0
 SETTINGS_SHOW_SBR = "show_SBR"
 DEFAULT_SHOW_SBR = False
+DECAY_CALC_MODES = ["Cumulated", "Refreshed"]
+SETTINGS_DECAY_CALC_MODE = "decay_calc_mode"
+DEFAULT_DECAY_CALC_MODE = 0
 SETTINGS_REPLICATES = "replicates"
 DEFAULT_REPLICATES = 1
 
@@ -86,12 +91,11 @@ DEFAULT_ROI = "{}"
 CHANNELS_GRID = "channels_grid"
 
 
-
 UNICODE_SUP = {
     "0": "\u2070",
-    "1": "\u00B9",
-    "2": "\u00B2",
-    "3": "\u00B3",
+    "1": "\u00b9",
+    "2": "\u00b2",
+    "3": "\u00b3",
     "4": "\u2074",
     "5": "\u2075",
     "6": "\u2076",
@@ -128,7 +132,7 @@ CHECK_CARD_BUTTON = "check_card_button"
 CHECK_CARD_MESSAGE = "check_card_message"
 
 CHANNELS_DETECTION_BUTTON = "channels_detection_button"
-
+REFERENCE_INFO_BANNER = "reference_info_banner"
 
 
 READER_DATA = {
@@ -140,22 +144,22 @@ READER_DATA = {
         "data": {},
     },
     "phasors": {
-        "files": {"spectroscopy": "", "phasors": "", "laserblood_metadata": ""},
-        "spectroscopy_metadata": {},
-        "phasors_metadata": {},
+        "files": {"spectroscopy": [], "phasors": [], "laserblood_metadata": ""},
+        "spectroscopy_metadata": [],
+        "phasors_metadata": [],
         "plots": [],
-        "metadata": {},
+        "metadata": [],
         "laserblood_metadata": {},
         "data": {"phasors_data": {}, "spectroscopy_data": {}},
     },
     "fitting": {
-        "files": {"spectroscopy": "", "fitting": "", "laserblood_metadata": ""},
+        "files": {"spectroscopy": "", "fitting": [], "laserblood_metadata": ""},
         "plots": [],
         "spectroscopy_metadata": {},
-        "fitting_metadata": {},
+        "fitting_metadata": [],
         "laserblood_metadata": {},
         "metadata": {},
-        "data": {"fitting_data": {}, "spectroscopy_data": {}},
+        "data": {"fitting_data": [], "spectroscopy_data": {}},
     },
 }
 
@@ -171,10 +175,10 @@ DECAY_CURVES = {
     TAB_FITTING: {},
 }
 DEFAULT_DECAY_CURVES = deepcopy(DECAY_CURVES)
-CACHED_DECAY_VALUES =  {
-            TAB_SPECTROSCOPY: {},
-            TAB_FITTING: {},
-        }
+CACHED_DECAY_VALUES = {
+    TAB_SPECTROSCOPY: {},
+    TAB_FITTING: {},
+}
 DEFAULT_CACHED_DECAY_VALUES = deepcopy(CACHED_DECAY_VALUES)
 
 AVAILABLE_FREQUENCIES_MHZ = [80.0, 40.0, 20.0, 10.0]

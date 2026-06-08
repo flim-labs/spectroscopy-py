@@ -56,6 +56,7 @@ def select_firmware():
             sync_connection="sma",
             pico_mode=False
         )
+    firmware_selected = firmware_selected.replace("_100ps", "")
     return firmware_selected
 
 
