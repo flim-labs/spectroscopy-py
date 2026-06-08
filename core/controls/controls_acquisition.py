@@ -531,3 +531,14 @@ def on_calibration_change(app, value):
         app.control_inputs["tau"].hide()
         app.control_inputs[s.SETTINGS_HARMONIC].hide()
         app.control_inputs[s.SETTINGS_HARMONIC_LABEL].hide()
+        
+        
+def on_decay_calc_mode_change(app, value):
+    """
+    Callback for when the decay calculation mode changes.
+
+    Args:
+        app: The main application instance.
+        value (int): The index of the selected decay calculation mode.
+    """
+    app.settings.setValue(s.SETTINGS_DECAY_CALC_MODE, value)           
