@@ -3,9 +3,9 @@
 <div align="center">
   <h1>Spectroscopy</h1>
 </div>
-<div align="center">
+<div align="center" style="padding: 0.5rem; border-radius: 5px">
   <a href="https://www.flimlabs.com/">
-    <img src="./docs/assets/images/shared/spectroscopy-logo.png" alt="Logo" width="120" height="120">
+    <img src="./docs/assets/images/shared/FLIMlabs_logo.png" alt="Logo" width="300">
   </a>
 </div>
 <br>
@@ -37,12 +37,7 @@
 
 # About the project
 
-<div align="center">
-    <img src="./docs/assets/images/spectroscopy-gui-v2.4.png" alt="Spectroscopy GUI" width="100%">
-</div>
-
-
-Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py), a Python application designed to **analyze the fluorescence intensity decay as a function of time**. Facilitated by an underlying data processor developed in Rust, responsible for data retrieval from the hardware component, this application enables real-time data analysis and visualization. Whether your focus is on rigorous data analysis or dynamic visualizations, Spectroscopy serves as a flexible tool for the precise measurement and exploration of fluorescence intensity decay profile and lifetimes distributions.
+Welcome to [FLIM LABS Spectroscopy](https://www.flimlabs.com/2026/products/spectroscopy/), a Python application designed to **analyze the fluorescence intensity decay as a function of time**. Facilitated by an underlying data processor developed in Rust, responsible for data retrieval from the hardware component, this application enables real-time data analysis and visualization. Whether your focus is on rigorous data analysis or dynamic visualizations, Spectroscopy serves as a flexible tool for the precise measurement and exploration of fluorescence intensity decay profile and lifetimes distributions.
 
 ### Built With
 
@@ -58,6 +53,10 @@ Welcome to [FLIM LABS Spectroscopy](https://github.com/flim-labs/spectroscopy-py
 <!-- GETTING STARTED -->
 
 ## Getting Started
+
+If you want to use the application, the complete guide is the [User Manual](https://flim-labs.github.io/docs/spectroscopy/Spectroscopy-manual.pdf).
+
+The instructions below are for technicians, developers, and IT staff who need to build, run, or debug the software from source.
 
 To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this [link](https://github.com/flim-labs/spectroscopy-py/releases/tag/v2.9) (_Note: you still need to have the FLIM LABS acquisition card_).
 
@@ -109,6 +108,6 @@ Navigate to the following links to view detailed application usage guides:
 
 FLIM LABS: info@flimlabs.com
 
-Project Link: [FLIM LABS - Spectroscopy](https://github.com/flim-labs/spectroscopy-py)
+Project Link: [FLIM LABS - Spectroscopy](https://www.flimlabs.com/2026/products/spectroscopy/)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
