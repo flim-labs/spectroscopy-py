@@ -49,5 +49,5 @@ class TitlebarIcon():
         Args:
             window (QWidget): The window to which the icon will be applied.
         """
-        icon_path = resource_path("assets/spectroscopy-logo.png")
+        icon_path = resource_path("assets/FLIMlabs_logo_icon.png")
         window.setWindowIcon(QIcon(icon_path))

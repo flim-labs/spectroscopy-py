@@ -14,7 +14,6 @@ Handles creation of the top bar area:
 from functools import partial
 
 from components.buttons import ReadAcquireModeButton, TimeTaggerWidget
-from components.gradient_text import GradientText
 from utils.gui_styles import GUIStyles
 from utils.layout_utilities import draw_layout_separator
 from components.link_widget import LinkWidget
@@ -45,25 +44,25 @@ def create_logo_and_title(app):
         QHBoxLayout: A layout containing the logo and title.
     """
     row = QHBoxLayout()
-    pixmap = QPixmap(
-        resource_path("assets/spectroscopy-logo-white.png")
-    ).scaledToWidth(40)
-    ctl = QLabel(pixmap=pixmap)
-    row.addWidget(ctl)
-    row.addSpacing(10)
-    ctl_layout = QVBoxLayout()
-    ctl_layout.setContentsMargins(0, 10, 0, 0)
-    ctl = GradientText(
-        app,
-        text="SPECTROSCOPY",
-        colors=[(0.7, "#1E90FF"), (1.0, s.PALETTE_RED_1)],
-        stylesheet=GUIStyles.set_main_title_style(),
+    row.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+    flim_logo = QLabel()
+    flim_logo.setPixmap(
+        QPixmap(resource_path("assets/FLIMlabs_logo.png")).scaledToHeight(
+            48, Qt.TransformationMode.SmoothTransformation
+        )
     )
-    ctl_layout.addWidget(ctl)
-    row.addLayout(ctl_layout)
-    ctl = QWidget()
-    ctl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-    row.addWidget(ctl)
+    row.addWidget(flim_logo)
+    row.addSpacing(14)
+    wordmark = QLabel()
+    wordmark.setPixmap(
+        QPixmap(resource_path("assets/spectroscopy-logo-vector_v2.png")).scaledToHeight(
+            32, Qt.TransformationMode.SmoothTransformation
+        )
+    )
+    row.addWidget(wordmark)
+    spacer = QWidget()
+    spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    row.addWidget(spacer)
     return row
 
 

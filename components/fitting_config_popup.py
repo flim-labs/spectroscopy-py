@@ -15,7 +15,7 @@ Re-exports FittingWorker for backward compatibility.
 """
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QCursor, QGuiApplication, QIcon
+from PyQt6.QtGui import QCursor, QGuiApplication
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
 )
 
 import settings.settings as s
-from utils.resource_path import resource_path
+from utils.logo_utilities import TitlebarIcon
 
 from components.fitting.fitting_constants import (
     DARK_THEME_BG_COLOR,
@@ -109,7 +109,7 @@ class FittingDecayConfigPopup(
         self.read_mode = read_mode
         self.save_plot_img = save_plot_img
         self.setWindowTitle("Spectroscopy - Fitting Decay Config")
-        self.setWindowIcon(QIcon(resource_path("assets/spectroscopy-logo.png")))
+        TitlebarIcon.setup(self)
         self.setStyleSheet(
             f"background-color: {DARK_THEME_BG_COLOR}; color: {DARK_THEME_TEXT_COLOR}"
         )
