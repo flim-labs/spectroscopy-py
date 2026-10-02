@@ -58,7 +58,7 @@ If you want to use the application, the complete guide is the [User Manual](http
 
 The instructions below are for technicians, developers, and IT staff who need to build, run, or debug the software from source.
 
-To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this [link](https://github.com/flim-labs/spectroscopy-py/releases/tag/v2.9) (_Note: you still need to have the FLIM LABS acquisition card_).
+To directly test the application, skipping the prerequisites and installation requirements you can download an installer at this [link](https://github.com/flim-labs/spectroscopy-py/releases/) (_Note: you still need to have the FLIM LABS acquisition card_).
 
 To get a local copy up and running follow these steps.
 
