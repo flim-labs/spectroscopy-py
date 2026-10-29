@@ -219,6 +219,7 @@ class SpectroscopyWindow(QWidget):
         self.all_SBR_counts = []
         self.cached_decay_x_values = np.array([])
         self.cached_decay_values = s.CACHED_DECAY_VALUES
+        self.decay_refresh_timestamps = {}
         self.spectroscopy_axis_x = np.arange(1)
         self.lin_log_switches = {}
         self.decay_curves_queue = queue.Queue()

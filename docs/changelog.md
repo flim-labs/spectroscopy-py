@@ -1,5 +1,8 @@
 # Spectroscopy Laserblood Changelog
 
+## Version 3.2
+- Decay curve: user can now choose between cumulative counts (previous default) and per-timespan histogram refresh.
+
 ## Version 3.1
 - Added support for deconvolution before fitting
 

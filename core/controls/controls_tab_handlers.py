@@ -152,7 +152,7 @@ def _handle_phasors_tab_selection(app):
         on_quantize_phasors_changed(app, False)
         app.settings.setValue(s.SETTINGS_QUANTIZE_PHASORS, False)
     else:
-        app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
+        app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REF.")
         app.control_inputs[s.LOAD_REF_BTN].show()
         UIController.update_reference_info_banner_label(app)
         show_layout(app.control_inputs["quantize_phasors_container"])

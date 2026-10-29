@@ -31,6 +31,7 @@ from core.controls.controls_fitting import (
     on_fit_btn_click,
 )
 from core.controls.controls_acquisition import (
+    on_decay_calc_mode_change,
     on_start_button_click,
     on_bin_width_change,
     on_time_span_change,
@@ -100,7 +101,7 @@ from core.controls.controls_state import (
 class ControlsController:
     """
     Facade controller for all user-interaction callbacks and UI state management.
-    
+
     Every method is a thin static wrapper that delegates to the appropriate
     `core/controls/` sub-module.
     """
@@ -200,6 +201,10 @@ class ControlsController:
     @staticmethod
     def get_firmware_selected(app, frequency_mhz):
         return get_firmware_selected(app, frequency_mhz)
+
+    @staticmethod
+    def on_decay_calc_mode_change(app, value):
+        on_decay_calc_mode_change(app, value)
 
     # ------------------------------------------------------------------
     # Pico mode helpers (Laserblood-specific)

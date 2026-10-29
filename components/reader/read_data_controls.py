@@ -80,7 +80,7 @@ class ReadDataControls:
 
         # Phasors tab specifics
         if app.tab_selected == s.TAB_PHASORS:
-            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REFERENCE")
+            app.control_inputs[s.LOAD_REF_BTN].setText("LOAD REF.")
             app.control_inputs[s.LOAD_REF_BTN].setVisible(not read_mode)
             if read_mode:
                 app.control_inputs[s.LOAD_REF_BTN].hide()

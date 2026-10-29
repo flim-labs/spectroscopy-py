@@ -18,6 +18,8 @@ import settings.settings as s
 
 from PyQt6.QtWidgets import QApplication
 
+from utils.layout_utilities import clear_layout_tree
+
 
 def update_intensity_plots(app, channel_index, time_ns, curve):
     """
@@ -138,8 +140,14 @@ def update_plots(app, channel_index, time_ns, curve, reader_mode=False):
         elif decay_curve is not None:
             x, y = decay_curve.getData()
             if app.tab_selected == s.TAB_PHASORS:
+                if _should_refresh_decay_curve(app, channel_index, time_ns):
+                    y = np.zeros_like(curve)
                 decay_curve.setData(x, curve + y)
             elif app.tab_selected in (s.TAB_SPECTROSCOPY, s.TAB_FITTING):
+                if _should_refresh_decay_curve(app, channel_index, time_ns):
+                    app.cached_decay_values[app.tab_selected][channel_index] = (
+                        np.zeros_like(curve)
+                    )
                 last_cached_decay_value = app.cached_decay_values[app.tab_selected][
                     channel_index
                 ]
@@ -205,6 +213,7 @@ def clear_plots(app, deep_clear=True):
     app.all_SBR_counts.clear()
     app.SBR_items.clear()
     app.acquisition_time_countdown_widgets.clear()
+    app.decay_refresh_timestamps.clear()
     if deep_clear:
         app.intensity_lines = deepcopy(s.DEFAULT_INTENSITY_LINES)
         app.decay_curves = deepcopy(s.DEFAULT_DECAY_CURVES)
@@ -224,3 +233,39 @@ def clear_plots(app, deep_clear=True):
             layout = app.grid_layout.itemAt(i).layout()
             if layout is not None:
                 clear_layout_tree(layout)
+
+
+def _get_decay_refresh_key(app, channel_index):
+    return (app.tab_selected, channel_index)
+
+
+def _get_decay_calc_mode(app):
+    return int(
+        app.settings.value(s.SETTINGS_DECAY_CALC_MODE, s.DEFAULT_DECAY_CALC_MODE)
+    )
+
+
+def _get_decay_refresh_span_ns(app):
+    return (
+        int(app.settings.value(s.SETTINGS_TIME_SPAN, s.DEFAULT_TIME_SPAN))
+        * 1_000_000_000
+    )
+
+
+def _should_refresh_decay_curve(app, channel_index, time_ns):
+    if _get_decay_calc_mode(app) != 1:
+        return False
+
+    refresh_span_ns = _get_decay_refresh_span_ns(app)
+    refresh_key = _get_decay_refresh_key(app, channel_index)
+    last_refresh_time_ns = app.decay_refresh_timestamps.get(refresh_key)
+
+    if last_refresh_time_ns is None:
+        app.decay_refresh_timestamps[refresh_key] = time_ns
+        return False
+
+    if time_ns - last_refresh_time_ns >= refresh_span_ns:
+        app.decay_refresh_timestamps[refresh_key] = time_ns
+        return True
+
+    return False
