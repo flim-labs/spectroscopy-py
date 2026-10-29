@@ -191,18 +191,35 @@ def get_realtime_adjustment_value(enabled_channels, is_phasors):
 
 
 def extract_channel_from_label(text):
-    """Extracts a zero-based channel index from a label string (e.g., "Channel 1" -> 0).
+    """Extracts a zero-based channel index from a label string.
+    
+    Handles formats like:
+    - "Channel 1" -> 0
+    - "test123 (Ch4)" -> 3
+    - "custom_name (Ch5)" -> 4
 
     Args:
         text (str): The label string containing a channel number.
 
     Returns:
-        int: The extracted channel index.
+        int: The extracted channel index (0-based).
     """
-    ch = re.search(r"\d+", text).group()
-    ch_num = int(ch)
-    ch_num_index = ch_num - 1
-    return ch_num_index
+    # Search for "Ch" followed by a number (handles custom names format)
+    match = re.search(r"Ch(\d+)", text)
+    if match:
+        return int(match.group(1)) - 1
+    
+    # Fallback: search for "Channel" followed by number
+    match = re.search(r"Channel\s+(\d+)", text)
+    if match:
+        return int(match.group(1)) - 1
+    
+    # Last fallback: first number found
+    match = re.search(r"\d+", text)
+    if match:
+        return int(match.group()) - 1
+    
+    return 0
 
 
 def humanize_number(number):

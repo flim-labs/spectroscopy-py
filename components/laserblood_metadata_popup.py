@@ -50,6 +50,9 @@ class LaserbloodMetadataPopup(QWidget):
             start_acquisition (bool, optional): Flag indicating if acquisition should start after saving. Defaults to False.
         """
         super().__init__()
+        # Prevent widget from being shown during construction
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        self.setUpdatesEnabled(False)
         self.app = window
         self.setWindowTitle("Spectroscopy - Laserblood Metadata")
         TitlebarIcon.setup(self)
@@ -115,7 +118,10 @@ class LaserbloodMetadataPopup(QWidget):
         self.app.widgets[LASERBLOOD_METADATA_POPUP] = self
         self.setObjectName("laserblood_popup")
         self.setStyleSheet(GUIStyles.set_laserblood_popup_style())
-        self.showMaximized()
+        
+        # Re-enable UI updates and showing after initialization
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
 
     def create_header_layout(self):
         """

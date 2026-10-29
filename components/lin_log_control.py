@@ -1,4 +1,5 @@
 import json
+import os
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtWidgets import (
@@ -13,6 +14,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QTransform
 from utils.gui_styles import GUIStyles
 from components.switch_control import SwitchControl
+from core.phasors_controller import PhasorsController
 import settings.settings as s
 
 
@@ -128,27 +130,105 @@ class LinLogControl(QWidget):
             state (bool): The new state of the switch (True for LIN, False for LOG).
         """
         from core.plots_controller import PlotsController
-        time_shifts = self.app.time_shifts[self.channel] if self.channel in self.app.time_shifts else 0  
-        decay_curve = self.app.decay_curves[self.app.tab_selected][self.channel]
+        import pyqtgraph as pg
+        import settings.settings as s
+        from core.phasors_controller import PhasorsController
+                
         decay_widget = self.app.decay_widgets[self.channel]
-        x, _ = decay_curve.getData()
-        cached_decay_values = self.app.cached_decay_values[self.app.tab_selected][
-            self.channel
-        ]
-        if state:
-            ticks, y_data = LinLogControl.calculate_lin_mode(
-                cached_decay_values
-            )
-            decay_widget.showGrid(x=False, y=False)
+        
+        # Check if we're in multi-file mode
+        data_type = "phasors" if self.app.tab_selected == s.TAB_PHASORS else "fitting"
+        spectroscopy_data = self.app.reader_data[data_type]["data"]["spectroscopy_data"] if data_type == "fitting" else self.app.reader_data["phasors"]["data"]["spectroscopy_data"]
+        is_multi_file = "files_data" in spectroscopy_data and len(spectroscopy_data.get("files_data", [])) > 0
+        
+        if is_multi_file and self.app.tab_selected == s.TAB_FITTING:
+            # Multi-file mode: re-plot all curves with transformed data
+            files_data = spectroscopy_data["files_data"]
+            metadata_list = self.app.reader_data[data_type]["spectroscopy_metadata"]
+            metadata = self.app.reader_data[data_type]["metadata"]
+            laser_period_ns = metadata.get("laser_period_ns", 25)
+            
+            from utils.helpers import ns_to_mhz
+            frequency_mhz = ns_to_mhz(laser_period_ns)
+            period_ns = 1_000 / frequency_mhz if frequency_mhz != 0.0 else laser_period_ns
+            num_bins = 256
+            # Use bin indices for FITTING READ mode
+            x_values = np.arange(num_bins)
+            
+            # Clear and re-add legend
+            decay_widget.clear()
+            if decay_widget.plotItem.legend is None:
+                legend = decay_widget.addLegend(offset=(10, 10))
+                legend.setLabelTextColor('w')
+            
+            # Reset multi_file_plots for this channel
+            if hasattr(self.app, 'multi_file_plots') and self.app.tab_selected in self.app.multi_file_plots:
+                self.app.multi_file_plots[self.app.tab_selected][self.channel] = []
+            
+            # Re-plot each file with transformed data
+            for file_idx, file_data in enumerate(files_data):
+                file_channels_curves = file_data["channels_curves"]
+                color = PhasorsController.get_color_for_file_index(file_idx)
+                
+                # Get file name
+                file_name = "Unknown"
+                if file_idx < len(metadata_list):
+                    file_name = metadata_list[file_idx].get("file_name", f"File {file_idx + 1}")
+                else:
+                    file_name = f"File {file_idx + 1}"
+                
+                # Get curves for this channel
+                for channel_idx, curves in file_channels_curves.items():
+                    metadata_channels = metadata["channels"]
+                    if metadata_channels[channel_idx] == self.channel:
+                        y_values = np.sum(curves, axis=0)
+                        
+                        # Apply lin/log transformation
+                        if state:
+                            ticks, y_transformed = LinLogControl.calculate_lin_mode(y_values)
+                            decay_widget.showGrid(x=False, y=False)
+                        else:
+                            ticks, y_transformed, _ = LinLogControl.calculate_log_mode(y_values)
+                            decay_widget.showGrid(x=False, y=True, alpha=0.3)
+                        
+                        # Plot with color
+                        pen = pg.mkPen(color=color, width=2)
+                        plot_item = decay_widget.plot(x_values, y_transformed, pen=pen, name=file_name)
+                        
+                        # Save plot item for time shift (FITTING READ only)
+                        if hasattr(self.app, 'multi_file_plots') and self.app.tab_selected in self.app.multi_file_plots:
+                            self.app.multi_file_plots[self.app.tab_selected][self.channel].append({
+                                'plot_item': plot_item,
+                                'y_values': y_values,  # Original values
+                                'file_idx': file_idx,
+                                'file_name': file_name
+                            })
+            
+            decay_widget.getAxis("left").setTicks([ticks])
+            PlotsController.set_plot_y_range(decay_widget)
         else:
-            ticks, y_data, _ = LinLogControl.calculate_log_mode(
-                cached_decay_values
-            )
-            decay_widget.showGrid(x=False, y=True, alpha=0.3)
-        y = np.roll(y_data, time_shifts)
-        decay_curve.setData(x, y)
-        decay_widget.getAxis("left").setTicks([ticks])
-        PlotsController.set_plot_y_range(decay_widget)
+            # Single-file mode (original behavior)
+            time_shifts = self.app.time_shifts[self.channel] if self.channel in self.app.time_shifts else 0  
+            decay_curve = self.app.decay_curves[self.app.tab_selected][self.channel]
+            x, _ = decay_curve.getData()
+            cached_decay_values = self.app.cached_decay_values[self.app.tab_selected][
+                self.channel
+            ]
+            
+            if state:
+                ticks, y_data = LinLogControl.calculate_lin_mode(
+                    cached_decay_values
+                )
+                decay_widget.showGrid(x=False, y=False)
+            else:
+                ticks, y_data, _ = LinLogControl.calculate_log_mode(
+                    cached_decay_values
+                )
+                decay_widget.showGrid(x=False, y=True, alpha=0.3)
+            y = np.roll(y_data, time_shifts)
+            decay_curve.setData(x, y)
+            decay_widget.getAxis("left").setTicks([ticks])
+            PlotsController.set_plot_y_range(decay_widget)
 
 
     def on_fitting_lin_log_changed(self, state):
@@ -159,42 +239,304 @@ class LinLogControl(QWidget):
         """
         from core.plots_controller import PlotsController
         if self.fitting_popup is not None:
-            plot_widget = self.fitting_popup.plot_widgets[self.channel]
-            plot_widget.clear()
-            counts_x = self.fitting_popup.cached_counts_data[self.channel]["x"]
-            counts_y = self.fitting_popup.cached_counts_data[self.channel]["y"]
-            fitted_x = self.fitting_popup.cached_fitted_data[self.channel]["x"]
-            fitted_y = self.fitting_popup.cached_fitted_data[self.channel]["y"]
+            # Update mode
             if state:
                 self.fitting_popup.lin_log_modes[self.channel] = "LIN"
-                _, y_data = LinLogControl.calculate_lin_mode(counts_y) 
-                y_ticks, fitted_data = LinLogControl.calculate_lin_mode(fitted_y)  
             else:
-                self.fitting_popup.lin_log_modes[self.channel] = "LOG"  
-                y_data, __, _ = LinLogControl.calculate_log_ticks(counts_y) 
-                fitted_data, y_ticks, _ = LinLogControl.calculate_log_ticks(fitted_y)    
-            axis = plot_widget.getAxis("left")    
-            axis.setTicks([y_ticks])
-            plot_widget.clear()
-            legend = plot_widget.addLegend(offset=(0, 20))
-            legend.setParent(plot_widget)
-            # Fitted Curve
-            plot_widget.plot(
-                counts_x,
-                y_data,
-                pen=None,
-                symbol="o",
-                symbolSize=4,
-                symbolBrush="#04f7ee",
-                name="Counts",
-            )
-            plot_widget.plot(
-                fitted_x,
-                fitted_data,
-                pen=pg.mkPen("#f72828", width=2),
-                name="Fitted curve",
-            )
-            PlotsController.set_plot_y_range(plot_widget)
+                self.fitting_popup.lin_log_modes[self.channel] = "LOG"
+            
+            # Check if multi-file mode
+            is_multi_file_fitting = (self.fitting_popup.read_mode and 
+                           self.fitting_popup.preloaded_fitting and 
+                           len(self.fitting_popup.preloaded_fitting) > 1 and 
+                           'file_index' in self.fitting_popup.preloaded_fitting[0])
+            
+            is_multi_file_spectroscopy = (self.fitting_popup.data and 
+                                         len(self.fitting_popup.data) > 0 and
+                                         'file_index' in self.fitting_popup.data[0])
+            
+            if is_multi_file_fitting:
+                # Multi-file with fitting results: re-call update method
+                plot_widget = self.fitting_popup.plot_widgets[self.channel]
+                residuals_widget = self.fitting_popup.residuals_widgets[self.channel]
+                fitted_params_text = self.fitting_popup.fitted_params_labels[self.channel]
+                self.fitting_popup._update_plot_multiple_files(
+                    self.fitting_popup.preloaded_fitting, 
+                    self.channel, 
+                    plot_widget, 
+                    residuals_widget, 
+                    fitted_params_text
+                )
+            elif is_multi_file_spectroscopy:
+                # Multi-file spectroscopy: handle both original curves and fitted results
+                plot_widget = self.fitting_popup.plot_widgets[self.channel]
+                plot_widget.clear()
+                
+                # Check if we have fitted data cached (indicates fitting was done)
+                has_fitted_results = (self.channel in self.fitting_popup.cached_fitted_data and 
+                                    len(self.fitting_popup.cached_fitted_data[self.channel].get("y", [])) > 0)               
+                
+                if has_fitted_results:                    
+                    # Get individual fitting results for each file
+                    if hasattr(self.fitting_popup, 'fitting_results') and self.fitting_popup.fitting_results:
+                        
+                        individual_results = [r for r in self.fitting_popup.fitting_results if r.get('channel_index') == self.channel]                       
+                        
+                        # Try alternative: maybe channel_index is different or missing
+                        if not individual_results:
+                            individual_results = self.fitting_popup.fitting_results
+                        
+                        if individual_results:
+                            # Calculate y-axis ticks using first file
+                            first_result = individual_results[0]
+                            first_counts_y = np.array(first_result["y_data"]) * first_result["scale_factor"]
+                            if state:
+                                y_ticks, _ = LinLogControl.calculate_lin_mode(first_counts_y)
+                            else:
+                                _, y_ticks, _ = LinLogControl.calculate_log_ticks(first_counts_y)
+                            
+                            axis = plot_widget.getAxis("left")
+                            axis.setTicks([y_ticks])
+                            
+                            legend = plot_widget.addLegend(offset=(0, 20))
+                            legend.setParent(plot_widget)
+                            
+                            # Add explanatory legend entries first
+                            plot_widget.plot(
+                                [],  # Empty data for legend only
+                                [],
+                                pen=pg.mkPen("gray", width=2),
+                                name="Fitted curve"
+                            )
+                            
+                            plot_widget.plot(
+                                [],  # Empty data for legend only
+                                [],
+                                pen=None,
+                                symbol="o",
+                                symbolSize=6,
+                                symbolBrush="gray",
+                                name="Counts"
+                            )
+                            
+                            # Plot each file's data individually
+                            for result in individual_results:
+                                if "error" in result:
+                                    continue
+                                    
+                                file_index = result.get('file_index', 0)
+                                file_name = result.get('file_name', f'File {file_index}')
+                                
+                                # Try to get better file name from reader_data if needed
+                                if file_name in ['File 1', 'Single File'] or file_name.startswith('File '):
+                                    # Try fitting/files/fitting (JSON files)
+                                    fitting_files = self.fitting_popup.app.reader_data.get("fitting", {}).get("files", {}).get("fitting", "")
+                                    if fitting_files:
+                                        if isinstance(fitting_files, str) and fitting_files.strip():
+                                            file_name = os.path.basename(fitting_files)
+                                        elif isinstance(fitting_files, list) and file_index < len(fitting_files):
+                                            file_name = os.path.basename(fitting_files[file_index])
+                                    
+                                    # Try spectroscopy metadata
+                                    if file_name in ['File 1', 'Single File'] or file_name.startswith('File '):
+                                        spectroscopy_metadata = self.fitting_popup.app.reader_data.get("fitting", {}).get("spectroscopy_metadata", [])
+                                        if isinstance(spectroscopy_metadata, list) and len(spectroscopy_metadata) > file_index:
+                                            metadata_file_name = spectroscopy_metadata[file_index].get("file_name", "")
+                                            if metadata_file_name and not metadata_file_name.startswith('File '):
+                                                file_name = metadata_file_name
+                                
+                                color = self.fitting_popup.file_colors[file_index % len(self.fitting_popup.file_colors)]
+                                
+                                # Counts data (points from decay_start)
+                                decay_start = result["decay_start"]
+                                counts_x = result["x_values"][decay_start:]
+                                counts_y_full = np.array(result["y_data"]) * result["scale_factor"]
+                                
+                                # Fitted data (curve)
+                                fitted_x = result["t_data"]
+                                fitted_y_full = np.array(result["fitted_values"]) * result["scale_factor"]
+                                
+                                # Apply LIN/LOG transformation
+                                if state:
+                                    _, counts_y_transformed = LinLogControl.calculate_lin_mode(counts_y_full)
+                                    _, fitted_y_transformed = LinLogControl.calculate_lin_mode(fitted_y_full)
+                                else:
+                                    counts_y_transformed, _, _ = LinLogControl.calculate_log_ticks(counts_y_full)
+                                    fitted_y_transformed, _, _ = LinLogControl.calculate_log_ticks(fitted_y_full)
+                                
+                                # Align counts arrays (use from decay_start)
+                                counts_len = len(counts_y_transformed)
+                                counts_x_aligned = counts_x[:counts_len]
+                                counts_y_aligned = counts_y_transformed
+                                
+                                # Align fitted arrays
+                                fitted_len = min(len(fitted_x), len(fitted_y_transformed))
+                                fitted_x_aligned = fitted_x[:fitted_len]
+                                fitted_y_aligned = fitted_y_transformed[:fitted_len]
+                                
+                                # Add jitter to counts points to separate overlapping files
+                                num_files = len(individual_results)
+                                if len(counts_x_aligned) > 0:
+                                    x_range = counts_x_aligned.max() - counts_x_aligned.min()
+                                    jitter_amount = 0.003 * x_range  
+                                    offset_x = (file_index - (num_files - 1) / 2) * jitter_amount
+                                    counts_x_jittered = counts_x_aligned + offset_x
+                                else:
+                                    counts_x_jittered = counts_x_aligned
+                                
+                                # Plot Counts (points with jitter, no legend)
+                                plot_widget.plot(
+                                    counts_x_jittered,
+                                    counts_y_aligned,
+                                    pen=None,
+                                    symbol="o",
+                                    symbolSize=6,
+                                    symbolBrush=color,
+                                )
+                                
+                                # Plot Fitted curve (line, no legend)
+                                plot_widget.plot(
+                                    fitted_x_aligned,
+                                    fitted_y_aligned,
+                                    pen=pg.mkPen(color, width=2),
+                                )
+                                
+                                # Add file name to legend with file color
+                                plot_widget.plot(
+                                    [],  # Empty data for legend only
+                                    [],
+                                    pen=pg.mkPen(color, width=3),
+                                    name=file_name
+                                )
+                
+                else:                   
+                    # Get cached data for transformation calculation
+                    counts_y = self.fitting_popup.cached_counts_data[self.channel]["y"]
+                    
+                    # Calculate ticks based on mode
+                    if state:
+                        y_ticks, _ = LinLogControl.calculate_lin_mode(counts_y)
+                    else:
+                        _, y_ticks, _ = LinLogControl.calculate_log_ticks(counts_y)
+                    
+                    axis = plot_widget.getAxis("left")
+                    axis.setTicks([y_ticks])
+                    
+                    # Re-plot all curves with transformation
+                    for data_entry in self.fitting_popup.data:
+                        file_index = data_entry.get('file_index', 0)
+                        file_name = data_entry.get('file_name', f'File {file_index}')
+                        color = PhasorsController.get_color_for_file_index(file_index)
+                        x = data_entry['x']
+                        y = np.roll(data_entry['y'], data_entry['time_shift'])
+                        
+                        # Apply transformation
+                        if state:
+                            _, y_transformed = LinLogControl.calculate_lin_mode(y)
+                        else:
+                            y_transformed, _, _ = LinLogControl.calculate_log_ticks(y)
+                        
+                        # Ensure X and Y have the same length
+                        min_len = min(len(x), len(y_transformed))
+                        x_aligned = x[:min_len]
+                        y_aligned = y_transformed[:min_len]
+                        
+                        plot_widget.plot(x_aligned, y_aligned, pen=pg.mkPen(color, width=2), name=file_name)
+                
+                # Re-add legend if not already added
+                if not has_fitted_results:
+                    plot_widget.addLegend(offset=(10, 10))
+                    
+                PlotsController.set_plot_y_range(plot_widget)
+            else:
+                # Single file: original logic
+                plot_widget = self.fitting_popup.plot_widgets[self.channel]
+                plot_widget.clear()
+                counts_x = self.fitting_popup.cached_counts_data[self.channel]["x"]
+                counts_y = self.fitting_popup.cached_counts_data[self.channel]["y"]
+                fitted_x = self.fitting_popup.cached_fitted_data[self.channel]["x"]
+                fitted_y = self.fitting_popup.cached_fitted_data[self.channel]["y"]
+                if state:
+                    _, y_data = LinLogControl.calculate_lin_mode(counts_y) 
+                    y_ticks, fitted_data = LinLogControl.calculate_lin_mode(fitted_y)  
+                else:
+                    y_data, __, _ = LinLogControl.calculate_log_ticks(counts_y) 
+                    fitted_data, y_ticks, _ = LinLogControl.calculate_log_ticks(fitted_y)    
+                axis = plot_widget.getAxis("left")    
+                axis.setTicks([y_ticks])
+                plot_widget.clear()
+                legend = plot_widget.addLegend(offset=(0, 20))
+                legend.setParent(plot_widget)
+                
+                # Add explanatory legend entries first
+                plot_widget.plot(
+                    [],  # Empty data for legend only
+                    [],
+                    pen=pg.mkPen("gray", width=2),
+                    name="Fitted curve"
+                )
+                
+                plot_widget.plot(
+                    [],  # Empty data for legend only
+                    [],
+                    pen=None,
+                    symbol="o",
+                    symbolSize=4,
+                    symbolBrush="gray",
+                    name="Counts"
+                )
+                
+                # Get file info for legend
+                file_index = 0
+                file_name = "Single File"
+                if hasattr(self.fitting_popup, 'data') and len(self.fitting_popup.data) > 0:
+                    file_name = self.fitting_popup.data[0].get('file_name', 'Single File')
+                
+                # Try to get better file name from reader_data if needed
+                if file_name in ['File 1', 'Single File'] or file_name.startswith('File '):
+                    # Try fitting/files/fitting (JSON files)
+                    fitting_files = self.fitting_popup.app.reader_data.get("fitting", {}).get("files", {}).get("fitting", "")
+                    if fitting_files:
+                        if isinstance(fitting_files, str) and fitting_files.strip():
+                            file_name = os.path.basename(fitting_files)
+                        elif isinstance(fitting_files, list) and file_index < len(fitting_files):
+                            file_name = os.path.basename(fitting_files[file_index])
+                    
+                    # Try spectroscopy metadata
+                    if file_name in ['File 1', 'Single File'] or file_name.startswith('File '):
+                        spectroscopy_metadata = self.fitting_popup.app.reader_data.get("fitting", {}).get("spectroscopy_metadata", [])
+                        if isinstance(spectroscopy_metadata, list) and len(spectroscopy_metadata) > file_index:
+                            metadata_file_name = spectroscopy_metadata[file_index].get("file_name", "")
+                            if metadata_file_name and not metadata_file_name.startswith('File '):
+                                file_name = metadata_file_name
+                
+                color = self.fitting_popup.file_colors[file_index % len(self.fitting_popup.file_colors)]
+                
+                # Plot Counts (points, no legend)
+                plot_widget.plot(
+                    counts_x,
+                    y_data,
+                    pen=None,
+                    symbol="o",
+                    symbolSize=4,
+                    symbolBrush=color,
+                )
+                
+                # Plot Fitted curve (line, no legend)
+                plot_widget.plot(
+                    fitted_x,
+                    fitted_data,
+                    pen=pg.mkPen(color, width=2),
+                )
+                
+                # Add file name to legend with file color
+                plot_widget.plot(
+                    [],  # Empty data for legend only
+                    [],
+                    pen=pg.mkPen(color, width=3),
+                    name=file_name
+                )
+                PlotsController.set_plot_y_range(plot_widget)
 
     @staticmethod
     def calculate_lin_mode(y_values):

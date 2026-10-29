@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 <div align="center">
-  <h1>Spectroscopy Laserblood v2.9.1</h1>
+  <h1>Spectroscopy Laserblood v2.9</h1>
 </div>
 <div align="center">
   <a href="https://www.flimlabs.com/">
@@ -56,7 +56,7 @@
 
 ## Introduction
 
-Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py) _v2.9.1_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
+Welcome to [FLIM LABS Spectroscopy Laserblood](https://github.com/flim-labs/spectroscopy-py) _v2.9_ usage guide. In this documentation section, you will find all the necessary information for the proper use of the application's **graphical user interface** (GUI).
 For a general introduction to the aims and technical requirements of the project, read the [Spectroscopy Laserblood Homepage](../index.md) link.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -411,7 +411,7 @@ Here a table summary of the configurable parameters:
 | `time_shifts`      | dict        | Defines the key (channel index) / value (time shift) pair for decay curves time shifts.                        | {}        | Configures time shifts for decay curve visualization by channel.                                                                                                          |
 | `lin_log_mode`     | dict        | Defines the key (channel index) / value (LIN/LOG) pair for decay curves linear/logarithmic plot visualization. | {}        | Configures the visualization mode (linear or logarithmic) for decay curves by channel.                                                                                    |
 | `write_data`       | boolean     | Set export data option to True/False.                                                                          | False     | If set to _True_, the acquired raw data will be exported locally to the computer along with script files (Python/Matlab).                                                 |
-| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                              | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).                                     |
+| `time_tagger`      | boolean     | Set export Time Tagger data option to True/False.                                                              | True      | If set to _True_, the Time Tagger data will be processed and exported locally to the computer (along with a reader script in Python).                                     |                                                                                                          |
 
 <br/>
 

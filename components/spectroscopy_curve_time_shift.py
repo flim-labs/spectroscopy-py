@@ -104,25 +104,65 @@ class SpectroscopyTimeShift(QWidget):
             self.app.control_inputs["time_shift_inputs"][self.channel].setValue(value)
         else:
             self.app.control_inputs["time_shift_sliders"][self.channel].setValue(value)
-        SpectroscopyTimeShift.update_time_shift_ns_value(self.app, value, channel)    
-        if self.app.tab_selected in self.app.decay_curves: 
-            if self.channel in self.app.decay_curves[self.app.tab_selected]:
-                decay_curve = self.app.decay_curves[self.app.tab_selected][self.channel]
-                x, y = decay_curve.getData()
-                if x is not None and y is not None:
-                    if channel in self.app.cached_decay_values[self.app.tab_selected]:
-                        cached_decay_curve = self.app.cached_decay_values[self.app.tab_selected][channel]
-                        decay_widget = self.app.decay_widgets[channel]
-                        if lin_log_mode == 'LIN':
-                            ticks, y_data = LinLogControl.calculate_lin_mode(cached_decay_curve)
-                            decay_widget.showGrid(x=False, y=False)
-                        else:
-                            ticks, y_data, _ = LinLogControl.calculate_log_mode(cached_decay_curve)
-                            decay_widget.showGrid(x=False, y=True, alpha=0.3)     
-                        decay_widget.getAxis("left").setTicks([ticks])    
-                        y = np.roll(y_data, value)
-                        decay_curve.setData(x, y)
-                        PlotsController.set_plot_y_range(decay_widget)
+        SpectroscopyTimeShift.update_time_shift_ns_value(self.app, value, channel)
+        
+        # Check if in multi-file mode (FITTING READ only)
+        is_multi_file = (self.app.tab_selected == s.TAB_FITTING and 
+                         self.app.acquire_read_mode == "read" and
+                         hasattr(self.app, 'multi_file_plots') and 
+                         self.app.tab_selected in self.app.multi_file_plots and 
+                         self.channel in self.app.multi_file_plots[self.app.tab_selected] and 
+                         len(self.app.multi_file_plots[self.app.tab_selected][self.channel]) > 0)
+        
+        if is_multi_file:
+            # Multi-file mode (FITTING READ): shift all curves for this channel
+            decay_widget = self.app.decay_widgets[channel]
+            for plot_data in self.app.multi_file_plots[self.app.tab_selected][self.channel]:
+                plot_item = plot_data['plot_item']
+                y_values = plot_data['y_values']
+                x, _ = plot_item.getData()
+                
+                # Apply lin/log transformation then shift
+                if lin_log_mode == 'LIN':
+                    ticks, y_data = LinLogControl.calculate_lin_mode(y_values)
+                    decay_widget.showGrid(x=False, y=False)
+                else:
+                    ticks, y_data, _ = LinLogControl.calculate_log_mode(y_values)
+                    decay_widget.showGrid(x=False, y=True, alpha=0.3)
+                
+                # Apply shift and update
+                y_shifted = np.roll(y_data, value)
+                plot_item.setData(x, y_shifted)
+            
+            # Update ticks once for the widget
+            if channel in self.app.cached_decay_values[self.app.tab_selected]:
+                cached_decay_curve = self.app.cached_decay_values[self.app.tab_selected][channel]
+                if lin_log_mode == 'LIN':
+                    ticks, _ = LinLogControl.calculate_lin_mode(cached_decay_curve)
+                else:
+                    ticks, _, _ = LinLogControl.calculate_log_mode(cached_decay_curve)
+                decay_widget.getAxis("left").setTicks([ticks])
+            PlotsController.set_plot_y_range(decay_widget)
+        else:
+            # Single-file mode or other tabs: original behavior
+            if self.app.tab_selected in self.app.decay_curves: 
+                if self.channel in self.app.decay_curves[self.app.tab_selected]:
+                    decay_curve = self.app.decay_curves[self.app.tab_selected][self.channel]
+                    x, y = decay_curve.getData()
+                    if x is not None and y is not None:
+                        if channel in self.app.cached_decay_values[self.app.tab_selected]:
+                            cached_decay_curve = self.app.cached_decay_values[self.app.tab_selected][channel]
+                            decay_widget = self.app.decay_widgets[channel]
+                            if lin_log_mode == 'LIN':
+                                ticks, y_data = LinLogControl.calculate_lin_mode(cached_decay_curve)
+                                decay_widget.showGrid(x=False, y=False)
+                            else:
+                                ticks, y_data, _ = LinLogControl.calculate_log_mode(cached_decay_curve)
+                                decay_widget.showGrid(x=False, y=True, alpha=0.3)     
+                            decay_widget.getAxis("left").setTicks([ticks])    
+                            y = np.roll(y_data, value)
+                            decay_curve.setData(x, y)
+                            PlotsController.set_plot_y_range(decay_widget)
         self.app.settings.setValue(s.SETTINGS_TIME_SHIFTS, json.dumps(self.app.time_shifts))
         
 
